@@ -20,6 +20,12 @@ export function ModelViewer({ url, color, material, metalness, roughness }: Mode
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
 
+        // Hide the Plane mesh
+        if (mesh.name === "Plane") {
+          mesh.visible = false
+          return
+        }
+
         if (material === "standard") {
           mesh.material = new THREE.MeshStandardMaterial({
             color: new THREE.Color(color),

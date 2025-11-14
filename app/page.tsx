@@ -12,7 +12,7 @@ import { Upload, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 export default function Home() {
-  const [modelUrl, setModelUrl] = useState<string>("/assets/3d/duck.glb")
+  const [modelUrl, setModelUrl] = useState<string>("/models/Cuban-Link.glb")
   const [material, setMaterial] = useState("silver")
   const [color, setColor] = useState("#c0c0c0")
   const [metalness, setMetalness] = useState(0.8)
