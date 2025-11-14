@@ -88,7 +88,7 @@ export default function Home() {
               <span>
                 <Upload className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Upload Model</span>
-                <span className="sm:hidden">Upload</span>
+                <span className="sm:hidden">Upload Test</span>
               </span>
             </Button>
           </label>
