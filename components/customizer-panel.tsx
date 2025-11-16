@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
+import { SheetClose } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Save, Upload } from "lucide-react"
 
@@ -40,8 +41,14 @@ interface CustomizerPanelProps {
   onHoverMesh: (mesh: string | null) => void
   chainCount: number
   setChainCount: (value: number) => void
+  chainSpacing?: number
+  setChainSpacing?: (value: number) => void
+  applyMode?: boolean
+  setApplyMode?: (value: boolean) => void
+  onUndo?: () => void
   autoFitModel: boolean
   setAutoFitModel: (value: boolean) => void
+  isInSheet?: boolean
 }
 
 const materialOptions = [
@@ -106,8 +113,13 @@ export function CustomizerPanel({
   onHoverMesh,
   chainCount,
   setChainCount,
+  chainSpacing,
+  setChainSpacing,
+  applyMode,
+  setApplyMode,
   autoFitModel,
   setAutoFitModel,
+  isInSheet,
 }: CustomizerPanelProps) {
   return (
     <Card className="w-full lg:w-96 h-full rounded-none border-l-0 lg:border-l border-t lg:border-t-0 border-r-0 border-b-0 bg-card overflow-y-auto">
@@ -132,6 +144,7 @@ export function CustomizerPanel({
 
         {/* Meshes and Nodes List */}
         <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">After configuration, click "Apply" then select a link in the viewer or in this list. Click "Undo" to revert last.</p>
           <Label>Meshes</Label>
           <div className="space-y-1">
             {meshes.map((mesh, idx) => (
@@ -164,7 +177,44 @@ export function CustomizerPanel({
 
         <Separator />
 
-        {/* Chain Count Slider */}
+        {/* Chain Controls */}
+        <details className="border rounded bg-muted/5 p-2">
+          <summary className="cursor-pointer font-semibold py-1 px-2">Chain Settings</summary>
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="chain-count">Links</Label>
+              <span className="text-xs sm:text-sm text-muted-foreground">{chainCount}</span>
+            </div>
+            <Slider
+              id="chain-count"
+              min={1}
+              max={64}
+              step={1}
+              value={[chainCount]}
+              onValueChange={(value) => setChainCount(value[0])}
+              className="w-full"
+            />
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="chain-spacing">Spacing</Label>
+              <span className="text-xs sm:text-sm text-muted-foreground">{Math.round((chainSpacing ?? 0.95) * 100)}%</span>
+            </div>
+            <Slider
+              id="chain-spacing"
+              min={0.5}
+              max={1.5}
+              step={0.01}
+              value={[chainSpacing ?? 0.95]}
+              onValueChange={(value) => setChainSpacing?.(value[0])}
+              className="w-full"
+            />
+
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => setApplyMode?.(true)}>Apply</Button>
+              <Button variant="outline" className="flex-1" onClick={() => onUndo?.()}>Undo</Button>
+            </div>
+          </div>
+        </details>
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label htmlFor="chain-count">Chain Links</Label>
@@ -183,8 +233,10 @@ export function CustomizerPanel({
 
         <Separator />
 
-        {/* Material Selection */}
-        <div className="space-y-3">
+        {/* Appearance */}
+        <details className="border rounded bg-muted/5 p-2">
+          <summary className="cursor-pointer font-semibold py-1 px-2">Appearance</summary>
+          <div className="space-y-3 pt-2">
           <Label htmlFor="material">Select Material</Label>
           <Select
             value={material}
@@ -207,7 +259,8 @@ export function CustomizerPanel({
               ))}
             </SelectContent>
           </Select>
-        </div>
+          </div>
+        </details>
 
         <Separator />
 
@@ -279,25 +332,9 @@ export function CustomizerPanel({
 
         <Separator />
 
-        <div className="space-y-3">
-          <Label htmlFor="enamel">Enamel</Label>
-          <Select value={enamelColor} onValueChange={setEnamelColor}>
-            <SelectTrigger id="enamel">
-              <SelectValue placeholder="Select enamel color" />
-            </SelectTrigger>
-            <SelectContent>
-              {enamelOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-3">
+        <details className="border rounded bg-muted/5 p-2">
+          <summary className="cursor-pointer font-semibold py-1 px-2">Enamel</summary>
+          <div className="space-y-3 pt-2">
           <Label htmlFor="engraving">Engraving</Label>
           <Select value={engraving} onValueChange={setEngraving}>
             <SelectTrigger id="engraving">
@@ -311,12 +348,15 @@ export function CustomizerPanel({
               ))}
             </SelectContent>
           </Select>
-        </div>
+          </div>
+        </details>
 
         <Separator />
 
         {/* Metalness Slider */}
-        <div className="space-y-3">
+        <details className="border rounded bg-muted/5 p-2">
+          <summary className="cursor-pointer font-semibold py-1 px-2">Engraving</summary>
+          <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="metalness">Metalness</Label>
             <span className="text-xs sm:text-sm text-muted-foreground">{Math.round(metalness * 100)}%</span>
@@ -330,7 +370,8 @@ export function CustomizerPanel({
             onValueChange={(value) => setMetalness(value[0])}
             className="w-full"
           />
-        </div>
+          </div>
+        </details>
 
         {/* Roughness Slider */}
         <div className="space-y-3">
@@ -369,6 +410,20 @@ export function CustomizerPanel({
             <input id="load-config" type="file" accept=".json" onChange={onLoadConfiguration} className="hidden" />
           </div>
         </div>
+
+        <Separator />
+
+        {isInSheet ? (
+          <div className="flex items-center justify-center">
+            <SheetClose asChild>
+              <Button size="sm">Done</Button>
+            </SheetClose>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center">
+            <Button size="sm">Done</Button>
+          </div>
+        )}
 
         <Separator />
 

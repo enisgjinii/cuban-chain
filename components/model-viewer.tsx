@@ -14,11 +14,16 @@ interface ModelViewerProps {
   selectedMesh: string | null
   hoveredMesh: string | null
   chainCount?: number
+  chainSpacing?: number
+  applyMode?: boolean
+  setApplyMode?: (value: boolean) => void
+  undoCounter?: number
 }
 
-export function ModelViewer({ url, color, material, metalness, roughness, onMeshesAndNodesExtracted, selectedMesh, hoveredMesh, chainCount = 1 }: ModelViewerProps) {
+export function ModelViewer({ url, color, material, metalness, roughness, onMeshesAndNodesExtracted, selectedMesh, hoveredMesh, chainCount = 1, chainSpacing = 0.95, applyMode, setApplyMode, undoCounter }: ModelViewerProps) {
   const { scene } = useGLTF(url)
   const originalMaterials = useRef<Map<string, THREE.Material>>(new Map())
+  const appliedHistory = useRef<Array<{ name: string; material: THREE.Material }>>([])
   const clonesRef = useRef<THREE.Object3D[]>([])
 
   useEffect(() => {
@@ -138,7 +143,7 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     const bbox = new THREE.Box3().setFromObject(template)
     const size = new THREE.Vector3()
     bbox.getSize(size)
-    const spacing = size.x > 0 ? size.x * 0.95 : 1
+    const spacing = size.x > 0 ? size.x * chainSpacing : 1
 
     // hide the original template group to avoid overlapping — but do NOT hide the scene root
     const templateWasScene = template === scene
@@ -154,6 +159,12 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
       clone.position.x += i * spacing
       scene.add(clone)
       clonesRef.current.push(clone)
+      // Make each clone's mesh names unique by appending an index
+      clone.traverse((c) => {
+        if ((c as THREE.Mesh).isMesh) {
+          c.name = `${c.name || "mesh"}-${i}`
+        }
+      })
     }
 
     return () => {
@@ -164,7 +175,81 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
       // only restore visibility if we hid the template and it still exists
       if (template && !templateWasScene) template.visible = true
     }
-  }, [scene, chainCount, url])
+  }, [scene, chainCount, url, chainSpacing])
+
+  // Re-extract names after clones are added so the UI can show unique names
+  useEffect(() => {
+    if (!onMeshesAndNodesExtracted) return
+    const meshes: string[] = []
+    const nodes: string[] = []
+    scene.traverse((child) => {
+      if (child.name) {
+        if ((child as THREE.Mesh).isMesh) meshes.push(child.name)
+        else nodes.push(child.name)
+      }
+    })
+    onMeshesAndNodesExtracted(meshes, nodes)
+  }, [scene, clonesRef.current.length, onMeshesAndNodesExtracted])
+
+  // Apply / Undo logic
+  useEffect(() => {
+    if (!applyMode) return
+
+    if (!selectedMesh) {
+      // still in apply mode until the user picks a mesh
+      return
+    }
+
+    // Apply current material configuration to all meshes whose name matches selectedMesh
+    const appliedEntries: Array<{ name: string; material: THREE.Material }> = []
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh
+        if (mesh.name === selectedMesh) {
+          const prevMaterial = (mesh.material as THREE.Material).clone()
+          appliedEntries.push({ name: mesh.name, material: prevMaterial })
+
+          // create new base material using the same rules as above
+          let newMaterial: THREE.Material
+          if (material === "standard") {
+            newMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness })
+          } else if (material === "basic") {
+            newMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(color) })
+          } else if (material === "phong") {
+            newMaterial = new THREE.MeshPhongMaterial({ color: new THREE.Color(color), shininess: (1 - roughness) * 100 })
+          } else {
+            newMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness })
+          }
+
+          mesh.material = newMaterial
+        }
+      }
+    })
+
+    if (appliedEntries.length > 0) {
+      appliedHistory.current.push(...appliedEntries)
+    }
+
+    // exit apply mode after applying
+    if (setApplyMode) setApplyMode(false)
+  }, [applyMode, selectedMesh, scene, color, material, metalness, roughness, setApplyMode])
+
+  // Undo last apply — parent increments undoCounter to trigger
+  useEffect(() => {
+    if (!undoCounter) return
+    const entry = appliedHistory.current.pop()
+    if (!entry) return
+
+    // find meshes with the same name and restore
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh
+        if (mesh.name === entry.name) {
+          mesh.material = entry.material
+        }
+      }
+    })
+  }, [undoCounter, scene])
 
   return <primitive object={scene} />
 }

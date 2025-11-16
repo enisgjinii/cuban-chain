@@ -29,6 +29,9 @@ export default function Home() {
   const [hoveredMesh, setHoveredMesh] = useState<string | null>(null)
   const [chainCount, setChainCount] = useState<number>(12)
   const [autoFitModel, setAutoFitModel] = useState<boolean>(false)
+  const [chainSpacing, setChainSpacing] = useState<number>(0.95)
+  const [applyMode, setApplyMode] = useState<boolean>(false)
+  const [undoCounter, setUndoCounter] = useState<number>(0)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -51,6 +54,7 @@ export default function Home() {
       enamelColor,
       engraving,
       chainCount,
+      chainSpacing,
     }
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
@@ -95,6 +99,7 @@ export default function Home() {
           setEnamelColor(config.enamelColor)
           setEngraving(config.engraving)
             if (config.chainCount) setChainCount(config.chainCount)
+              if (config.chainSpacing) setChainSpacing(config.chainSpacing)
         } catch (error) {
           console.error("Error loading configuration:", error)
         }
@@ -156,8 +161,14 @@ export default function Home() {
                 onHoverMesh={handleHoverMesh}
                 chainCount={chainCount}
                 setChainCount={handleSetChainCount}
+                chainSpacing={chainSpacing}
+                setChainSpacing={setChainSpacing}
+                applyMode={applyMode}
+                setApplyMode={setApplyMode}
+                onUndo={() => setUndoCounter((c) => c + 1)}
                 autoFitModel={autoFitModel}
                 setAutoFitModel={setAutoFitModel}
+                isInSheet={true}
               />
             </SheetContent>
           </Sheet>
@@ -177,6 +188,10 @@ export default function Home() {
                 selectedMesh={selectedMesh}
                 hoveredMesh={hoveredMesh}
                 chainCount={chainCount}
+                chainSpacing={chainSpacing}
+                applyMode={applyMode}
+                setApplyMode={setApplyMode}
+                undoCounter={undoCounter}
               />
             </Stage>
               
@@ -216,6 +231,14 @@ export default function Home() {
           onHoverMesh={handleHoverMesh}
           chainCount={chainCount}
           setChainCount={handleSetChainCount}
+          chainSpacing={chainSpacing}
+          setChainSpacing={setChainSpacing}
+          applyMode={applyMode}
+          setApplyMode={setApplyMode}
+          onUndo={() => setUndoCounter((c) => c + 1)}
+          autoFitModel={autoFitModel}
+          setAutoFitModel={setAutoFitModel}
+          isInSheet={false}
         />
       </div>
     </div>
