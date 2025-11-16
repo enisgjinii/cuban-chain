@@ -36,6 +36,10 @@ interface CustomizerPanelProps {
   onLoadConfiguration: (event: React.ChangeEvent<HTMLInputElement>) => void
   meshes: string[]
   nodes: string[]
+  onSelectMesh: (mesh: string | null) => void
+  onHoverMesh: (mesh: string | null) => void
+  chainCount: number
+  setChainCount: (value: number) => void
 }
 
 const materialOptions = [
@@ -96,6 +100,10 @@ export function CustomizerPanel({
   onLoadConfiguration,
   meshes,
   nodes,
+  onSelectMesh,
+  onHoverMesh,
+  chainCount,
+  setChainCount,
 }: CustomizerPanelProps) {
   return (
     <Card className="w-full lg:w-96 h-full rounded-none border-l-0 lg:border-l border-t lg:border-t-0 border-r-0 border-b-0 bg-card overflow-y-auto">
@@ -111,20 +119,51 @@ export function CustomizerPanel({
         <div className="space-y-3">
           <Label>Meshes</Label>
           <div className="space-y-1">
-            {meshes.map((mesh) => (
-              <div key={mesh} className="text-sm text-muted-foreground">
+            {meshes.map((mesh, idx) => (
+              <div
+                key={`${mesh}-${idx}`}
+                className="text-sm text-muted-foreground cursor-pointer hover:text-foreground hover:bg-accent p-1 rounded"
+                onClick={() => onSelectMesh(mesh)}
+                onMouseEnter={() => onHoverMesh(mesh)}
+                onMouseLeave={() => onHoverMesh(null)}
+              >
                 {mesh}
               </div>
             ))}
           </div>
           <Label>Nodes</Label>
           <div className="space-y-1">
-            {nodes.map((node) => (
-              <div key={node} className="text-sm text-muted-foreground">
+            {nodes.map((node, idx) => (
+              <div
+                key={`${node}-${idx}`}
+                className="text-sm text-muted-foreground cursor-pointer hover:text-foreground hover:bg-accent p-1 rounded"
+                onClick={() => onSelectMesh(node)}
+                onMouseEnter={() => onHoverMesh(node)}
+                onMouseLeave={() => onHoverMesh(null)}
+              >
                 {node}
               </div>
             ))}
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Chain Count Slider */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="chain-count">Chain Links</Label>
+            <span className="text-xs sm:text-sm text-muted-foreground">{chainCount}</span>
+          </div>
+          <Slider
+            id="chain-count"
+            min={1}
+            max={64}
+            step={1}
+            value={[chainCount]}
+            onValueChange={(value) => setChainCount(value[0])}
+            className="w-full"
+          />
         </div>
 
         <Separator />

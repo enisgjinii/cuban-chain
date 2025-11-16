@@ -27,6 +27,7 @@ export default function Home() {
   const [nodes, setNodes] = useState<string[]>([])
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null)
   const [hoveredMesh, setHoveredMesh] = useState<string | null>(null)
+  const [chainCount, setChainCount] = useState<number>(12)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -48,6 +49,7 @@ export default function Home() {
       applyToSides,
       enamelColor,
       engraving,
+      chainCount,
     }
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
@@ -60,6 +62,18 @@ export default function Home() {
   const handleMeshesAndNodesExtracted = (extractedMeshes: string[], extractedNodes: string[]) => {
     setMeshes(extractedMeshes)
     setNodes(extractedNodes)
+  }
+
+  const handleSelectMesh = (mesh: string | null) => {
+    setSelectedMesh(mesh)
+  }
+
+  const handleHoverMesh = (mesh: string | null) => {
+    setHoveredMesh(mesh)
+  }
+
+  const handleSetChainCount = (count: number) => {
+    setChainCount(count)
   }
 
   const handleLoadConfiguration = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +93,7 @@ export default function Home() {
           setApplyToSides(config.applyToSides)
           setEnamelColor(config.enamelColor)
           setEngraving(config.engraving)
+            if (config.chainCount) setChainCount(config.chainCount)
         } catch (error) {
           console.error("Error loading configuration:", error)
         }
@@ -136,6 +151,8 @@ export default function Home() {
                 onLoadConfiguration={handleLoadConfiguration}
                 meshes={meshes}
                 nodes={nodes}
+                onSelectMesh={handleSelectMesh}
+                onHoverMesh={handleHoverMesh}
               />
             </SheetContent>
           </Sheet>
@@ -151,6 +168,9 @@ export default function Home() {
                 metalness={metalness}
                 roughness={roughness}
                 onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
+                selectedMesh={selectedMesh}
+                hoveredMesh={hoveredMesh}
+                chainCount={chainCount}
               />
             </Stage>
             <OrbitControls makeDefault />
@@ -185,6 +205,10 @@ export default function Home() {
           onLoadConfiguration={handleLoadConfiguration}
           meshes={meshes}
           nodes={nodes}
+          onSelectMesh={handleSelectMesh}
+          onHoverMesh={handleHoverMesh}
+          chainCount={chainCount}
+          setChainCount={handleSetChainCount}
         />
       </div>
     </div>
