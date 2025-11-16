@@ -34,6 +34,8 @@ interface CustomizerPanelProps {
   setEngraving: (value: string) => void
   onSaveConfiguration: () => void
   onLoadConfiguration: (event: React.ChangeEvent<HTMLInputElement>) => void
+  meshes: string[]
+  nodes: string[]
 }
 
 const materialOptions = [
@@ -92,6 +94,8 @@ export function CustomizerPanel({
   setEngraving,
   onSaveConfiguration,
   onLoadConfiguration,
+  meshes,
+  nodes,
 }: CustomizerPanelProps) {
   return (
     <Card className="w-full lg:w-96 h-full rounded-none border-l-0 lg:border-l border-t lg:border-t-0 border-r-0 border-b-0 bg-card overflow-y-auto">
@@ -99,6 +103,28 @@ export function CustomizerPanel({
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Customizer</h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">Design your 3D model</p>
+        </div>
+
+        <Separator />
+
+        {/* Meshes and Nodes List */}
+        <div className="space-y-3">
+          <Label>Meshes</Label>
+          <div className="space-y-1">
+            {meshes.map((mesh) => (
+              <div key={mesh} className="text-sm text-muted-foreground">
+                {mesh}
+              </div>
+            ))}
+          </div>
+          <Label>Nodes</Label>
+          <div className="space-y-1">
+            {nodes.map((node) => (
+              <div key={node} className="text-sm text-muted-foreground">
+                {node}
+              </div>
+            ))}
+          </div>
         </div>
 
         <Separator />

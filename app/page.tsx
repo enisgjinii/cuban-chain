@@ -23,6 +23,10 @@ export default function Home() {
   const [applyToSides, setApplyToSides] = useState(false)
   const [enamelColor, setEnamelColor] = useState("none")
   const [engraving, setEngraving] = useState("none")
+  const [meshes, setMeshes] = useState<string[]>([])
+  const [nodes, setNodes] = useState<string[]>([])
+  const [selectedMesh, setSelectedMesh] = useState<string | null>(null)
+  const [hoveredMesh, setHoveredMesh] = useState<string | null>(null)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -51,6 +55,11 @@ export default function Home() {
     a.href = url
     a.download = "model-configuration.json"
     a.click()
+  }
+
+  const handleMeshesAndNodesExtracted = (extractedMeshes: string[], extractedNodes: string[]) => {
+    setMeshes(extractedMeshes)
+    setNodes(extractedNodes)
   }
 
   const handleLoadConfiguration = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,6 +134,8 @@ export default function Home() {
                 setEngraving={setEngraving}
                 onSaveConfiguration={handleSaveConfiguration}
                 onLoadConfiguration={handleLoadConfiguration}
+                meshes={meshes}
+                nodes={nodes}
               />
             </SheetContent>
           </Sheet>
@@ -139,6 +150,7 @@ export default function Home() {
                 material={material}
                 metalness={metalness}
                 roughness={roughness}
+                onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
               />
             </Stage>
             <OrbitControls makeDefault />
@@ -171,6 +183,8 @@ export default function Home() {
           setEngraving={setEngraving}
           onSaveConfiguration={handleSaveConfiguration}
           onLoadConfiguration={handleLoadConfiguration}
+          meshes={meshes}
+          nodes={nodes}
         />
       </div>
     </div>

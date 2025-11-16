@@ -10,12 +10,30 @@ interface ModelViewerProps {
   material: string
   metalness: number
   roughness: number
+  onMeshesAndNodesExtracted?: (meshes: string[], nodes: string[]) => void
 }
 
-export function ModelViewer({ url, color, material, metalness, roughness }: ModelViewerProps) {
+export function ModelViewer({ url, color, material, metalness, roughness, onMeshesAndNodesExtracted }: ModelViewerProps) {
   const { scene } = useGLTF(url)
 
   useEffect(() => {
+    const meshes: string[] = []
+    const nodes: string[] = []
+
+    scene.traverse((child) => {
+      if (child.name) {
+        if ((child as THREE.Mesh).isMesh) {
+          meshes.push(child.name)
+        } else {
+          nodes.push(child.name)
+        }
+      }
+    })
+
+    if (onMeshesAndNodesExtracted) {
+      onMeshesAndNodesExtracted(meshes, nodes)
+    }
+
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
@@ -44,7 +62,7 @@ export function ModelViewer({ url, color, material, metalness, roughness }: Mode
         }
       }
     })
-  }, [scene, color, material, metalness, roughness])
+  }, [scene, color, material, metalness, roughness, onMeshesAndNodesExtracted])
 
   return <primitive object={scene} />
 }
