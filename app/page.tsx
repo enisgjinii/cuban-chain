@@ -123,6 +123,7 @@ export default function Home() {
             </Button>
           </label>
           <input id="file-upload" type="file" accept=".glb,.gltf" onChange={handleFileUpload} className="hidden" />
+                  autoFitModel={autoFitModel}
 
           <Sheet>
             <SheetTrigger asChild className="lg:hidden">
@@ -176,7 +177,7 @@ export default function Home() {
 
         <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
           <Suspense fallback={null}>
-            <Stage environment="city" intensity={0.6} adjustCamera={autoFitModel} center={autoFitModel} observe={autoFitModel}>
+            <Stage environment="city" intensity={0.6} adjustCamera={false} center={false} observe={false}>
               {/* When autoFitModel is true stage will auto-adjust camera to fit model */}
               <ModelViewer
                 url={modelUrl}
@@ -192,6 +193,7 @@ export default function Home() {
                 applyMode={applyMode}
                 setApplyMode={setApplyMode}
                 undoCounter={undoCounter}
+                autoFitModel={autoFitModel}
               />
             </Stage>
               

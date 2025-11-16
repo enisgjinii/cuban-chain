@@ -1,6 +1,6 @@
 "use client"
 
-import { useGLTF } from "@react-three/drei"
+import { useGLTF, useBounds } from "@react-three/drei"
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 
@@ -18,9 +18,10 @@ interface ModelViewerProps {
   applyMode?: boolean
   setApplyMode?: (value: boolean) => void
   undoCounter?: number
+  autoFitModel?: boolean
 }
 
-export function ModelViewer({ url, color, material, metalness, roughness, onMeshesAndNodesExtracted, selectedMesh, hoveredMesh, chainCount = 1, chainSpacing = 0.95, applyMode, setApplyMode, undoCounter }: ModelViewerProps) {
+export function ModelViewer({ url, color, material, metalness, roughness, onMeshesAndNodesExtracted, selectedMesh, hoveredMesh, chainCount = 1, chainSpacing = 0.95, applyMode, setApplyMode, undoCounter, autoFitModel }: ModelViewerProps) {
   const { scene } = useGLTF(url)
   const originalMaterials = useRef<Map<string, THREE.Material>>(new Map())
   const appliedHistory = useRef<Array<{ name: string; material: THREE.Material }>>([])
@@ -190,6 +191,21 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     })
     onMeshesAndNodesExtracted(meshes, nodes)
   }, [scene, clonesRef.current.length, onMeshesAndNodesExtracted])
+
+  // Auto-fit camera via useBounds when autoFitModel is true. Use `refresh().clip().fit()` so
+  // Stage does not observe changes continuously and cause repeated camera adjustments.
+  const bounds = useBounds()
+  useEffect(() => {
+    if (!autoFitModel) return
+    const id = setTimeout(() => {
+      try {
+        bounds.refresh().clip().fit()
+      } catch (err) {
+        // bounds may not be ready on first mount
+      }
+    }, 20)
+    return () => clearTimeout(id)
+  }, [autoFitModel, scene, clonesRef.current.length, bounds])
 
   // Apply / Undo logic
   useEffect(() => {
