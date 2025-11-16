@@ -28,6 +28,7 @@ export default function Home() {
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null)
   const [hoveredMesh, setHoveredMesh] = useState<string | null>(null)
   const [chainCount, setChainCount] = useState<number>(12)
+  const [autoFitModel, setAutoFitModel] = useState<boolean>(false)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -153,6 +154,10 @@ export default function Home() {
                 nodes={nodes}
                 onSelectMesh={handleSelectMesh}
                 onHoverMesh={handleHoverMesh}
+                chainCount={chainCount}
+                setChainCount={handleSetChainCount}
+                autoFitModel={autoFitModel}
+                setAutoFitModel={setAutoFitModel}
               />
             </SheetContent>
           </Sheet>
@@ -160,7 +165,8 @@ export default function Home() {
 
         <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
           <Suspense fallback={null}>
-            <Stage environment="city" intensity={0.6}>
+            <Stage environment="city" intensity={0.6} adjustCamera={autoFitModel} center={autoFitModel} observe={autoFitModel}>
+              {/* When autoFitModel is true stage will auto-adjust camera to fit model */}
               <ModelViewer
                 url={modelUrl}
                 color={color}
@@ -173,6 +179,7 @@ export default function Home() {
                 chainCount={chainCount}
               />
             </Stage>
+              
             <OrbitControls makeDefault />
             <Environment preset="city" />
           </Suspense>

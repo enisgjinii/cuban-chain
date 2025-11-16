@@ -40,6 +40,8 @@ interface CustomizerPanelProps {
   onHoverMesh: (mesh: string | null) => void
   chainCount: number
   setChainCount: (value: number) => void
+  autoFitModel: boolean
+  setAutoFitModel: (value: boolean) => void
 }
 
 const materialOptions = [
@@ -104,6 +106,8 @@ export function CustomizerPanel({
   onHoverMesh,
   chainCount,
   setChainCount,
+  autoFitModel,
+  setAutoFitModel,
 }: CustomizerPanelProps) {
   return (
     <Card className="w-full lg:w-96 h-full rounded-none border-l-0 lg:border-l border-t lg:border-t-0 border-r-0 border-b-0 bg-card overflow-y-auto">
@@ -111,6 +115,17 @@ export function CustomizerPanel({
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Customizer</h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">Design your 3D model</p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <Checkbox id="auto-fit" checked={autoFitModel} onCheckedChange={(checked) => setAutoFitModel(checked as boolean)} />
+            <Label htmlFor="auto-fit" className="cursor-pointer">
+              Auto-fit model to view
+            </Label>
+          </div>
         </div>
 
         <Separator />
