@@ -4,7 +4,7 @@ import type React from "react"
 
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Environment, Stage } from "@react-three/drei"
-import { Suspense, useState, useRef, useEffect } from "react"
+import { Suspense, useState, useRef, useEffect, useCallback } from "react"
 import { ModelViewer } from "@/components/model-viewer"
 import { CustomizerPanel } from "@/components/customizer-panel"
 import { CompactSidebar } from "@/components/compact-sidebar"
@@ -101,7 +101,7 @@ export default function Home() {
     setAutoRotate(true) // Enable auto-rotate during recording
   }
 
-  const handleRecordingComplete = (videoBlob: Blob) => {
+  const handleRecordingComplete = useCallback((videoBlob: Blob) => {
     setIsRecording(false)
     setShowRecordingIndicator(false)
     setAutoRotate(false) // Disable auto-rotate after recording
@@ -115,7 +115,7 @@ export default function Home() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-  }
+  }, [])
 
   const copyPositionData = () => {
     const data = {

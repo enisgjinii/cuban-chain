@@ -215,7 +215,7 @@ export function ModelViewer({
         recordingLineRef.current = null
       }
     }
-  }, [isRecording, gl, threeScene, onRecordingComplete])
+  }, [isRecording, gl, threeScene])
 
   // Auto-stop recording after 5 seconds
   useFrame(() => {
