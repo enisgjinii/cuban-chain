@@ -55,6 +55,7 @@ export function ModelViewer({
   const recordedChunksRef = useRef<Blob[]>([])
   const recordingStartTimeRef = useRef<number>(0)
   const recordingLineRef = useRef<THREE.Line | null>(null)
+  const blingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Extract meshes and nodes on load
   useEffect(() => {
@@ -150,11 +151,22 @@ export function ModelViewer({
       }
 
       mediaRecorder.onstop = () => {
+        // Clear bling interval
+        if (blingIntervalRef.current) {
+          clearInterval(blingIntervalRef.current)
+          blingIntervalRef.current = null
+        }
+        
         // Restore original background
         gl.setClearColor(originalClearColor, originalClearAlpha)
         
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
-        onRecordingComplete?.(blob)
+        // Create blob only once
+        if (recordedChunksRef.current.length > 0) {
+          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+          onRecordingComplete?.(blob)
+        }
+        
+        // Clear refs
         mediaRecorderRef.current = null
         recordedChunksRef.current = []
       }
@@ -173,7 +185,24 @@ export function ModelViewer({
       recordingLineRef.current = new THREE.Line(geometry, material)
       threeScene.add(recordingLineRef.current)
 
+      // Add blinging canvas effect
+      let blingState = false
+      blingIntervalRef.current = setInterval(() => {
+        blingState = !blingState
+        if (recordingLineRef.current) {
+          const material = recordingLineRef.current.material as THREE.LineBasicMaterial
+          material.color.setHex(blingState ? 0xff0000 : 0xffffff) // Red to white flash
+          material.linewidth = blingState ? 3 : 2
+        }
+      }, 500) // Flash every 500ms
+
     } else if (!isRecording && mediaRecorderRef.current) {
+      // Clear bling interval
+      if (blingIntervalRef.current) {
+        clearInterval(blingIntervalRef.current)
+        blingIntervalRef.current = null
+      }
+      
       // Stop recording
       mediaRecorderRef.current.stop()
 
