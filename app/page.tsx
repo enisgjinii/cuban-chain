@@ -267,7 +267,11 @@ export default function Home() {
       </div>
 
       {/* Full Screen 3D Viewer */}
-      <div className={`relative w-full h-screen rounded-xl overflow-hidden ${isRecording ? 'border-4 border-red-500' : ''}`}>
+      <div className={`relative w-full h-screen rounded-xl overflow-hidden transition-all duration-300 ${
+        isRecording 
+          ? 'border-4 border-red-500 animate-pulse shadow-red-500/50 shadow-lg' 
+          : ''
+      }`}>
         <Canvas camera={{ position: [0.51, 1.25, 0.74], fov: 35 }}>
           <Suspense fallback={null}>
             <Environment preset="city" />
