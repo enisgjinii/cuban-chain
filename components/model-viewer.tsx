@@ -56,6 +56,7 @@ export function ModelViewer({
   const recordingStartTimeRef = useRef<number>(0)
   const recordingLineRef = useRef<THREE.Line | null>(null)
   const blingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const blobCreatedRef = useRef<boolean>(false)
 
   // Extract meshes and nodes on load
   useEffect(() => {
@@ -143,6 +144,7 @@ export function ModelViewer({
 
       recordedChunksRef.current = []
       recordingStartTimeRef.current = Date.now()
+      blobCreatedRef.current = false // Reset flag for new recording
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -161,7 +163,8 @@ export function ModelViewer({
         gl.setClearColor(originalClearColor, originalClearAlpha)
         
         // Create blob only once
-        if (recordedChunksRef.current.length > 0) {
+        if (recordedChunksRef.current.length > 0 && !blobCreatedRef.current) {
+          blobCreatedRef.current = true
           const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
           onRecordingComplete?.(blob)
         }
