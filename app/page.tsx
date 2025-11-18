@@ -267,7 +267,7 @@ export default function Home() {
       </div>
 
       {/* Full Screen 3D Viewer */}
-      <div className="relative w-full h-screen border-4 border-gray-300 rounded-xl overflow-hidden">
+      <div className="relative w-full h-screen border-4 border-red-500 rounded-xl overflow-hidden">
         <Canvas camera={{ position: [0.51, 1.25, 0.74], fov: 35 }}>
           <Suspense fallback={null}>
             <Environment preset="city" />
