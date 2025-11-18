@@ -1,6 +1,7 @@
 "use client";
 
-import type React from "react";
+import React, { useState, useEffect } from "react";
+import * as THREE from "three";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +28,13 @@ import {
   Video,
   VideoOff,
   Camera,
+  Eye,
+  EyeOff,
+  Box,
+  Download,
+  Plus,
+  Minus,
+  Link,
 } from "lucide-react";
 import type {
   ChainConfig,
@@ -69,6 +77,7 @@ interface CompactSidebarProps {
   onStartRecording?: () => void;
   isRecording?: boolean;
   isInSheet?: boolean;
+  sceneRef?: any;
 }
 
 const surfaceTypeOptions: Array<{ name: string; value: SurfaceType }> = [
@@ -116,9 +125,131 @@ export function CompactSidebar({
   onStartRecording,
   isRecording,
   isInSheet = false,
+  sceneRef,
 }: CompactSidebarProps) {
   const currentLink = chainConfig.links[selectedLinkIndex];
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface];
+  
+  const [nodeVisibility, setNodeVisibility] = useState<Record<string, boolean>>({});
+  const [meshGroups, setMeshGroups] = useState<Array<{ linkIndex: number; meshes: string[] }>>([]);
+  const [groupVisibility, setGroupVisibility] = useState<Record<number, boolean>>({});
+
+  // Auto-group meshes by spatial position
+  useEffect(() => {
+    if (!sceneRef?.current || meshes.length === 0) return;
+
+    // Collect mesh data with positions
+    const meshData: Array<{ name: string; x: number }> = [];
+    sceneRef.current.traverse((child: any) => {
+      if (child.isMesh && child.name && child.name !== "Plane") {
+        const worldPos = new THREE.Vector3();
+        child.getWorldPosition(worldPos);
+        if (meshes.includes(child.name)) {
+          meshData.push({ name: child.name, x: worldPos.x });
+        }
+      }
+    });
+
+    // Sort by X position
+    meshData.sort((a, b) => a.x - b.x);
+
+    // Divide into 7 groups
+    const totalMeshes = meshData.length;
+    const meshesPerGroup = Math.ceil(totalMeshes / 7);
+    const groups: Array<{ linkIndex: number; meshes: string[] }> = [];
+    
+    for (let i = 0; i < 7; i++) {
+      const startIdx = i * meshesPerGroup;
+      const endIdx = Math.min(startIdx + meshesPerGroup, totalMeshes);
+      const groupMeshes = meshData.slice(startIdx, endIdx).map(m => m.name);
+      if (groupMeshes.length > 0) {
+        groups.push({ linkIndex: i, meshes: groupMeshes });
+      }
+    }
+
+    setMeshGroups(groups);
+    
+    // Initialize group visibility
+    const groupVis: Record<number, boolean> = {};
+    groups.forEach((g) => {
+      groupVis[g.linkIndex] = true;
+    });
+    setGroupVisibility(groupVis);
+  }, [sceneRef, meshes]);
+
+  // Initialize visibility state for all meshes and nodes
+  useEffect(() => {
+    if (!sceneRef?.current) return;
+    const visibility: Record<string, boolean> = {};
+    sceneRef.current.traverse((child: any) => {
+      if (child.name) {
+        visibility[child.name] = child.visible;
+      }
+    });
+    setNodeVisibility(visibility);
+  }, [meshes, nodes, sceneRef]);
+
+  const toggleNodeVisibility = (nodeName: string) => {
+    if (!sceneRef?.current) return;
+    sceneRef.current.traverse((child: any) => {
+      if (child.name === nodeName) {
+        child.visible = !child.visible;
+        setNodeVisibility(prev => ({ ...prev, [nodeName]: child.visible }));
+      }
+    });
+  };
+
+  const toggleGroupVisibility = (linkIndex: number) => {
+    if (!sceneRef?.current) return;
+    const group = meshGroups.find(g => g.linkIndex === linkIndex);
+    if (!group) return;
+
+    const newVisibility = !groupVisibility[linkIndex];
+    
+    // Toggle all meshes in the group
+    sceneRef.current.traverse((child: any) => {
+      if (group.meshes.includes(child.name)) {
+        child.visible = newVisibility;
+        setNodeVisibility(prev => ({ ...prev, [child.name]: newVisibility }));
+      }
+    });
+
+    setGroupVisibility(prev => ({ ...prev, [linkIndex]: newVisibility }));
+  };
+
+  const downloadSceneData = () => {
+    const sceneData = {
+      meshes: meshes.map((name, idx) => ({
+        index: idx,
+        name,
+        visible: nodeVisibility[name] !== false,
+        type: 'mesh'
+      })),
+      nodes: nodes.map((name, idx) => ({
+        index: idx,
+        name,
+        visible: nodeVisibility[name] !== false,
+        type: 'node'
+      })),
+      metadata: {
+        totalMeshes: meshes.length,
+        totalNodes: nodes.length,
+        exportedAt: new Date().toISOString(),
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(sceneData, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `scene-data-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleMaterialChange = (material: Material) => {
     setChainConfig(
@@ -230,60 +361,34 @@ export function CompactSidebar({
       <div className="h-full flex flex-col">
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
-          {/* Controls */}
+          {/* Chain Length Control */}
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={autoRotate ? "default" : "outline"}
-                size="sm"
-                onClick={() => setAutoRotate?.(!autoRotate)}
-                className="flex-1"
-              >
-                <RotateCw className="w-4 h-4 mr-1" />
-                Rotate
-              </Button>
-
-              <Button
-                variant={showDebug ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowDebug?.(!showDebug)}
-                className="flex-1"
-              >
-                <Bug className="w-4 h-4 mr-1" />
-                Debug
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
+            <Label className="text-xs font-medium flex items-center gap-2">
+              <Link className="w-3 h-3" />
+              Chain Length
+            </Label>
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onCaptureImage}
-                className="flex-1"
-                disabled={isRecording}
+                onClick={() => setChainLength(Math.max(1, chainConfig.chainLength - 1))}
+                disabled={chainConfig.chainLength <= 1}
+                className="h-9 px-3"
               >
-                <Camera className="w-4 h-4 mr-1" />
-                Capture
+                <Minus className="w-4 h-4" />
               </Button>
-
+              <div className="flex-1 text-center">
+                <div className="text-2xl font-bold">{chainConfig.chainLength}</div>
+                <div className="text-[10px] text-muted-foreground">links</div>
+              </div>
               <Button
-                variant={isRecording ? "destructive" : "outline"}
+                variant="outline"
                 size="sm"
-                onClick={onStartRecording}
-                className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600 text-white border-red-500 animate-pulse" : ""}`}
-                disabled={isRecording}
+                onClick={() => setChainLength(chainConfig.chainLength + 1)}
+                disabled={chainConfig.chainLength >= 20}
+                className="h-9 px-3"
               >
-                {isRecording ? (
-                  <>
-                    <VideoOff className="w-4 h-4 mr-1" />
-                    Recording...
-                  </>
-                ) : (
-                  <>
-                    <Video className="w-4 h-4 mr-1" />
-                    Record
-                  </>
-                )}
+                <Plus className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -544,6 +649,211 @@ export function CompactSidebar({
               />
             </label>
           </div>
+
+          <Separator />
+
+          {/* Controls */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={autoRotate ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAutoRotate?.(!autoRotate)}
+                className="flex-1"
+              >
+                <RotateCw className="w-4 h-4 mr-1" />
+                Rotate
+              </Button>
+
+              <Button
+                variant={showDebug ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowDebug?.(!showDebug)}
+                className="flex-1"
+              >
+                <Bug className="w-4 h-4 mr-1" />
+                Debug
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCaptureImage}
+                className="flex-1"
+                disabled={isRecording}
+              >
+                <Camera className="w-4 h-4 mr-1" />
+                Capture
+              </Button>
+
+              <Button
+                variant={isRecording ? "destructive" : "outline"}
+                size="sm"
+                onClick={onStartRecording}
+                className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600 text-white border-red-500 animate-pulse" : ""}`}
+                disabled={isRecording}
+              >
+                {isRecording ? (
+                  <>
+                    <VideoOff className="w-4 h-4 mr-1" />
+                    Recording...
+                  </>
+                ) : (
+                  <>
+                    <Video className="w-4 h-4 mr-1" />
+                    Record
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {showDebug && (
+            <>
+              <Separator />
+              
+              {/* Scene Nodes/Meshes */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium flex items-center gap-2">
+                    <Box className="w-3 h-3" />
+                    Scene Nodes ({meshes.length} meshes, {nodes.length} nodes)
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={downloadSceneData}
+                    className="h-6 px-2"
+                    title="Download scene data as JSON"
+                  >
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                {/* Auto-Grouped Mesh Links */}
+                {meshGroups.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                      Auto-Grouped Links
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-1 rounded border border-border/50 bg-muted/30 p-2">
+                      {meshGroups.map((group) => {
+                        const isGroupVisible = groupVisibility[group.linkIndex] !== false;
+                        return (
+                          <div key={`group-${group.linkIndex}`} className="space-y-1">
+                            {/* Group Header */}
+                            <div className="flex items-center justify-between rounded bg-primary/10 px-2 py-1.5 text-xs font-medium">
+                              <span>
+                                Link {group.linkIndex} ({group.meshes.length} meshes)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => toggleGroupVisibility(group.linkIndex)}
+                                className="hover:bg-accent rounded p-1"
+                                title={isGroupVisible ? "Hide all" : "Show all"}
+                              >
+                                {isGroupVisible ? (
+                                  <Eye className="h-3 w-3 text-primary" />
+                                ) : (
+                                  <EyeOff className="h-3 w-3 text-muted-foreground/50" />
+                                )}
+                              </button>
+                            </div>
+                            {/* Individual Meshes in Group */}
+                            {group.meshes.map((mesh, idx) => {
+                              const isVisible = nodeVisibility[mesh] !== false;
+                              return (
+                                <div
+                                  key={`group-${group.linkIndex}-mesh-${idx}`}
+                                  className="flex items-center justify-between rounded bg-background/50 px-2 py-1 text-[11px] hover:bg-background/80 ml-2"
+                                >
+                                  <span className="truncate" title={mesh}>{mesh}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleNodeVisibility(mesh)}
+                                    className="hover:bg-accent rounded p-1"
+                                    title={isVisible ? "Hide" : "Show"}
+                                  >
+                                    {isVisible ? (
+                                      <Eye className="h-3 w-3 text-muted-foreground" />
+                                    ) : (
+                                      <EyeOff className="h-3 w-3 text-muted-foreground/50" />
+                                    )}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* All Meshes (Flat View) */}
+                <div className="max-h-64 overflow-y-auto space-y-1 rounded border border-border/50 bg-muted/30 p-2">
+                  {meshes.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">All Meshes</div>
+                      {meshes.map((mesh, idx) => {
+                        const isVisible = nodeVisibility[mesh] !== false;
+                        return (
+                          <div
+                            key={`mesh-${idx}`}
+                            className="flex items-center justify-between rounded bg-background/50 px-2 py-1 text-xs hover:bg-background/80"
+                          >
+                            <span className="truncate" title={mesh}>{mesh}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleNodeVisibility(mesh)}
+                              className="hover:bg-accent rounded p-1"
+                              title={isVisible ? "Hide" : "Show"}
+                            >
+                              {isVisible ? (
+                                <Eye className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <EyeOff className="h-3 w-3 text-muted-foreground/50" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {nodes.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">Nodes</div>
+                      {nodes.map((node, idx) => {
+                        const isVisible = nodeVisibility[node] !== false;
+                        return (
+                          <div
+                            key={`node-${idx}`}
+                            className="flex items-center justify-between rounded bg-background/30 px-2 py-1 text-xs hover:bg-background/60"
+                          >
+                            <span className="truncate" title={node}>{node}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleNodeVisibility(node)}
+                              className="hover:bg-accent rounded p-1"
+                              title={isVisible ? "Hide" : "Show"}
+                            >
+                              {isVisible ? (
+                                <Eye className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <EyeOff className="h-3 w-3 text-muted-foreground/50" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </Card>

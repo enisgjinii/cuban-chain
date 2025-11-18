@@ -1,0 +1,509 @@
+{
+  "meshes": [
+    {
+      "index": 0,
+      "name": "sm_cubanLink_gold_a1",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 1,
+      "name": "Cube",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 2,
+      "name": "Cube001",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 3,
+      "name": "Cube002",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 4,
+      "name": "Cube003",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 5,
+      "name": "Cube004",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 6,
+      "name": "Cube005",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 7,
+      "name": "Cube006",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 8,
+      "name": "Cube007",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 9,
+      "name": "Cube008",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 10,
+      "name": "Cube009",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 11,
+      "name": "Cube010",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 12,
+      "name": "Cube011",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 13,
+      "name": "Cube012",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 14,
+      "name": "Diamond_Octagon001",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 15,
+      "name": "Diamond_Octagon002",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 16,
+      "name": "Diamond_Octagon003",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 17,
+      "name": "fill",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 18,
+      "name": "sm_cubanLink_gold_b1",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 19,
+      "name": "fill001",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 20,
+      "name": "B5-24-古巴链-OK-版-倒铜_1006",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 21,
+      "name": "B5-24-古巴链-OK-版-倒铜_1007",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 22,
+      "name": "Cube013",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 23,
+      "name": "Cube014",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 24,
+      "name": "Cube015",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 25,
+      "name": "Cube016",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 26,
+      "name": "Cube017",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 27,
+      "name": "Cube018",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 28,
+      "name": "Cube020",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 29,
+      "name": "Cube021",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 30,
+      "name": "Cube022",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 31,
+      "name": "Cube023",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 32,
+      "name": "Cube024",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 33,
+      "name": "Cube025",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 34,
+      "name": "Diamond_Octagon007",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 35,
+      "name": "file2002",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 36,
+      "name": "file2004",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 37,
+      "name": "file2005",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 38,
+      "name": "B5-24-古巴链-OK-版-倒铜_1009",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 39,
+      "name": "B5-24-古巴链-OK-版-倒铜_1010",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 40,
+      "name": "B5-24-古巴链-OK-版-倒铜_1008",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 41,
+      "name": "B5-24-古巴链-OK-版-倒铜_1002",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 42,
+      "name": "B5-24-古巴链-OK-版-倒铜_1001",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 43,
+      "name": "Cube019",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 44,
+      "name": "Cube026",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 45,
+      "name": "Cube027",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 46,
+      "name": "Cube028",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 47,
+      "name": "Cube029",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 48,
+      "name": "Cube030",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 49,
+      "name": "Cube031",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 50,
+      "name": "Cube032",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 51,
+      "name": "Cube033",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 52,
+      "name": "file2001",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 53,
+      "name": "file2003",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 54,
+      "name": "Plane",
+      "visible": false,
+      "type": "mesh"
+    },
+    {
+      "index": 55,
+      "name": "B5-24-古巴链-OK-版-倒铜_1005",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 56,
+      "name": "Cube034",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 57,
+      "name": "Cube035",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 58,
+      "name": "Cube036",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 59,
+      "name": "Cube037",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 60,
+      "name": "Cube038",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 61,
+      "name": "Cube039",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 62,
+      "name": "Cube040",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 63,
+      "name": "Cube041",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 64,
+      "name": "Cube042",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 65,
+      "name": "file2006",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 66,
+      "name": "file2007",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 67,
+      "name": "B5-24-古巴链-OK-版-倒铜_1011",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 68,
+      "name": "B5-24-古巴链-OK-版-倒铜_1014",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 69,
+      "name": "B5-24-古巴链-OK-版-倒铜_1015",
+      "visible": true,
+      "type": "mesh"
+    },
+    {
+      "index": 70,
+      "name": "B5-24-古巴链-OK-版-倒铜_1016",
+      "visible": true,
+      "type": "mesh"
+    }
+  ],
+  "nodes": [
+    {
+      "index": 0,
+      "name": "Scene",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 1,
+      "name": "Scene_Collection",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 2,
+      "name": "Collection",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 3,
+      "name": "loc_diamonds",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 4,
+      "name": "loc_fill",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 5,
+      "name": "loc_fill001",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 6,
+      "name": "loc_diamonds001",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 7,
+      "name": "loc_diamond_side_1",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 8,
+      "name": "loc_diamond_side_1001",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 9,
+      "name": "loc_fill_side1",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 10,
+      "name": "loc_fill_side1001",
+      "visible": true,
+      "type": "node"
+    },
+    {
+      "index": 11,
+      "name": "rub",
+      "visible": true,
+      "type": "node"
+    }
+  ],
+  "metadata": {
+    "totalMeshes": 71,
+    "totalNodes": 12,
+    "exportedAt": "2025-11-18T22:50:08.575Z"
+  }
+}

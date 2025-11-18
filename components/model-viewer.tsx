@@ -1,12 +1,11 @@
 "use client";
 
-import { useGLTF, useBounds } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig } from "@/lib/chain-config-types";
 import { getMaterialColor } from "@/lib/chain-helpers";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface ModelViewerProps {
   url: string;
@@ -25,6 +24,7 @@ interface ModelViewerProps {
   isRecording?: boolean;
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
+  sceneRef?: React.MutableRefObject<any>;
 }
 
 export function ModelViewer({
@@ -44,10 +44,18 @@ export function ModelViewer({
   isRecording = false,
   onRecordingComplete,
   showRecordingIndicator = false,
+  sceneRef,
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const gltf = useGLTF(url);
   const { scene } = gltf;
+
+  // Update sceneRef whenever scene is available
+  useEffect(() => {
+    if (sceneRef && scene) {
+      sceneRef.current = scene;
+    }
+  }, [scene, sceneRef]);
 
   // Handle loading state properly
   useEffect(() => {
@@ -107,7 +115,8 @@ export function ModelViewer({
       let cameraZ = 5; // Default distance
 
       if (camera instanceof THREE.PerspectiveCamera) {
-        const fov = camera.fov * (Math.PI / 180);
+        const perspectiveCamera = camera as THREE.PerspectiveCamera;
+        const fov = perspectiveCamera.fov * (Math.PI / 180);
         cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
         cameraZ *= 1.5; // Add some padding
       }
@@ -156,6 +165,56 @@ export function ModelViewer({
       }
     });
   }, [scene]);
+
+  // Control visibility of link meshes based on chainLength
+  useEffect(() => {
+    if (!scene) return;
+
+    // Special meshes that form additional links (shown when chainLength >= their link number)
+    const specialMeshPair = ["B5-24-古巴链-OK-版-倒铜_1009", "B5-24-古巴链-OK-版-倒铜_1010"];
+    
+    // Collect all meshes with their positions
+    const regularMeshData: Array<{ name: string; mesh: THREE.Mesh; x: number }> = [];
+    let specialMeshes: THREE.Mesh[] = [];
+    
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.name && mesh.name !== "Plane") {
+          // Get world position
+          const worldPos = new THREE.Vector3();
+          mesh.getWorldPosition(worldPos);
+          
+          // Separate special meshes from regular ones
+          if (specialMeshPair.includes(mesh.name)) {
+            specialMeshes.push(mesh);
+          } else {
+            regularMeshData.push({ name: mesh.name, mesh, x: worldPos.x });
+          }
+        }
+      }
+    });
+
+    // Sort regular meshes by X position (left to right)
+    regularMeshData.sort((a, b) => a.x - b.x);
+
+    // Divide regular meshes into 7 base links - ALL ALWAYS VISIBLE
+    regularMeshData.forEach((data) => {
+      data.mesh.visible = true;
+    });
+    
+    // Special meshes are shown based on chainLength
+    // Link 8 = first special pair (1009, 1010)
+    specialMeshes.forEach((mesh) => {
+      mesh.visible = chainConfig.chainLength >= 8;
+    });
+    
+    // Debug logging
+    console.log("Chain length:", chainConfig.chainLength);
+    console.log("Special meshes found:", specialMeshes.length);
+    console.log("Special meshes visible:", chainConfig.chainLength >= 8);
+    console.log("Regular meshes:", regularMeshData.length);
+  }, [scene, chainConfig.chainLength]);
 
   // Apply materials to the model
   useEffect(() => {

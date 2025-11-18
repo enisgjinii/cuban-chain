@@ -20,7 +20,7 @@ import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
 export default function Home() {
   const [modelUrl, setModelUrl] = useState<string>("/models/Cuban-Link.glb");
   const [chainConfig, setChainConfig] = useState<ChainConfig>(
-    createDefaultConfig(12),
+    createDefaultConfig(7),
   );
   const [selectedLinkIndex, setSelectedLinkIndex] = useState<number>(0);
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>("top1");
@@ -47,6 +47,7 @@ export default function Home() {
   const [showRecordingIndicator, setShowRecordingIndicator] =
     useState<boolean>(false);
   const cameraRef = useRef<any>(null);
+  const sceneRef = useRef<any>(null);
 
   // Detect mobile device
   useEffect(() => {
@@ -271,6 +272,7 @@ export default function Home() {
           onCaptureImage={handleCaptureImage}
           onStartRecording={handleStartRecording}
           isRecording={isRecording}
+          sceneRef={sceneRef}
         />
       </div>
 
@@ -341,6 +343,7 @@ export default function Home() {
                   isRecording={isRecording}
                   onRecordingComplete={handleRecordingComplete}
                   showRecordingIndicator={showRecordingIndicator}
+                  sceneRef={sceneRef}
                 />
               </Stage>
 
