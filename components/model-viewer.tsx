@@ -127,6 +127,12 @@ export function ModelViewer({
   // Recording functionality
   useEffect(() => {
     if (isRecording && !mediaRecorderRef.current) {
+      // Store original background and set white background for recording
+      const originalClearColor = new THREE.Color()
+      gl.getClearColor(originalClearColor)
+      const originalClearAlpha = gl.getClearAlpha()
+      gl.setClearColor(0xffffff, 1) // White background
+      
       // Start recording
       const canvas = gl.domElement
       const stream = canvas.captureStream(30) // 30 FPS
@@ -144,6 +150,9 @@ export function ModelViewer({
       }
 
       mediaRecorder.onstop = () => {
+        // Restore original background
+        gl.setClearColor(originalClearColor, originalClearAlpha)
+        
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
         onRecordingComplete?.(blob)
         mediaRecorderRef.current = null
