@@ -4,11 +4,12 @@ import type React from "react"
 
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Environment, Stage } from "@react-three/drei"
-import { Suspense, useState } from "react"
+import { Suspense, useState, useRef, useEffect } from "react"
 import { ModelViewer } from "@/components/model-viewer"
 import { CustomizerPanel } from "@/components/customizer-panel"
+import { CompactSidebar } from "@/components/compact-sidebar"
 import { Button } from "@/components/ui/button"
-import { Upload, Menu } from "lucide-react"
+import { Camera, Move3D, Copy, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types"
 import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers"
@@ -26,26 +27,36 @@ export default function Home() {
   const [chainSpacing, setChainSpacing] = useState<number>(0.95)
   const [applyMode, setApplyMode] = useState<boolean>(false)
   const [undoCounter, setUndoCounter] = useState<number>(0)
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setModelUrl(url)
-    }
-  }
+  const [autoRotate, setAutoRotate] = useState<boolean>(false)
+  const [showBoundingBox, setShowBoundingBox] = useState<boolean>(true)
+  const [showDebug, setShowDebug] = useState<boolean>(false)
+  const [cameraPosition, setCameraPosition] = useState({ x: 0.51, y: 1.25, z: 0.74 })
+  const [modelPosition, setModelPosition] = useState({ x: 0, y: 0, z: 0 })
+  const cameraRef = useRef<any>(null)
 
   const handleSaveConfiguration = () => {
     const config = {
       chainConfig,
-      chainSpacing,
+      cameraPosition,
+      modelPosition
     }
+    console.log("Configuration saved:", config)
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
     a.download = "cuban-chain-configuration.json"
     a.click()
+  }
+
+  const copyPositionData = () => {
+    const data = {
+      camera: cameraPosition,
+      model: modelPosition,
+      fov: 35
+    }
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+    alert("Position data copied to clipboard!")
   }
 
   const handleMeshesAndNodesExtracted = (extractedMeshes: string[], extractedNodes: string[]) => {
@@ -60,6 +71,37 @@ export default function Home() {
   const handleHoverMesh = (mesh: string | null) => {
     setHoveredMesh(mesh)
   }
+
+  // Track camera position changes
+  useEffect(() => {
+    if (cameraRef.current) {
+      const updateCameraPosition = () => {
+        if (cameraRef.current && cameraRef.current.object) {
+          const pos = cameraRef.current.object.position
+          setCameraPosition({
+            x: parseFloat(pos.x.toFixed(2)),
+            y: parseFloat(pos.y.toFixed(2)),
+            z: parseFloat(pos.z.toFixed(2))
+          })
+        }
+      }
+
+      // Update position initially and on changes
+      updateCameraPosition()
+      
+      // Listen to camera changes
+      const controls = cameraRef.current
+      if (controls) {
+        controls.addEventListener('change', updateCameraPosition)
+      }
+
+      return () => {
+        if (controls) {
+          controls.removeEventListener('change', updateCameraPosition)
+        }
+      }
+    }
+  }, [cameraRef.current])
 
   const handleSetChainLength = (length: number) => {
     setChainConfig(setChainLength(chainConfig, length))
@@ -87,82 +129,10 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full bg-background">
-      {/* Left side - 3D Viewer */}
-      <div className="flex-1 relative h-[50vh] lg:h-full">
-        <div className="absolute top-4 left-4 z-10 flex gap-2">
-          <label htmlFor="file-upload">
-            <Button variant="outline" size="sm" className="cursor-pointer bg-transparent" asChild>
-              <span>
-                <Upload className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Upload Model</span>
-                <span className="sm:hidden">Upload Test</span>
-              </span>
-            </Button>
-          </label>
-          <input id="file-upload" type="file" accept=".glb,.gltf" onChange={handleFileUpload} className="hidden" />
-          autoFitModel={autoFitModel}
-
-          <Sheet>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button variant="outline" size="sm">
-                <Menu className="w-4 h-4 mr-2" />
-                Customize
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-96 p-0 overflow-y-auto">
-              <CustomizerPanel
-                chainConfig={chainConfig}
-                setChainConfig={setChainConfig}
-                selectedLinkIndex={selectedLinkIndex}
-                setSelectedLinkIndex={setSelectedLinkIndex}
-                selectedSurface={selectedSurface}
-                setSelectedSurface={setSelectedSurface}
-                onSaveConfiguration={handleSaveConfiguration}
-                onLoadConfiguration={handleLoadConfiguration}
-                meshes={meshes}
-                nodes={nodes}
-                onSelectMesh={handleSelectMesh}
-                onHoverMesh={handleHoverMesh}
-                setChainLength={handleSetChainLength}
-                chainSpacing={chainSpacing}
-                setChainSpacing={setChainSpacing}
-                applyMode={applyMode}
-                setApplyMode={setApplyMode}
-                onUndo={() => setUndoCounter((c) => c + 1)}
-                autoFitModel={autoFitModel}
-                setAutoFitModel={setAutoFitModel}
-                isInSheet={true}
-              />
-            </SheetContent>
-          </Sheet>
-        </div>
-
-        <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
-          <Suspense fallback={null}>
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[10, 10, 5]} intensity={1} />
-            {/* When autoFitModel is true stage will auto-adjust camera to fit model */}
-            <ModelViewer
-              url={modelUrl}
-              chainConfig={chainConfig}
-              onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
-              selectedMesh={selectedMesh}
-              hoveredMesh={hoveredMesh}
-              chainSpacing={chainSpacing}
-              applyMode={applyMode}
-              setApplyMode={setApplyMode}
-              undoCounter={undoCounter}
-              autoFitModel={autoFitModel}
-            />
-
-            <OrbitControls makeDefault />
-          </Suspense>
-        </Canvas>
-      </div>
-
-      <div className="hidden lg:block">
-        <CustomizerPanel
+    <div className="relative h-screen w-full bg-background">
+      {/* Floating Sidebar (Desktop) */}
+      <div className="hidden lg:block absolute top-4 left-4 z-20">
+        <CompactSidebar
           chainConfig={chainConfig}
           setChainConfig={setChainConfig}
           selectedLinkIndex={selectedLinkIndex}
@@ -178,13 +148,126 @@ export default function Home() {
           setChainLength={handleSetChainLength}
           chainSpacing={chainSpacing}
           setChainSpacing={setChainSpacing}
-          applyMode={applyMode}
-          setApplyMode={setApplyMode}
           onUndo={() => setUndoCounter((c) => c + 1)}
-          autoFitModel={autoFitModel}
-          setAutoFitModel={setAutoFitModel}
+          autoRotate={autoRotate}
+          setAutoRotate={setAutoRotate}
+          showDebug={showDebug}
+          setShowDebug={setShowDebug}
           isInSheet={false}
         />
+      </div>
+
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden absolute top-4 left-4 z-20">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="bg-background/95 backdrop-blur-sm rounded-2xl">
+              <Menu className="w-4 h-4" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-80 overflow-y-auto">
+            <CustomizerPanel
+              chainConfig={chainConfig}
+              setChainConfig={setChainConfig}
+              selectedLinkIndex={selectedLinkIndex}
+              setSelectedLinkIndex={setSelectedLinkIndex}
+              selectedSurface={selectedSurface}
+              setSelectedSurface={setSelectedSurface}
+              onSaveConfiguration={handleSaveConfiguration}
+              onLoadConfiguration={handleLoadConfiguration}
+              meshes={meshes}
+              nodes={nodes}
+              onSelectMesh={handleSelectMesh}
+              onHoverMesh={handleHoverMesh}
+              setChainLength={handleSetChainLength}
+              chainSpacing={chainSpacing}
+              setChainSpacing={setChainSpacing}
+              onUndo={() => setUndoCounter((c) => c + 1)}
+              autoRotate={autoRotate}
+              setAutoRotate={setAutoRotate}
+              showDebug={showDebug}
+              setShowDebug={setShowDebug}
+              isInSheet={true}
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Full Screen 3D Viewer */}
+      <div className="relative w-full h-screen">
+        <Canvas camera={{ position: [0.51, 1.25, 0.74], fov: 35 }}>
+          <Suspense fallback={null}>
+            <Environment preset="city" />
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[10, 10, 5]} intensity={1} />
+            {/* Model displayed at original size with preferred camera position */}
+            <ModelViewer
+              url={modelUrl}
+              chainConfig={chainConfig}
+              onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
+              selectedMesh={selectedMesh}
+              hoveredMesh={hoveredMesh}
+              chainSpacing={chainSpacing}
+              applyMode={applyMode}
+              setApplyMode={setApplyMode}
+              undoCounter={undoCounter}
+              autoFitModel={autoFitModel}
+              showBoundingBox={showBoundingBox}
+              autoRotate={autoRotate}
+              selectedLinkIndex={selectedLinkIndex}
+            />
+
+            <OrbitControls ref={cameraRef} makeDefault enableRotate={true} autoRotate={autoRotate} autoRotateSpeed={1} />
+          </Suspense>
+        </Canvas>
+        
+        
+        {/* Debug Panel */}
+        <div className="absolute top-4 right-4 z-10">
+          {showDebug && (
+            <div className="mt-2 p-3 bg-black/80 text-white rounded-2xl text-xs font-mono backdrop-blur-sm border border-white/20">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-green-400">Position Data</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={copyPositionData}
+                  className="h-6 px-2 text-xs hover:bg-white/10"
+                >
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy
+                </Button>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex items-center">
+                  <Camera className="w-3 h-3 mr-2 text-blue-400" />
+                  <span className="text-blue-400">Camera:</span>
+                  <span className="ml-2">
+                    [{cameraPosition.x}, {cameraPosition.y}, {cameraPosition.z}]
+                  </span>
+                </div>
+                
+                <div className="flex items-center">
+                  <Move3D className="w-3 h-3 mr-2 text-purple-400" />
+                  <span className="text-purple-400">Model:</span>
+                  <span className="ml-2">
+                    [{modelPosition.x}, {modelPosition.y}, {modelPosition.z}]
+                  </span>
+                </div>
+                
+                <div className="flex items-center">
+                  <span className="text-yellow-400">FOV:</span>
+                  <span className="ml-2">35</span>
+                </div>
+              </div>
+              
+              <div className="mt-2 pt-2 border-t border-white/20 text-green-400 text-xs">
+                Click "Copy" to copy this data and share with developer
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

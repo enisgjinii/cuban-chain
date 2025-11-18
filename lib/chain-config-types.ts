@@ -2,7 +2,7 @@
 export type Material = 'silver' | 'grey' | 'black' | 'white' | 'gold'
 
 // Surface customization types
-export type SurfaceType = 'empty' | 'gemstones' | 'enamel' | 'engraving'
+export type SurfaceType = 'empty' | 'gemstones' | 'moissanites' | 'enamel' | 'engraving'
 
 // Surface identifiers
 export type SurfaceId = 'top1' | 'top2' | 'side1' | 'side2'
@@ -17,7 +17,7 @@ export interface GemstoneColors {
 // Surface configuration
 export interface SurfaceConfig {
   type: SurfaceType
-  gemstoneColors?: GemstoneColors // when type === 'gemstones'
+  gemstoneColors?: GemstoneColors // when type === 'gemstones' | 'moissanites'
   enamelColor?: string // when type === 'enamel'
   engravingDesign?: 'pattern1' | 'pattern2' // when type === 'engraving'
 }

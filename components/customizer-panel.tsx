@@ -10,8 +10,9 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { SheetClose } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Save, Upload } from "lucide-react"
-import type { ChainConfig, SurfaceId, Material, SurfaceType } from "@/lib/chain-config-types"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Save, Upload, Settings, Palette, Wrench, RotateCw, Bug, Circle } from "lucide-react"
+import type { ChainConfig, SurfaceId, Material, SurfaceType, SurfaceConfig } from "@/lib/chain-config-types"
 import { updateLinkMaterial, updateSurface, getMaterialColor, createDefaultGemstoneColors } from "@/lib/chain-helpers"
 
 interface CustomizerPanelProps {
@@ -30,25 +31,18 @@ interface CustomizerPanelProps {
   setChainLength: (length: number) => void
   chainSpacing?: number
   setChainSpacing?: (value: number) => void
-  applyMode?: boolean
-  setApplyMode?: (value: boolean) => void
   onUndo?: () => void
-  autoFitModel: boolean
-  setAutoFitModel: (value: boolean) => void
+  autoRotate?: boolean
+  setAutoRotate?: (value: boolean) => void
+  showDebug?: boolean
+  setShowDebug?: (value: boolean) => void
   isInSheet?: boolean
 }
-
-const materialOptions: Array<{ name: string; value: Material; color: string }> = [
-  { name: "Silver", value: "silver", color: "#c0c0c0" },
-  { name: "Grey", value: "grey", color: "#808080" },
-  { name: "Black", value: "black", color: "#1a1a1a" },
-  { name: "White", value: "white", color: "#f5f5f5" },
-  { name: "Gold", value: "gold", color: "#ffd700" },
-]
 
 const surfaceTypeOptions: Array<{ name: string; value: SurfaceType }> = [
   { name: "Empty", value: "empty" },
   { name: "Gemstones", value: "gemstones" },
+  { name: "Moissanites", value: "moissanites" },
   { name: "Enamel", value: "enamel" },
   { name: "Engraving", value: "engraving" },
 ]
@@ -79,11 +73,12 @@ export function CustomizerPanel({
   setChainLength,
   chainSpacing,
   setChainSpacing,
-  applyMode,
-  setApplyMode,
-  autoFitModel,
-  setAutoFitModel,
-  isInSheet,
+  onUndo,
+  autoRotate,
+  setAutoRotate,
+  showDebug,
+  setShowDebug,
+  isInSheet = false,
 }: CustomizerPanelProps) {
   const currentLink = chainConfig.links[selectedLinkIndex]
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface]
@@ -93,22 +88,22 @@ export function CustomizerPanel({
   }
 
   const handleSurfaceTypeChange = (type: SurfaceType) => {
-    let newSurfaceConfig = { type }
+    let newSurfaceConfig: SurfaceConfig = { type }
 
     // Add default properties based on type
-    if (type === 'gemstones') {
+    if (type === 'gemstones' || type === 'moissanites') {
       newSurfaceConfig = {
-        ...newSurfaceConfig,
+        type,
         gemstoneColors: createDefaultGemstoneColors(selectedSurface),
       }
     } else if (type === 'enamel') {
       newSurfaceConfig = {
-        ...newSurfaceConfig,
+        type,
         enamelColor: '#ffffff',
       }
     } else if (type === 'engraving') {
       newSurfaceConfig = {
-        ...newSurfaceConfig,
+        type,
         engravingDesign: 'pattern1' as const,
       }
     }
@@ -119,12 +114,25 @@ export function CustomizerPanel({
   const handleGemstoneColorChange = (stoneKey: string, color: string) => {
     if (!currentSurfaceConfig?.gemstoneColors) return
 
-    const newSurfaceConfig = {
-      ...currentSurfaceConfig,
-      gemstoneColors: {
+    let newGemstoneColors
+    if (stoneKey === 'all') {
+      // Set all gemstone colors to the same color
+      newGemstoneColors = {
+        stone1: color,
+        stone2: color,
+        ...(currentSurfaceConfig.gemstoneColors.stone3 && { stone3: color }),
+      }
+    } else {
+      // Set specific gemstone color
+      newGemstoneColors = {
         ...currentSurfaceConfig.gemstoneColors,
         [stoneKey]: color,
-      },
+      }
+    }
+
+    const newSurfaceConfig = {
+      ...currentSurfaceConfig,
+      gemstoneColors: newGemstoneColors,
     }
 
     setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig))
@@ -151,322 +159,324 @@ export function CustomizerPanel({
   const isTopSurface = selectedSurface === 'top1' || selectedSurface === 'top2'
 
   return (
-    <Card className="w-full lg:w-96 h-full rounded-none border-l-0 lg:border-l border-t lg:border-t-0 border-r-0 border-b-0 bg-card overflow-y-auto">
-      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Chain Customizer</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Design each link individually</p>
-        </div>
+    <Card className="w-full lg:w-96 h-full rounded-none lg:rounded-r-2xl border-0 lg:border lg:border-l-0 bg-card/95 backdrop-blur-sm lg:shadow-2xl overflow-hidden">
+      <div className="h-full flex flex-col">
+        {/* Tabs Content */}
+        <div className="flex-1 overflow-y-auto">
+          <Tabs defaultValue="customize" className="w-full">
+            <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto">
+              <TabsTrigger value="customize" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">
+                <Palette className="w-4 h-4 mr-2" />
+                Customize
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </TabsTrigger>
+              <TabsTrigger value="advanced" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3">
+                <Wrench className="w-4 h-4 mr-2" />
+                Advanced
+              </TabsTrigger>
+            </TabsList>
 
-        <Separator />
-
-        <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <Checkbox id="auto-fit" checked={autoFitModel} onCheckedChange={(checked) => setAutoFitModel(checked as boolean)} />
-            <Label htmlFor="auto-fit" className="cursor-pointer">
-              Auto-fit model to view
-            </Label>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Chain Length Control */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="chain-length">Chain Links</Label>
-            <span className="text-xs sm:text-sm text-muted-foreground">{chainConfig.chainLength}</span>
-          </div>
-          <Slider
-            id="chain-length"
-            min={1}
-            max={64}
-            step={1}
-            value={[chainConfig.chainLength]}
-            onValueChange={(value) => setChainLength(value[0])}
-            className="w-full"
-          />
-        </div>
-
-        <Separator />
-
-        {/* Link Selector */}
-        <div className="space-y-3">
-          <Label htmlFor="link-selector">Select Link to Customize</Label>
-          <Select
-            value={selectedLinkIndex.toString()}
-            onValueChange={(value) => setSelectedLinkIndex(parseInt(value))}
-          >
-            <SelectTrigger id="link-selector">
-              <SelectValue placeholder="Select link" />
-            </SelectTrigger>
-            <SelectContent>
-              {chainConfig.links.map((_, index) => (
-                <SelectItem key={index} value={index.toString()}>
-                  Link {index + 1}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Separator />
-
-        {/* Material Selector for Current Link */}
-        <div className="space-y-3">
-          <Label htmlFor="material">Link Material</Label>
-          <Select
-            value={currentLink?.material}
-            onValueChange={(value) => handleMaterialChange(value as Material)}
-          >
-            <SelectTrigger id="material">
-              <SelectValue placeholder="Select material" />
-            </SelectTrigger>
-            <SelectContent>
-              {materialOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Separator />
-
-        {/* Surface Selector */}
-        <div className="space-y-3">
-          <Label>Select Surface</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant={selectedSurface === 'top1' ? 'default' : 'outline'}
-              onClick={() => setSelectedSurface('top1')}
-              className="w-full"
-            >
-              Top 1
-            </Button>
-            <Button
-              variant={selectedSurface === 'top2' ? 'default' : 'outline'}
-              onClick={() => setSelectedSurface('top2')}
-              className="w-full"
-            >
-              Top 2
-            </Button>
-            <Button
-              variant={selectedSurface === 'side1' ? 'default' : 'outline'}
-              onClick={() => setSelectedSurface('side1')}
-              className="w-full"
-            >
-              Side 1
-            </Button>
-            <Button
-              variant={selectedSurface === 'side2' ? 'default' : 'outline'}
-              onClick={() => setSelectedSurface('side2')}
-              className="w-full"
-            >
-              Side 2
-            </Button>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Surface Type Selector */}
-        <div className="space-y-3">
-          <Label htmlFor="surface-type">Surface Type</Label>
-          <Select
-            value={currentSurfaceConfig?.type}
-            onValueChange={(value) => handleSurfaceTypeChange(value as SurfaceType)}
-          >
-            <SelectTrigger id="surface-type">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {surfaceTypeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Conditional Controls Based on Surface Type */}
-        {currentSurfaceConfig?.type === 'gemstones' && (
-          <>
-            <Separator />
-            <div className="space-y-3">
-              <Label>Gemstone Colors</Label>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="stone1" className="text-sm">Stone 1</Label>
-                  <input
-                    id="stone1"
-                    type="color"
-                    value={currentSurfaceConfig.gemstoneColors?.stone1 || '#ffffff'}
-                    onChange={(e) => handleGemstoneColorChange('stone1', e.target.value)}
-                    className="w-12 h-8 rounded border cursor-pointer"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="stone2" className="text-sm">Stone 2</Label>
-                  <input
-                    id="stone2"
-                    type="color"
-                    value={currentSurfaceConfig.gemstoneColors?.stone2 || '#ffffff'}
-                    onChange={(e) => handleGemstoneColorChange('stone2', e.target.value)}
-                    className="w-12 h-8 rounded border cursor-pointer"
-                  />
-                </div>
-                {isTopSurface && (
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="stone3" className="text-sm">Stone 3</Label>
-                    <input
-                      id="stone3"
-                      type="color"
-                      value={currentSurfaceConfig.gemstoneColors?.stone3 || '#ffffff'}
-                      onChange={(e) => handleGemstoneColorChange('stone3', e.target.value)}
-                      className="w-12 h-8 rounded border cursor-pointer"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {currentSurfaceConfig?.type === 'enamel' && (
-          <>
-            <Separator />
-            <div className="space-y-3">
-              <Label htmlFor="enamel-color">Enamel Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {enamelColors.map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => handleEnamelColorChange(color.value)}
-                    className={`w-10 h-10 rounded-full border-2 ${currentSurfaceConfig.enamelColor === color.value
-                        ? 'border-primary ring-2 ring-primary/50'
-                        : 'border-muted'
-                      }`}
-                    style={{ backgroundColor: color.value }}
-                    title={color.name}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {currentSurfaceConfig?.type === 'engraving' && (
-          <>
-            <Separator />
-            <div className="space-y-3">
-              <Label htmlFor="engraving-design">Engraving Pattern</Label>
-              <Select
-                value={currentSurfaceConfig.engravingDesign}
-                onValueChange={(value) => handleEngravingDesignChange(value as 'pattern1' | 'pattern2')}
-              >
-                <SelectTrigger id="engraving-design">
-                  <SelectValue placeholder="Select pattern" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pattern1">Pattern 1 (Diagonal Lines)</SelectItem>
-                  <SelectItem value="pattern2">Pattern 2 (Crosshatch)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </>
-        )}
-
-        <Separator />
-
-        {/* Chain Spacing */}
-        {chainSpacing !== undefined && setChainSpacing && (
-          <details className="border rounded bg-muted/5 p-2">
-            <summary className="cursor-pointer font-semibold py-1 px-2">Advanced Settings</summary>
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="chain-spacing">Link Spacing</Label>
-                <span className="text-xs sm:text-sm text-muted-foreground">{Math.round(chainSpacing * 100)}%</span>
-              </div>
-              <Slider
-                id="chain-spacing"
-                min={0.5}
-                max={1.5}
-                step={0.01}
-                value={[chainSpacing]}
-                onValueChange={(value) => setChainSpacing(value[0])}
-                className="w-full"
-              />
-            </div>
-          </details>
-        )}
-
-        <Separator />
-
-        {/* Mesh/Node List for debugging */}
-        {meshes.length > 0 && (
-          <details className="border rounded bg-muted/5 p-2">
-            <summary className="cursor-pointer font-semibold py-1 px-2">Model Components ({meshes.length + nodes.length})</summary>
-            <div className="space-y-2 pt-2 max-h-48 overflow-y-auto">
-              {meshes.slice(0, 10).map((mesh, idx) => (
-                <div
-                  key={`${mesh}-${idx}`}
-                  className="text-xs text-muted-foreground cursor-pointer hover:text-foreground hover:bg-accent p-1 rounded"
-                  onClick={() => onSelectMesh(mesh)}
-                  onMouseEnter={() => onHoverMesh(mesh)}
-                  onMouseLeave={() => onHoverMesh(null)}
+            <TabsContent value="customize" className="p-4 sm:p-6 space-y-4 sm:space-y-6 mt-0">
+              {/* Controls */}
+              <div className="flex gap-2">
+                <Button
+                  variant={autoRotate ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAutoRotate?.(!autoRotate)}
+                  className="flex-1"
                 >
-                  {mesh}
+                  <RotateCw className="w-4 h-4" />
+                </Button>
+                
+                <Button
+                  variant={showDebug ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowDebug?.(!showDebug)}
+                  className="flex-1"
+                >
+                  <Bug className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <Separator />
+
+              {/* Material Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="material-select" className="text-sm font-semibold flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  Select Material
+                </Label>
+                <Select value={currentLink?.material || "silver"} onValueChange={(value) => handleMaterialChange(value as Material)}>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="Choose material..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="silver" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-gray-400 text-gray-400" />
+                        Silver
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="gold" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                        Gold
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="grey" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-gray-600 text-gray-600" />
+                        Grey
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="black" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-black text-black" />
+                        Black
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Apply Inserts Checkbox */}
+              <div className="flex items-center gap-2">
+                <Checkbox id="apply-inserts" className="w-5 h-5" />
+                <Label htmlFor="apply-inserts" className="text-sm font-medium">Apply inserts</Label>
+              </div>
+
+              <Separator />
+
+              {/* Diamonds Selection */}
+              <div className="space-y-3">
+                <Label htmlFor="diamonds-select" className="text-sm font-semibold flex items-center gap-2">
+                  <Wrench className="w-4 h-4" />
+                  Diamonds
+                </Label>
+                <Select value={currentSurfaceConfig?.type || "empty"} onValueChange={(value) => handleSurfaceTypeChange(value as SurfaceType)}>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue placeholder="Choose option..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg">
+                    <SelectItem value="gemstones" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-blue-400 text-blue-400" />
+                        Diamonds
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="moissanites" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-purple-400 text-purple-400" />
+                        Moissanites
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="enamel" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-red-400 text-red-400" />
+                        Enamel
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="engraving" className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Circle className="w-4 h-4 fill-orange-400 text-orange-400" />
+                        Engraving
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Conditional Options Based on Selection */}
+              {currentSurfaceConfig?.type === 'gemstones' && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Diamond Options</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 justify-start"
+                      onClick={() => handleGemstoneColorChange('all', '#ffffff')}
+                    >
+                      Colourless
+                    </Button>
+                  </div>
                 </div>
-              ))}
-              {meshes.length > 10 && (
-                <p className="text-xs text-muted-foreground italic">... and {meshes.length - 10} more</p>
               )}
-            </div>
-          </details>
-        )}
 
-        <Separator />
+              {currentSurfaceConfig?.type === 'moissanites' && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Moissanite Options</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { name: 'Colourless', color: '#ffffff' },
+                      { name: 'Black', color: '#000000' },
+                      { name: 'Green', color: '#16a34a' },
+                      { name: 'Red', color: '#dc2626' },
+                      { name: 'Blue', color: '#2563eb' },
+                      { name: 'Yellow', color: '#eab308' },
+                      { name: 'Orange', color: '#ea580c' },
+                      { name: 'Rainbow1', color: 'linear-gradient(45deg, #ff0000, #ffa500, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)' },
+                      { name: 'Rainbow2', color: 'linear-gradient(45deg, #ff1493, #00bfff, #32cd32, #ffd700, #ff4500)' },
+                    ].map((option) => (
+                      <Button
+                        key={option.name}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => handleGemstoneColorChange('all', option.color)}
+                        style={option.name.includes('Rainbow') ? { background: option.color } : {}}
+                      >
+                        {option.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-        <div className="space-y-3">
-          <Label>Configuration</Label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" size="sm" onClick={onSaveConfiguration} className="flex-1 bg-transparent">
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
-            <label htmlFor="load-config" className="flex-1">
-              <Button variant="outline" size="sm" className="w-full cursor-pointer bg-transparent" asChild>
-                <span>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Load
-                </span>
-              </Button>
-            </label>
-            <input id="load-config" type="file" accept=".json" onChange={onLoadConfiguration} className="hidden" />
-          </div>
+              {currentSurfaceConfig?.type === 'enamel' && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Enamel Options</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { name: 'Black', color: '#000000' },
+                      { name: 'White', color: '#ffffff' },
+                      { name: 'Green', color: '#16a34a' },
+                      { name: 'Red', color: '#dc2626' },
+                      { name: 'Blue', color: '#2563eb' },
+                      { name: 'Yellow', color: '#eab308' },
+                      { name: 'Orange', color: '#ea580c' },
+                      { name: 'Opal 1', color: '#b8b8ff' },
+                      { name: 'Opal 2', color: '#ffb8d1' },
+                    ].map((option) => (
+                      <Button
+                        key={option.name}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 p-0"
+                        style={{ backgroundColor: option.color }}
+                        onClick={() => handleEnamelColorChange(option.color)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentSurfaceConfig?.type === 'engraving' && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Engraving Options</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Pattern 1', 'Pattern 2'].map((pattern) => (
+                      <Button
+                        key={pattern}
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => handleEngravingDesignChange(pattern.toLowerCase().replace(' ', '') as 'pattern1' | 'pattern2')}
+                      >
+                        {pattern}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Apply to Sides Checkbox */}
+              <div className="flex items-center gap-2">
+                <Checkbox id="apply-sides" className="w-5 h-5" />
+                <Label htmlFor="apply-sides" className="text-sm font-medium">Apply to sides</Label>
+              </div>
+
+              <Separator />
+
+              {/* Save/Load Configuration */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Configuration</Label>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={onSaveConfiguration} className="flex-1 h-9">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </Button>
+                  <label htmlFor="load-config" className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full h-9 cursor-pointer" asChild>
+                      <span>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Load
+                      </span>
+                    </Button>
+                    <input id="load-config" type="file" accept=".json" onChange={onLoadConfiguration} className="hidden" />
+                  </label>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="settings" className="p-4 sm:p-6 space-y-4 sm:space-y-6 mt-0">
+              <div className="space-y-4">
+                              </div>
+
+              <Separator />
+
+              {chainSpacing !== undefined && setChainSpacing && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="chain-spacing" className="text-sm font-semibold">Link Spacing</Label>
+                    <span className="text-xs sm:text-sm font-medium text-primary">{Math.round(chainSpacing * 100)}%</span>
+                  </div>
+                  <Slider
+                    id="chain-spacing"
+                    min={0.5}
+                    max={1.5}
+                    step={0.01}
+                    value={[chainSpacing]}
+                    onValueChange={(value) => setChainSpacing(value[0])}
+                    className="w-full"
+                  />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="advanced" className="p-4 sm:p-6 space-y-4 sm:space-y-6 mt-0">
+              {meshes.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Model Components</Label>
+                    <span className="text-xs text-muted-foreground">{meshes.length + nodes.length} items</span>
+                  </div>
+                  <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-2 bg-muted/20">
+                    {meshes.slice(0, 20).map((mesh, idx) => (
+                      <div
+                        key={`${mesh}-${idx}`}
+                        className="text-xs text-muted-foreground cursor-pointer hover:text-foreground hover:bg-accent p-2 rounded transition-colors"
+                        onClick={() => onSelectMesh(mesh)}
+                        onMouseEnter={() => onHoverMesh(mesh)}
+                        onMouseLeave={() => onHoverMesh(null)}
+                      >
+                        {mesh}
+                      </div>
+                    ))}
+                    {meshes.length > 20 && (
+                      <p className="text-xs text-muted-foreground italic p-2">... and {meshes.length - 20} more</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
 
-        <Separator />
-
-        {isInSheet ? (
-          <div className="flex items-center justify-center">
+        {/* Footer */}
+        <div className="p-4 border-t bg-muted/20">
+          {isInSheet ? (
             <SheetClose asChild>
-              <Button size="sm">Done</Button>
+              <Button size="sm" className="w-full">Done</Button>
             </SheetClose>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center">
-            <Button size="sm">Done</Button>
-          </div>
-        )}
-
-        <div className="pt-2">
-          <p className="text-xs text-muted-foreground text-center">
-            Customize each link's material and surfaces independently
-          </p>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center">
+              Customize each link's material and surfaces
+            </p>
+          )}
         </div>
       </div>
     </Card>
