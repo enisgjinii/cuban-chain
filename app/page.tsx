@@ -57,18 +57,41 @@ export default function Home() {
   const handleCaptureImage = () => {
     const canvas = document.querySelector('canvas')
     if (canvas) {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `chain-capture-${Date.now()}.png`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
+      // Store original context settings
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const originalFillStyle = ctx.fillStyle
+        const originalGlobalAlpha = ctx.globalAlpha
+        
+        // Create a temporary canvas with white background
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = canvas.width
+        tempCanvas.height = canvas.height
+        const tempCtx = tempCanvas.getContext('2d')
+        
+        if (tempCtx) {
+          // Fill with white background
+          tempCtx.fillStyle = '#ffffff'
+          tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+          
+          // Draw the original canvas on top
+          tempCtx.drawImage(canvas, 0, 0)
+          
+          // Convert to PNG and download
+          tempCanvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `chain-capture-${Date.now()}.png`
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              URL.revokeObjectURL(url)
+            }
+          }, 'image/png')
         }
-      })
+      }
     }
   }
 
@@ -277,38 +300,6 @@ export default function Home() {
         
         {/* Debug Panel */}
         <div className="absolute top-4 right-4 z-10">
-          {/* Capture and Recording Buttons */}
-          <div className="flex gap-2 mb-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCaptureImage}
-              className="bg-background/95 backdrop-blur-sm rounded-2xl"
-              disabled={isRecording}
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Capture
-            </Button>
-            <Button
-              size="sm"
-              variant={isRecording ? "destructive" : "outline"}
-              onClick={handleStartRecording}
-              className="bg-background/95 backdrop-blur-sm rounded-2xl"
-              disabled={isRecording}
-            >
-              {isRecording ? (
-                <>
-                  <VideoOff className="w-4 h-4 mr-2" />
-                  Recording...
-                </>
-              ) : (
-                <>
-                  <Video className="w-4 h-4 mr-2" />
-                  Record
-                </>
-              )}
-            </Button>
-          </div>
           
           {showDebug && (
             <div className="mt-2 p-3 bg-black/80 text-white rounded-2xl text-xs font-mono backdrop-blur-sm border border-white/20">

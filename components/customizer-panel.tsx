@@ -187,44 +187,61 @@ export function CustomizerPanel({
 
             <TabsContent value="customize" className="p-4 sm:p-6 space-y-4 sm:space-y-6 mt-0">
               {/* Controls */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={autoRotate ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setAutoRotate?.(!autoRotate)}
-                  className="flex-1"
-                >
-                  <RotateCw className="w-4 h-4" />
-                </Button>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant={autoRotate ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAutoRotate?.(!autoRotate)}
+                    className="flex-1"
+                  >
+                    <RotateCw className="w-4 h-4 mr-1" />
+                    Rotate
+                  </Button>
+                  
+                  <Button
+                    variant={showDebug ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowDebug?.(!showDebug)}
+                    className="flex-1"
+                  >
+                    <Bug className="w-4 h-4 mr-1" />
+                    Debug
+                  </Button>
+                </div>
                 
-                <Button
-                  variant={showDebug ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowDebug?.(!showDebug)}
-                  className="flex-1"
-                >
-                  <Bug className="w-4 h-4" />
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onCaptureImage}
-                  className="flex-1"
-                  disabled={isRecording}
-                >
-                  <Camera className="w-4 h-4" />
-                </Button>
-                
-                <Button
-                  variant={isRecording ? "destructive" : "outline"}
-                  size="sm"
-                  onClick={onStartRecording}
-                  className="flex-1"
-                  disabled={isRecording}
-                >
-                  {isRecording ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onCaptureImage}
+                    className="flex-1"
+                    disabled={isRecording}
+                  >
+                    <Camera className="w-4 h-4 mr-1" />
+                    Capture
+                  </Button>
+                  
+                  <Button
+                    variant={isRecording ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={onStartRecording}
+                    className={`flex-1 ${isRecording ? "bg-red-500 hover:bg-red-600 text-white border-red-500 animate-pulse" : ""}`}
+                    disabled={isRecording}
+                  >
+                    {isRecording ? (
+                      <>
+                        <VideoOff className="w-4 h-4 mr-1" />
+                        Recording...
+                      </>
+                    ) : (
+                      <>
+                        <Video className="w-4 h-4 mr-1" />
+                        Record
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <Separator />
