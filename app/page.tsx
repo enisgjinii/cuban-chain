@@ -6,6 +6,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment, Stage } from "@react-three/drei";
 import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { ModelViewer } from "@/components/model-viewer";
+import { ModelLoading } from "@/components/model-loading";
 import { CustomizerPanel } from "@/components/customizer-panel";
 import { CompactSidebar } from "@/components/compact-sidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -33,7 +34,7 @@ export default function Home() {
   const [undoCounter, setUndoCounter] = useState<number>(0);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [autoZoom, setAutoZoom] = useState<boolean>(false);
-  const [showBoundingBox, setShowBoundingBox] = useState<boolean>(true);
+  const [showBoundingBox, setShowBoundingBox] = useState<boolean>(false);
   const [showDebug, setShowDebug] = useState<boolean>(false);
   const [cameraPosition, setCameraPosition] = useState({
     x: 0.51,
@@ -219,15 +220,27 @@ export default function Home() {
           if (config.chainConfig) {
             setChainConfig(config.chainConfig);
           }
-          if (config.chainSpacing) {
-            setChainSpacing(config.chainSpacing);
+          if (config.modelUrl) {
+            setModelUrl(config.modelUrl);
           }
         } catch (error) {
-          console.error("Error loading configuration:", error);
+          console.error("Failed to load configuration:", error);
         }
       };
       reader.readAsText(file);
     }
+  };
+
+  const handleLoadConfigurationClick = () => {
+    // Trigger file input click
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = (e) => {
+      const event = e as any;
+      handleLoadConfiguration(event);
+    };
+    input.click();
   };
 
   return (
@@ -242,7 +255,7 @@ export default function Home() {
           selectedSurface={selectedSurface}
           setSelectedSurface={setSelectedSurface}
           onSaveConfiguration={handleSaveConfiguration}
-          onLoadConfiguration={handleLoadConfiguration}
+          onLoadConfiguration={handleLoadConfigurationClick}
           meshes={meshes}
           nodes={nodes}
           onSelectMesh={handleSelectMesh}
@@ -399,24 +412,39 @@ export default function Home() {
         selectedSurface={selectedSurface}
         setSelectedSurface={setSelectedSurface}
         onSaveConfiguration={handleSaveConfiguration}
-        onLoadConfiguration={handleLoadConfiguration}
+        onLoadConfiguration={handleLoadConfigurationClick}
         meshes={meshes}
         nodes={nodes}
         onSelectMesh={handleSelectMesh}
         onHoverMesh={handleHoverMesh}
-        setChainLength={handleSetChainLength}
+        selectedMesh={selectedMesh}
+        hoveredMesh={hoveredMesh}
+        autoFitModel={autoFitModel}
+        setAutoFitModel={setAutoFitModel}
         chainSpacing={chainSpacing}
         setChainSpacing={setChainSpacing}
-        onUndo={() => setUndoCounter((c) => c + 1)}
+        applyMode={applyMode}
+        setApplyMode={setApplyMode}
+        undoCounter={undoCounter}
+        setUndoCounter={setUndoCounter}
         autoRotate={autoRotate}
         setAutoRotate={setAutoRotate}
+        showBoundingBox={showBoundingBox}
+        setShowBoundingBox={setShowBoundingBox}
         showDebug={showDebug}
         setShowDebug={setShowDebug}
+        modelUrl={modelUrl}
+        setModelUrl={setModelUrl}
         autoZoom={autoZoom}
         setAutoZoom={setAutoZoom}
         onCaptureImage={handleCaptureImage}
         onStartRecording={handleStartRecording}
         isRecording={isRecording}
+        setIsRecording={setIsRecording}
+        showRecordingIndicator={showRecordingIndicator}
+        setShowRecordingIndicator={setShowRecordingIndicator}
+        setChainLength={handleSetChainLength}
+        onUndo={() => setUndoCounter((c) => c + 1)}
       />
     </div>
   );

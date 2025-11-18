@@ -6,6 +6,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig } from "@/lib/chain-config-types";
 import { getMaterialColor } from "@/lib/chain-helpers";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ModelViewerProps {
   url: string;
@@ -39,12 +40,25 @@ export function ModelViewer({
   autoFitModel,
   showBoundingBox,
   autoRotate = false,
-  selectedLinkIndex,
+  selectedLinkIndex = 0,
   isRecording = false,
   onRecordingComplete,
   showRecordingIndicator = false,
 }: ModelViewerProps) {
-  const { scene } = useGLTF(url);
+  const [isLoading, setIsLoading] = useState(true);
+  const gltf = useGLTF(url);
+  const { scene } = gltf;
+
+  // Handle loading state properly
+  useEffect(() => {
+    // useGLTF handles loading internally, so we'll use a small delay
+    // to ensure the model is properly mounted and rendered
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [url]); // Reset loading when URL changes
   const originalMaterials = useRef<Map<string, THREE.Material>>(new Map());
   const appliedHistory = useRef<
     Array<{ name: string; material: THREE.Material }>
@@ -289,5 +303,9 @@ export function ModelViewer({
     }
   });
 
-  return <primitive object={scene} position={[0.2, 0, 0]} />;
+  return (
+    <>
+      <primitive object={scene} position={[0.2, 0, 0]} />
+    </>
+  );
 }

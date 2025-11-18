@@ -25,15 +25,17 @@ interface Mobile3DViewerProps {
   showDebug: boolean;
   cameraPosition: { x: number; y: number; z: number };
   modelPosition: { x: number; y: number; z: number };
-  setCameraPosition: (position: { x: number; y: number; z: number }) => void;
-  setModelPosition: (position: { x: number; y: number; z: number }) => void;
+  setCameraPosition: (pos: { x: number; y: number; z: number }) => void;
+  setModelPosition: (pos: { x: number; y: number; z: number }) => void;
   onMeshesAndNodesExtracted: (meshes: string[], nodes: string[]) => void;
   onSelectMesh: (mesh: string | null) => void;
   onHoverMesh: (mesh: string | null) => void;
-  isRecording: boolean;
   isMobile: boolean;
   autoZoom: boolean;
   setAutoZoom: (zoom: boolean) => void;
+  isRecording: boolean;
+  onRecordingComplete?: (videoBlob: Blob) => void;
+  showRecordingIndicator?: boolean;
 }
 
 export function Mobile3DViewer({
@@ -63,6 +65,8 @@ export function Mobile3DViewer({
   isMobile,
   autoZoom,
   setAutoZoom,
+  onRecordingComplete,
+  showRecordingIndicator,
 }: Mobile3DViewerProps) {
   const cameraRef = useRef<any>(null);
   const [modelScale, setModelScale] = useState(1);
@@ -205,18 +209,16 @@ export function Mobile3DViewer({
               showBoundingBox={showBoundingBox}
               selectedLinkIndex={selectedLinkIndex}
               isRecording={isRecording}
-              onMeshesAndNodesExtracted={onMeshesAndNodesExtracted}
+              onRecordingComplete={onRecordingComplete}
+              showRecordingIndicator={showRecordingIndicator}
             />
           </Stage>
 
           <OrbitControls
-            ref={cameraRef}
-            enablePan={true}
+            enablePan={false}
             enableZoom={true}
             enableRotate={true}
-            autoRotate={autoRotate}
-            autoRotateSpeed={1}
-            minDistance={0.5}
+            minDistance={2}
             maxDistance={10}
             maxPolarAngle={Math.PI}
             minPolarAngle={0}

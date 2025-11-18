@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,31 +20,46 @@ import {
 import { CustomizerPanel } from "@/components/customizer-panel";
 
 interface MobileBottomNavProps {
-  chainConfig: any;
-  setChainConfig: (config: any) => void;
+  chainConfig: ChainConfig;
+  setChainConfig: (config: ChainConfig) => void;
   selectedLinkIndex: number;
   setSelectedLinkIndex: (index: number) => void;
-  selectedSurface: string;
-  setSelectedSurface: (surface: string) => void;
+  selectedSurface: SurfaceId;
+  setSelectedSurface: (surface: SurfaceId) => void;
   onSaveConfiguration: () => void;
   onLoadConfiguration: () => void;
-  meshes: any[];
-  nodes: any;
-  onSelectMesh: (mesh: any) => void;
-  onHoverMesh: (mesh: any | null) => void;
-  setChainLength: (length: number) => void;
+  meshes: string[];
+  nodes: string[];
+  onSelectMesh: (mesh: string | null) => void;
+  onHoverMesh: (mesh: string | null) => void;
+  selectedMesh: string | null;
+  hoveredMesh: string | null;
+  autoFitModel: boolean;
+  setAutoFitModel: (fit: boolean) => void;
   chainSpacing: number;
   setChainSpacing: (spacing: number) => void;
-  onUndo: () => void;
+  applyMode: boolean;
+  setApplyMode: (mode: boolean) => void;
+  undoCounter: number;
+  setUndoCounter: (counter: number) => void;
   autoRotate: boolean;
   setAutoRotate: (rotate: boolean) => void;
+  showBoundingBox: boolean;
+  setShowBoundingBox: (show: boolean) => void;
   showDebug: boolean;
   setShowDebug: (show: boolean) => void;
+  modelUrl: string;
+  setModelUrl: (url: string) => void;
+  isRecording: boolean;
+  setIsRecording: (recording: boolean) => void;
+  showRecordingIndicator: boolean;
+  setShowRecordingIndicator: (show: boolean) => void;
+  setChainLength: (length: number) => void;
+  onUndo: () => void;
   autoZoom: boolean;
   setAutoZoom: (zoom: boolean) => void;
   onCaptureImage: () => void;
   onStartRecording: () => void;
-  isRecording: boolean;
 }
 
 export function MobileBottomNav({
