@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { SheetClose } from "@/components/ui/sheet"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Save, Upload, Settings, Palette, Wrench, RotateCw, Bug, Circle } from "lucide-react"
+import { Save, Upload, Settings, Palette, Wrench, RotateCw, Bug, Circle, Camera, Video, VideoOff } from "lucide-react"
 import type { ChainConfig, SurfaceId, Material, SurfaceType, SurfaceConfig } from "@/lib/chain-config-types"
 import { updateLinkMaterial, updateSurface, getMaterialColor, createDefaultGemstoneColors } from "@/lib/chain-helpers"
 
@@ -36,6 +36,9 @@ interface CustomizerPanelProps {
   setAutoRotate?: (value: boolean) => void
   showDebug?: boolean
   setShowDebug?: (value: boolean) => void
+  onCaptureImage?: () => void
+  onStartRecording?: () => void
+  isRecording?: boolean
   isInSheet?: boolean
 }
 
@@ -78,6 +81,9 @@ export function CustomizerPanel({
   setAutoRotate,
   showDebug,
   setShowDebug,
+  onCaptureImage,
+  onStartRecording,
+  isRecording,
   isInSheet = false,
 }: CustomizerPanelProps) {
   const currentLink = chainConfig.links[selectedLinkIndex]
@@ -181,7 +187,7 @@ export function CustomizerPanel({
 
             <TabsContent value="customize" className="p-4 sm:p-6 space-y-4 sm:space-y-6 mt-0">
               {/* Controls */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={autoRotate ? "default" : "outline"}
                   size="sm"
@@ -198,6 +204,26 @@ export function CustomizerPanel({
                   className="flex-1"
                 >
                   <Bug className="w-4 h-4" />
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCaptureImage}
+                  className="flex-1"
+                  disabled={isRecording}
+                >
+                  <Camera className="w-4 h-4" />
+                </Button>
+                
+                <Button
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={onStartRecording}
+                  className="flex-1"
+                  disabled={isRecording}
+                >
+                  {isRecording ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
                 </Button>
               </div>
 

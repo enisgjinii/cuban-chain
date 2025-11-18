@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { SheetClose } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Palette, Settings, Wrench, RotateCw, Bug, Circle, Save, Upload } from "lucide-react"
+import { Palette, Settings, Wrench, RotateCw, Bug, Circle, Save, Upload, Video, VideoOff, Camera } from "lucide-react"
 import type { ChainConfig, SurfaceId, Material, SurfaceType, SurfaceConfig } from "@/lib/chain-config-types"
 import { updateLinkMaterial, updateSurface, getMaterialColor, createDefaultGemstoneColors } from "@/lib/chain-helpers"
 
@@ -24,8 +24,8 @@ interface CompactSidebarProps {
   nodes: string[]
   selectedMesh?: string | null
   hoveredMesh?: string | null
-  onSelectMesh: (mesh: string | null) => void
-  onHoverMesh: (mesh: string | null) => void
+  onSelectMesh?: (mesh: string | null) => void
+  onHoverMesh?: (mesh: string | null) => void
   setChainLength: (length: number) => void
   chainSpacing?: number
   setChainSpacing?: (value: number) => void
@@ -36,6 +36,9 @@ interface CompactSidebarProps {
   setAutoRotate?: (value: boolean) => void
   showDebug?: boolean
   setShowDebug?: (value: boolean) => void
+  onCaptureImage?: () => void
+  onStartRecording?: () => void
+  isRecording?: boolean
   isInSheet?: boolean
 }
 
@@ -80,6 +83,9 @@ export function CompactSidebar({
   setAutoRotate,
   showDebug,
   setShowDebug,
+  onCaptureImage,
+  onStartRecording,
+  isRecording,
   isInSheet = false,
 }: CompactSidebarProps) {
   const currentLink = chainConfig.links[selectedLinkIndex]
@@ -166,7 +172,7 @@ export function CompactSidebar({
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
           {/* Controls */}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant={autoRotate ? "default" : "outline"}
               size="sm"
@@ -183,6 +189,26 @@ export function CompactSidebar({
               className="flex-1"
             >
               <Bug className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCaptureImage}
+              className="flex-1"
+              disabled={isRecording}
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              variant={isRecording ? "destructive" : "outline"}
+              size="sm"
+              onClick={onStartRecording}
+              className="flex-1"
+              disabled={isRecording}
+            >
+              {isRecording ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
             </Button>
           </div>
 

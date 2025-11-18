@@ -2,6 +2,7 @@
 
 import { useGLTF, useBounds } from "@react-three/drei"
 import { useEffect, useRef, useState } from "react"
+import { useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import type { ChainConfig } from "@/lib/chain-config-types"
 import { getMaterialColor } from "@/lib/chain-helpers"
@@ -20,6 +21,9 @@ interface ModelViewerProps {
   showBoundingBox?: boolean
   autoRotate?: boolean
   selectedLinkIndex?: number
+  isRecording?: boolean
+  onRecordingComplete?: (videoBlob: Blob) => void
+  showRecordingIndicator?: boolean
 }
 
 export function ModelViewer({
@@ -36,6 +40,9 @@ export function ModelViewer({
   showBoundingBox,
   autoRotate = false,
   selectedLinkIndex,
+  isRecording = false,
+  onRecordingComplete,
+  showRecordingIndicator = false,
 }: ModelViewerProps) {
   const { scene } = useGLTF(url)
   const originalMaterials = useRef<Map<string, THREE.Material>>(new Map())
@@ -43,6 +50,11 @@ export function ModelViewer({
   const clonesRef = useRef<THREE.Object3D[]>([])
   const gemstoneGroupsRef = useRef<THREE.Group[]>([])
   const boundingBoxRef = useRef<THREE.BoxHelper | null>(null)
+  const { gl, scene: threeScene, camera } = useThree()
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const recordingStartTimeRef = useRef<number>(0)
+  const recordingLineRef = useRef<THREE.Line | null>(null)
 
   // Extract meshes and nodes on load
   useEffect(() => {
@@ -111,6 +123,68 @@ export function ModelViewer({
       }
     })
   }, [scene, chainConfig.links, selectedLinkIndex])
+
+  // Recording functionality
+  useEffect(() => {
+    if (isRecording && !mediaRecorderRef.current) {
+      // Start recording
+      const canvas = gl.domElement
+      const stream = canvas.captureStream(30) // 30 FPS
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp8'
+      })
+
+      recordedChunksRef.current = []
+      recordingStartTimeRef.current = Date.now()
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+        onRecordingComplete?.(blob)
+        mediaRecorderRef.current = null
+        recordedChunksRef.current = []
+      }
+
+      mediaRecorder.start()
+      mediaRecorderRef.current = mediaRecorder
+
+      // Add red recording line
+      const geometry = new THREE.BufferGeometry()
+      const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 })
+      const points = [
+        new THREE.Vector3(-2, 2, 0),
+        new THREE.Vector3(2, 2, 0)
+      ]
+      geometry.setFromPoints(points)
+      recordingLineRef.current = new THREE.Line(geometry, material)
+      threeScene.add(recordingLineRef.current)
+
+    } else if (!isRecording && mediaRecorderRef.current) {
+      // Stop recording
+      mediaRecorderRef.current.stop()
+
+      // Remove red recording line
+      if (recordingLineRef.current) {
+        threeScene.remove(recordingLineRef.current)
+        recordingLineRef.current = null
+      }
+    }
+  }, [isRecording, gl, threeScene, onRecordingComplete])
+
+  // Auto-stop recording after 5 seconds
+  useFrame(() => {
+    if (isRecording && mediaRecorderRef.current && recordingStartTimeRef.current) {
+      const elapsed = Date.now() - recordingStartTimeRef.current
+      if (elapsed >= 5000) { // 5 seconds
+        mediaRecorderRef.current.stop()
+      }
+    }
+  })
 
   return <primitive object={scene} position={[0.2, 0, 0]} />
 }

@@ -9,7 +9,7 @@ import { ModelViewer } from "@/components/model-viewer"
 import { CustomizerPanel } from "@/components/customizer-panel"
 import { CompactSidebar } from "@/components/compact-sidebar"
 import { Button } from "@/components/ui/button"
-import { Camera, Move3D, Copy, Menu } from "lucide-react"
+import { Camera, Move3D, Copy, Menu, Video, VideoOff } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types"
 import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers"
@@ -32,6 +32,8 @@ export default function Home() {
   const [showDebug, setShowDebug] = useState<boolean>(false)
   const [cameraPosition, setCameraPosition] = useState({ x: 0.51, y: 1.25, z: 0.74 })
   const [modelPosition, setModelPosition] = useState({ x: 0, y: 0, z: 0 })
+  const [isRecording, setIsRecording] = useState<boolean>(false)
+  const [showRecordingIndicator, setShowRecordingIndicator] = useState<boolean>(false)
   const cameraRef = useRef<any>(null)
 
   const handleSaveConfiguration = () => {
@@ -45,8 +47,51 @@ export default function Home() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "cuban-chain-configuration.json"
+    a.download = "chain-configuration.json"
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleCaptureImage = () => {
+    const canvas = document.querySelector('canvas')
+    if (canvas) {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `chain-capture-${Date.now()}.png`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        }
+      })
+    }
+  }
+
+  const handleStartRecording = () => {
+    setIsRecording(true)
+    setShowRecordingIndicator(true)
+    setAutoRotate(true) // Enable auto-rotate during recording
+  }
+
+  const handleRecordingComplete = (videoBlob: Blob) => {
+    setIsRecording(false)
+    setShowRecordingIndicator(false)
+    setAutoRotate(false) // Disable auto-rotate after recording
+    
+    // Download the video
+    const url = URL.createObjectURL(videoBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `chain-recording-${Date.now()}.webm`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const copyPositionData = () => {
@@ -153,8 +198,10 @@ export default function Home() {
           setAutoRotate={setAutoRotate}
           showDebug={showDebug}
           setShowDebug={setShowDebug}
-          isInSheet={false}
-        />
+          onCaptureImage={handleCaptureImage}
+          onStartRecording={handleStartRecording}
+          isRecording={isRecording}
+        />  
       </div>
 
       {/* Mobile Menu Button */}
@@ -187,6 +234,9 @@ export default function Home() {
               setAutoRotate={setAutoRotate}
               showDebug={showDebug}
               setShowDebug={setShowDebug}
+              onCaptureImage={handleCaptureImage}
+              onStartRecording={handleStartRecording}
+              isRecording={isRecording}
               isInSheet={true}
             />
           </SheetContent>
@@ -215,6 +265,9 @@ export default function Home() {
               showBoundingBox={showBoundingBox}
               autoRotate={autoRotate}
               selectedLinkIndex={selectedLinkIndex}
+              isRecording={isRecording}
+              onRecordingComplete={handleRecordingComplete}
+              showRecordingIndicator={showRecordingIndicator}
             />
 
             <OrbitControls ref={cameraRef} makeDefault enableRotate={true} autoRotate={autoRotate} autoRotateSpeed={1} />
@@ -224,6 +277,39 @@ export default function Home() {
         
         {/* Debug Panel */}
         <div className="absolute top-4 right-4 z-10">
+          {/* Capture and Recording Buttons */}
+          <div className="flex gap-2 mb-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCaptureImage}
+              className="bg-background/95 backdrop-blur-sm rounded-2xl"
+              disabled={isRecording}
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Capture
+            </Button>
+            <Button
+              size="sm"
+              variant={isRecording ? "destructive" : "outline"}
+              onClick={handleStartRecording}
+              className="bg-background/95 backdrop-blur-sm rounded-2xl"
+              disabled={isRecording}
+            >
+              {isRecording ? (
+                <>
+                  <VideoOff className="w-4 h-4 mr-2" />
+                  Recording...
+                </>
+              ) : (
+                <>
+                  <Video className="w-4 h-4 mr-2" />
+                  Record
+                </>
+              )}
+            </Button>
+          </div>
+          
           {showDebug && (
             <div className="mt-2 p-3 bg-black/80 text-white rounded-2xl text-xs font-mono backdrop-blur-sm border border-white/20">
               <div className="flex items-center justify-between mb-2">
