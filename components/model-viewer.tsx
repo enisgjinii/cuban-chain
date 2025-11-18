@@ -3,17 +3,15 @@
 import { useGLTF, useBounds } from "@react-three/drei"
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
+import type { ChainConfig } from "@/lib/chain-config-types"
+import { getMaterialColor } from "@/lib/chain-helpers"
 
 interface ModelViewerProps {
   url: string
-  color: string
-  material: string
-  metalness: number
-  roughness: number
+  chainConfig: ChainConfig
   onMeshesAndNodesExtracted?: (meshes: string[], nodes: string[]) => void
   selectedMesh: string | null
   hoveredMesh: string | null
-  chainCount?: number
   chainSpacing?: number
   applyMode?: boolean
   setApplyMode?: (value: boolean) => void
@@ -21,12 +19,25 @@ interface ModelViewerProps {
   autoFitModel?: boolean
 }
 
-export function ModelViewer({ url, color, material, metalness, roughness, onMeshesAndNodesExtracted, selectedMesh, hoveredMesh, chainCount = 1, chainSpacing = 0.95, applyMode, setApplyMode, undoCounter, autoFitModel }: ModelViewerProps) {
+export function ModelViewer({
+  url,
+  chainConfig,
+  onMeshesAndNodesExtracted,
+  selectedMesh,
+  hoveredMesh,
+  chainSpacing = 0.95,
+  applyMode,
+  setApplyMode,
+  undoCounter,
+  autoFitModel
+}: ModelViewerProps) {
   const { scene } = useGLTF(url)
   const originalMaterials = useRef<Map<string, THREE.Material>>(new Map())
   const appliedHistory = useRef<Array<{ name: string; material: THREE.Material }>>([])
   const clonesRef = useRef<THREE.Object3D[]>([])
+  const gemstoneGroupsRef = useRef<THREE.Group[]>([])
 
+  // Extract meshes and nodes on load
   useEffect(() => {
     const meshes: string[] = []
     const nodes: string[] = []
@@ -49,57 +60,9 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     if (onMeshesAndNodesExtracted) {
       onMeshesAndNodesExtracted(meshes, nodes)
     }
+  }, [scene, onMeshesAndNodesExtracted])
 
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh
-
-        // Hide the Plane mesh
-        if (mesh.name === "Plane") {
-          mesh.visible = false
-          return
-        }
-
-        let baseMaterial: THREE.Material
-
-        if (material === "standard") {
-          baseMaterial = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(color),
-            metalness,
-            roughness,
-          })
-        } else if (material === "basic") {
-          baseMaterial = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(color),
-          })
-        } else if (material === "phong") {
-          baseMaterial = new THREE.MeshPhongMaterial({
-            color: new THREE.Color(color),
-            shininess: (1 - roughness) * 100,
-          })
-        } else {
-          baseMaterial = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(color),
-            metalness,
-            roughness,
-          })
-        }
-
-        // Apply highlighting
-        if (mesh.name === selectedMesh || mesh.name === hoveredMesh) {
-          if (baseMaterial instanceof THREE.MeshStandardMaterial || baseMaterial instanceof THREE.MeshPhongMaterial) {
-            baseMaterial.emissive = new THREE.Color(0x444444)
-          } else if (baseMaterial instanceof THREE.MeshBasicMaterial) {
-            baseMaterial.color = new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.3)
-          }
-        }
-
-        mesh.material = baseMaterial
-      }
-    })
-  }, [scene, color, material, metalness, roughness, onMeshesAndNodesExtracted, selectedMesh, hoveredMesh, chainCount])
-
-  // Clone / extend the model to create multiple chain links
+  // Clone links based on chain length
   useEffect(() => {
     // cleanup any previously created clones
     clonesRef.current.forEach((c) => {
@@ -107,10 +70,18 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     })
     clonesRef.current = []
 
-    // nothing to do for single original link
-    if (!chainCount || chainCount <= 1) return
+    // cleanup gemstones
+    gemstoneGroupsRef.current.forEach((g) => {
+      if (g.parent) g.parent.remove(g)
+    })
+    gemstoneGroupsRef.current = []
 
-    // Try to locate a good template for cloning. We look for names that indicate a link.
+    const chainLength = chainConfig.chainLength
+
+    // nothing to do for single original link
+    if (!chainLength || chainLength <= 1) return
+
+    // Try to locate a good template for cloning
     let template: THREE.Object3D | null = null
     const candidates: THREE.Object3D[] = []
     scene.traverse((child) => {
@@ -123,7 +94,7 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     })
 
     if (candidates.length > 0) {
-      // prefer the parent group of the first candidate but avoid using `scene` as the template.
+      // prefer the parent group of the first candidate
       const candidate = candidates[0]
       const parent = candidate.parent
       if (parent && parent !== scene) {
@@ -146,12 +117,12 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     bbox.getSize(size)
     const spacing = size.x > 0 ? size.x * chainSpacing : 1
 
-    // hide the original template group to avoid overlapping — but do NOT hide the scene root
+    // hide the original template group to avoid overlapping
     const templateWasScene = template === scene
     if (template && !templateWasScene) template.visible = false
 
     // Create clones and position them along the X axis
-    for (let i = 0; i < chainCount; i++) {
+    for (let i = 0; i < chainLength; i++) {
       const clone = template.clone(true)
       // reposition clones relative to template's world position
       const worldPos = new THREE.Vector3()
@@ -160,10 +131,12 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
       clone.position.x += i * spacing
       scene.add(clone)
       clonesRef.current.push(clone)
+
       // Make each clone's mesh names unique by appending an index
       clone.traverse((c) => {
         if ((c as THREE.Mesh).isMesh) {
-          c.name = `${c.name || "mesh"}-${i}`
+          c.name = `${c.name || "mesh"}-link${i}`
+          c.userData.linkIndex = i
         }
       })
     }
@@ -176,9 +149,9 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
       // only restore visibility if we hid the template and it still exists
       if (template && !templateWasScene) template.visible = true
     }
-  }, [scene, chainCount, url, chainSpacing])
+  }, [scene, chainConfig.chainLength, url, chainSpacing])
 
-  // Re-extract names after clones are added so the UI can show unique names
+  // Re-extract names after clones are added
   useEffect(() => {
     if (!onMeshesAndNodesExtracted) return
     const meshes: string[] = []
@@ -192,8 +165,113 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     onMeshesAndNodesExtracted(meshes, nodes)
   }, [scene, clonesRef.current.length, onMeshesAndNodesExtracted])
 
-  // Auto-fit camera via useBounds when autoFitModel is true. Use `refresh().clip().fit()` so
-  // Stage does not observe changes continuously and cause repeated camera adjustments.
+  // Apply materials and surface customizations to each link
+  useEffect(() => {
+    // Clear old gemstones
+    gemstoneGroupsRef.current.forEach((g) => {
+      if (g.parent) g.parent.remove(g)
+    })
+    gemstoneGroupsRef.current = []
+
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh
+
+        // Hide the Plane mesh
+        if (mesh.name === "Plane") {
+          mesh.visible = false
+          return
+        }
+
+        // Determine link index from userData (set during cloning)
+        const linkIndex = mesh.userData.linkIndex ?? 0
+        const linkConfig = chainConfig.links[linkIndex]
+
+        if (!linkConfig) return
+
+        // Get material color
+        const materialColor = getMaterialColor(linkConfig.material)
+
+        // Create base material
+        const baseMaterial = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(materialColor),
+          metalness: 0.9,
+          roughness: 0.1,
+        })
+
+        // Apply highlighting for selected/hovered
+        if (mesh.name === selectedMesh || mesh.name === hoveredMesh) {
+          baseMaterial.emissive = new THREE.Color(0x444444)
+        }
+
+        mesh.material = baseMaterial
+
+        // Apply surface customizations
+        // For now, we'll add gemstones programmatically as separate meshes
+        // This is a simplified implementation - a real one would identify specific surfaces
+
+        // Check if any surface has gemstones
+        let hasGemstones = false
+        let gemstoneColor = '#ffffff'
+
+        Object.entries(linkConfig.surfaces).forEach(([surfaceId, surfaceConfig]) => {
+          if (surfaceConfig.type === 'gemstones' && surfaceConfig.gemstoneColors) {
+            hasGemstones = true
+            // Use first stone color as representative
+            gemstoneColor = surfaceConfig.gemstoneColors.stone1
+          }
+
+          // Apply enamel (as a slight color tint to the base material)
+          if (surfaceConfig.type === 'enamel' && surfaceConfig.enamelColor) {
+            const enamelColor = new THREE.Color(surfaceConfig.enamelColor)
+            baseMaterial.color.lerp(enamelColor, 0.3)
+          }
+
+          // Engraving would use normal maps - placeholder for now
+          if (surfaceConfig.type === 'engraving') {
+            baseMaterial.roughness = 0.3 // Make surface slightly rougher to simulate engraving
+          }
+        })
+
+        // Add gemstones to the link
+        if (hasGemstones) {
+          const gemGroup = new THREE.Group()
+          const gemGeometry = new THREE.SphereGeometry(0.05, 16, 16)
+
+          // Position gemstones on top of the mesh
+          const bbox = new THREE.Box3().setFromObject(mesh)
+          const center = new THREE.Vector3()
+          bbox.getCenter(center)
+          const size = new THREE.Vector3()
+          bbox.getSize(size)
+
+          // Add 3 gemstones along the top
+          for (let i = 0; i < 3; i++) {
+            const gemMaterial = new THREE.MeshStandardMaterial({
+              color: new THREE.Color(gemstoneColor),
+              metalness: 0.1,
+              roughness: 0.0,
+              emissive: new THREE.Color(gemstoneColor).multiplyScalar(0.2),
+            })
+
+            const gem = new THREE.Mesh(gemGeometry, gemMaterial)
+            const xOffset = (i - 1) * size.x * 0.25
+            gem.position.set(
+              center.x + xOffset,
+              bbox.max.y + 0.08, // Slightly above the top surface
+              center.z
+            )
+            gemGroup.add(gem)
+          }
+
+          scene.add(gemGroup)
+          gemstoneGroupsRef.current.push(gemGroup)
+        }
+      }
+    })
+  }, [scene, chainConfig, selectedMesh, hoveredMesh])
+
+  // Auto-fit camera
   const bounds = useBounds()
   useEffect(() => {
     if (!autoFitModel) return
@@ -207,56 +285,32 @@ export function ModelViewer({ url, color, material, metalness, roughness, onMesh
     return () => clearTimeout(id)
   }, [autoFitModel, scene, clonesRef.current.length, bounds])
 
-  // Apply / Undo logic
+  // Apply / Undo logic (keeping for backward compatibility but may not be needed)
   useEffect(() => {
     if (!applyMode) return
 
     if (!selectedMesh) {
-      // still in apply mode until the user picks a mesh
       return
     }
 
-    // Apply current material configuration to all meshes whose name matches selectedMesh
-    const appliedEntries: Array<{ name: string; material: THREE.Material }> = []
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
         if (mesh.name === selectedMesh) {
           const prevMaterial = (mesh.material as THREE.Material).clone()
-          appliedEntries.push({ name: mesh.name, material: prevMaterial })
-
-          // create new base material using the same rules as above
-          let newMaterial: THREE.Material
-          if (material === "standard") {
-            newMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness })
-          } else if (material === "basic") {
-            newMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(color) })
-          } else if (material === "phong") {
-            newMaterial = new THREE.MeshPhongMaterial({ color: new THREE.Color(color), shininess: (1 - roughness) * 100 })
-          } else {
-            newMaterial = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), metalness, roughness })
-          }
-
-          mesh.material = newMaterial
+          appliedHistory.current.push({ name: mesh.name, material: prevMaterial })
         }
       }
     })
 
-    if (appliedEntries.length > 0) {
-      appliedHistory.current.push(...appliedEntries)
-    }
-
-    // exit apply mode after applying
     if (setApplyMode) setApplyMode(false)
-  }, [applyMode, selectedMesh, scene, color, material, metalness, roughness, setApplyMode])
+  }, [applyMode, selectedMesh, scene, setApplyMode])
 
-  // Undo last apply — parent increments undoCounter to trigger
   useEffect(() => {
     if (!undoCounter) return
     const entry = appliedHistory.current.pop()
     if (!entry) return
 
-    // find meshes with the same name and restore
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh

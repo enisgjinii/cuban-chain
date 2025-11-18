@@ -10,24 +10,18 @@ import { CustomizerPanel } from "@/components/customizer-panel"
 import { Button } from "@/components/ui/button"
 import { Upload, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types"
+import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers"
 
 export default function Home() {
   const [modelUrl, setModelUrl] = useState<string>("/models/Cuban-Link.glb")
-  const [material, setMaterial] = useState("silver")
-  const [color, setColor] = useState("#c0c0c0")
-  const [metalness, setMetalness] = useState(0.8)
-  const [roughness, setRoughness] = useState(0.2)
-  const [applyInserts, setApplyInserts] = useState(false)
-  const [insertType, setInsertType] = useState("diamonds")
-  const [insertColor, setInsertColor] = useState("colorless")
-  const [applyToSides, setApplyToSides] = useState(false)
-  const [enamelColor, setEnamelColor] = useState("none")
-  const [engraving, setEngraving] = useState("none")
+  const [chainConfig, setChainConfig] = useState<ChainConfig>(createDefaultConfig(12))
+  const [selectedLinkIndex, setSelectedLinkIndex] = useState<number>(0)
+  const [selectedSurface, setSelectedSurface] = useState<SurfaceId>('top1')
   const [meshes, setMeshes] = useState<string[]>([])
   const [nodes, setNodes] = useState<string[]>([])
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null)
   const [hoveredMesh, setHoveredMesh] = useState<string | null>(null)
-  const [chainCount, setChainCount] = useState<number>(12)
   const [autoFitModel, setAutoFitModel] = useState<boolean>(false)
   const [chainSpacing, setChainSpacing] = useState<number>(0.95)
   const [applyMode, setApplyMode] = useState<boolean>(false)
@@ -43,24 +37,14 @@ export default function Home() {
 
   const handleSaveConfiguration = () => {
     const config = {
-      material,
-      color,
-      metalness,
-      roughness,
-      applyInserts,
-      insertType,
-      insertColor,
-      applyToSides,
-      enamelColor,
-      engraving,
-      chainCount,
+      chainConfig,
       chainSpacing,
     }
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = "model-configuration.json"
+    a.download = "cuban-chain-configuration.json"
     a.click()
   }
 
@@ -77,8 +61,8 @@ export default function Home() {
     setHoveredMesh(mesh)
   }
 
-  const handleSetChainCount = (count: number) => {
-    setChainCount(count)
+  const handleSetChainLength = (length: number) => {
+    setChainConfig(setChainLength(chainConfig, length))
   }
 
   const handleLoadConfiguration = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,18 +72,12 @@ export default function Home() {
       reader.onload = (e) => {
         try {
           const config = JSON.parse(e.target?.result as string)
-          setMaterial(config.material)
-          setColor(config.color)
-          setMetalness(config.metalness)
-          setRoughness(config.roughness)
-          setApplyInserts(config.applyInserts)
-          setInsertType(config.insertType)
-          setInsertColor(config.insertColor)
-          setApplyToSides(config.applyToSides)
-          setEnamelColor(config.enamelColor)
-          setEngraving(config.engraving)
-            if (config.chainCount) setChainCount(config.chainCount)
-              if (config.chainSpacing) setChainSpacing(config.chainSpacing)
+          if (config.chainConfig) {
+            setChainConfig(config.chainConfig)
+          }
+          if (config.chainSpacing) {
+            setChainSpacing(config.chainSpacing)
+          }
         } catch (error) {
           console.error("Error loading configuration:", error)
         }
@@ -123,7 +101,7 @@ export default function Home() {
             </Button>
           </label>
           <input id="file-upload" type="file" accept=".glb,.gltf" onChange={handleFileUpload} className="hidden" />
-                  autoFitModel={autoFitModel}
+          autoFitModel={autoFitModel}
 
           <Sheet>
             <SheetTrigger asChild className="lg:hidden">
@@ -134,34 +112,19 @@ export default function Home() {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:w-96 p-0 overflow-y-auto">
               <CustomizerPanel
-                material={material}
-                setMaterial={setMaterial}
-                color={color}
-                setColor={setColor}
-                metalness={metalness}
-                setMetalness={setMetalness}
-                roughness={roughness}
-                setRoughness={setRoughness}
-                applyInserts={applyInserts}
-                setApplyInserts={setApplyInserts}
-                insertType={insertType}
-                setInsertType={setInsertType}
-                insertColor={insertColor}
-                setInsertColor={setInsertColor}
-                applyToSides={applyToSides}
-                setApplyToSides={setApplyToSides}
-                enamelColor={enamelColor}
-                setEnamelColor={setEnamelColor}
-                engraving={engraving}
-                setEngraving={setEngraving}
+                chainConfig={chainConfig}
+                setChainConfig={setChainConfig}
+                selectedLinkIndex={selectedLinkIndex}
+                setSelectedLinkIndex={setSelectedLinkIndex}
+                selectedSurface={selectedSurface}
+                setSelectedSurface={setSelectedSurface}
                 onSaveConfiguration={handleSaveConfiguration}
                 onLoadConfiguration={handleLoadConfiguration}
                 meshes={meshes}
                 nodes={nodes}
                 onSelectMesh={handleSelectMesh}
                 onHoverMesh={handleHoverMesh}
-                chainCount={chainCount}
-                setChainCount={handleSetChainCount}
+                setChainLength={handleSetChainLength}
                 chainSpacing={chainSpacing}
                 setChainSpacing={setChainSpacing}
                 applyMode={applyMode}
@@ -177,62 +140,42 @@ export default function Home() {
 
         <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
           <Suspense fallback={null}>
-            <Stage environment="city" intensity={0.6} adjustCamera={false} center={false} observe={false}>
-              {/* When autoFitModel is true stage will auto-adjust camera to fit model */}
-              <ModelViewer
-                url={modelUrl}
-                color={color}
-                material={material}
-                metalness={metalness}
-                roughness={roughness}
-                onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
-                selectedMesh={selectedMesh}
-                hoveredMesh={hoveredMesh}
-                chainCount={chainCount}
-                chainSpacing={chainSpacing}
-                applyMode={applyMode}
-                setApplyMode={setApplyMode}
-                undoCounter={undoCounter}
-                autoFitModel={autoFitModel}
-              />
-            </Stage>
-              
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[10, 10, 5]} intensity={1} />
+            {/* When autoFitModel is true stage will auto-adjust camera to fit model */}
+            <ModelViewer
+              url={modelUrl}
+              chainConfig={chainConfig}
+              onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
+              selectedMesh={selectedMesh}
+              hoveredMesh={hoveredMesh}
+              chainSpacing={chainSpacing}
+              applyMode={applyMode}
+              setApplyMode={setApplyMode}
+              undoCounter={undoCounter}
+              autoFitModel={autoFitModel}
+            />
+
             <OrbitControls makeDefault />
-            <Environment preset="city" />
           </Suspense>
         </Canvas>
       </div>
 
       <div className="hidden lg:block">
         <CustomizerPanel
-          material={material}
-          setMaterial={setMaterial}
-          color={color}
-          setColor={setColor}
-          metalness={metalness}
-          setMetalness={setMetalness}
-          roughness={roughness}
-          setRoughness={setRoughness}
-          applyInserts={applyInserts}
-          setApplyInserts={setApplyInserts}
-          insertType={insertType}
-          setInsertType={setInsertType}
-          insertColor={insertColor}
-          setInsertColor={setInsertColor}
-          applyToSides={applyToSides}
-          setApplyToSides={setApplyToSides}
-          enamelColor={enamelColor}
-          setEnamelColor={setEnamelColor}
-          engraving={engraving}
-          setEngraving={setEngraving}
+          chainConfig={chainConfig}
+          setChainConfig={setChainConfig}
+          selectedLinkIndex={selectedLinkIndex}
+          setSelectedLinkIndex={setSelectedLinkIndex}
+          selectedSurface={selectedSurface}
+          setSelectedSurface={setSelectedSurface}
           onSaveConfiguration={handleSaveConfiguration}
           onLoadConfiguration={handleLoadConfiguration}
           meshes={meshes}
           nodes={nodes}
           onSelectMesh={handleSelectMesh}
           onHoverMesh={handleHoverMesh}
-          chainCount={chainCount}
-          setChainCount={handleSetChainCount}
+          setChainLength={handleSetChainLength}
           chainSpacing={chainSpacing}
           setChainSpacing={setChainSpacing}
           applyMode={applyMode}
