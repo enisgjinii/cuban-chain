@@ -16,6 +16,10 @@ import { Camera, Move3D, Copy, Menu, Video, VideoOff } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
 import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
+import {
+  DEFAULT_ADDITIONAL_LINK_OFFSET,
+  type AdditionalLinkOffsetMap,
+} from "@/lib/chain-geometry";
 
 export default function Home() {
   const [modelUrl, setModelUrl] = useState<string>("/models/Cuban-Link.glb");
@@ -46,11 +50,20 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showRecordingIndicator, setShowRecordingIndicator] =
     useState<boolean>(false);
-  const [additionalLinkOffsets, setAdditionalLinkOffsets] = useState({
-    x: -0.009, // lateral shift (left)
-    y: 0.007,  // up
-    z: 0.006,  // forward
+  const createDefaultOffset = () => ({ ...DEFAULT_ADDITIONAL_LINK_OFFSET });
+  const [additionalLinkOffsets, setAdditionalLinkOffsets] = useState<AdditionalLinkOffsetMap>({
+    8: createDefaultOffset(),
+    9: createDefaultOffset(),
   });
+  const handleAdditionalLinkOffsetChange = (
+    linkNumber: number,
+    offsets: { x: number; y: number; z: number },
+  ) => {
+    setAdditionalLinkOffsets((prev) => ({
+      ...prev,
+      [linkNumber]: offsets,
+    }));
+  };
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
 
@@ -279,7 +292,7 @@ export default function Home() {
           isRecording={isRecording}
           sceneRef={sceneRef}
           additionalLinkOffsets={additionalLinkOffsets}
-          setAdditionalLinkOffsets={setAdditionalLinkOffsets}
+          setAdditionalLinkOffsets={handleAdditionalLinkOffsetChange}
         />
       </div>
 

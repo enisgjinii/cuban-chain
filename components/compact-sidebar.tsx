@@ -49,7 +49,12 @@ import {
   getMaterialColor,
   createDefaultGemstoneColors,
 } from "@/lib/chain-helpers";
-import { MAX_CHAIN_LINKS } from "@/lib/chain-geometry";
+import {
+  BASE_LINK_COUNT,
+  MAX_CHAIN_LINKS,
+  type AdditionalLinkOffsetMap,
+  DEFAULT_ADDITIONAL_LINK_OFFSET,
+} from "@/lib/chain-geometry";
 
 interface CompactSidebarProps {
   chainConfig: ChainConfig;
@@ -79,8 +84,8 @@ interface CompactSidebarProps {
   isRecording?: boolean;
   isInSheet?: boolean;
   sceneRef?: any;
-  additionalLinkOffsets?: { x: number; y: number; z: number };
-  setAdditionalLinkOffsets?: (offsets: { x: number; y: number; z: number }) => void;
+  additionalLinkOffsets?: AdditionalLinkOffsetMap;
+  setAdditionalLinkOffsets?: (link: number, offsets: { x: number; y: number; z: number }) => void;
 }
 
 const surfaceTypeOptions: Array<{ name: string; value: SurfaceType }> = [
@@ -138,6 +143,31 @@ export function CompactSidebar({
   const [nodeVisibility, setNodeVisibility] = useState<Record<string, boolean>>({});
   const [meshGroups, setMeshGroups] = useState<Array<{ linkIndex: number; meshes: string[] }>>([]);
   const [groupVisibility, setGroupVisibility] = useState<Record<number, boolean>>({});
+  const extraLinkCount = Math.max(chainConfig.chainLength - BASE_LINK_COUNT, 0);
+  const [activeExtraLink, setActiveExtraLink] = useState<number>(
+    BASE_LINK_COUNT + 1,
+  );
+
+  useEffect(() => {
+    if (extraLinkCount === 0) return;
+    const minLink = BASE_LINK_COUNT + 1;
+    const maxLink = BASE_LINK_COUNT + extraLinkCount;
+    if (activeExtraLink < minLink || activeExtraLink > maxLink) {
+      setActiveExtraLink(minLink);
+    }
+  }, [extraLinkCount, activeExtraLink]);
+
+  const getCurrentExtraOffsets = () =>
+    additionalLinkOffsets?.[activeExtraLink] ?? DEFAULT_ADDITIONAL_LINK_OFFSET;
+
+  const handleExtraOffsetChange = (axis: "x" | "y" | "z", value: number) => {
+    if (!setAdditionalLinkOffsets) return;
+    const baseOffsets = getCurrentExtraOffsets();
+    setAdditionalLinkOffsets(activeExtraLink, {
+      ...baseOffsets,
+      [axis]: value,
+    });
+  };
 
   // Auto-group meshes by spatial position
   useEffect(() => {
@@ -863,61 +893,81 @@ export function CompactSidebar({
               </div>
 
               {/* Additional Link Position Controls */}
-              {chainConfig.chainLength > 7 && additionalLinkOffsets && setAdditionalLinkOffsets && (
+              {extraLinkCount > 0 && setAdditionalLinkOffsets && (
                 <div className="space-y-3">
-                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                    Additional Link Position
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                    <span>Additional Link Position</span>
+                    <Select
+                      value={String(activeExtraLink)}
+                      onValueChange={(value) => setActiveExtraLink(Number(value))}
+                    >
+                      <SelectTrigger className="h-7 w-28 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: extraLinkCount }, (_, idx) => BASE_LINK_COUNT + idx + 1).map((link) => (
+                          <SelectItem key={link} value={String(link)}>
+                            Link {link}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-2 rounded border border-border/50 bg-muted/30 p-3">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">X Offset (Left/Right)</Label>
-                      <div className="flex items-center gap-2">
-                        <Slider
-                          value={[additionalLinkOffsets.x]}
-                          onValueChange={([value]) => setAdditionalLinkOffsets({ ...additionalLinkOffsets, x: value })}
-                          min={-0.1}
-                          max={0.1}
-                          step={0.001}
-                          className="flex-1"
-                        />
-                        <span className="text-xs text-muted-foreground w-12 text-right">
-                          {additionalLinkOffsets.x.toFixed(3)}
-                        </span>
+                  {(() => {
+                    const offsets = getCurrentExtraOffsets();
+                    return (
+                      <div className="space-y-2 rounded border border-border/50 bg-muted/30 p-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">X Offset (Left/Right)</Label>
+                          <div className="flex items-center gap-2">
+                            <Slider
+                              value={[offsets.x]}
+                              onValueChange={([value]) => handleExtraOffsetChange("x", value)}
+                              min={-0.1}
+                              max={0.1}
+                              step={0.001}
+                              className="flex-1"
+                            />
+                            <span className="text-xs text-muted-foreground w-12 text-right">
+                              {offsets.x.toFixed(3)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Y Offset (Up/Down)</Label>
+                          <div className="flex items-center gap-2">
+                            <Slider
+                              value={[offsets.y]}
+                              onValueChange={([value]) => handleExtraOffsetChange("y", value)}
+                              min={-0.1}
+                              max={0.1}
+                              step={0.001}
+                              className="flex-1"
+                            />
+                            <span className="text-xs text-muted-foreground w-12 text-right">
+                              {offsets.y.toFixed(3)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Z Offset (Forward/Back)</Label>
+                          <div className="flex items-center gap-2">
+                            <Slider
+                              value={[offsets.z]}
+                              onValueChange={([value]) => handleExtraOffsetChange("z", value)}
+                              min={-0.1}
+                              max={0.1}
+                              step={0.001}
+                              className="flex-1"
+                            />
+                            <span className="text-xs text-muted-foreground w-12 text-right">
+                              {offsets.z.toFixed(3)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Y Offset (Up/Down)</Label>
-                      <div className="flex items-center gap-2">
-                        <Slider
-                          value={[additionalLinkOffsets.y]}
-                          onValueChange={([value]) => setAdditionalLinkOffsets({ ...additionalLinkOffsets, y: value })}
-                          min={-0.1}
-                          max={0.1}
-                          step={0.001}
-                          className="flex-1"
-                        />
-                        <span className="text-xs text-muted-foreground w-12 text-right">
-                          {additionalLinkOffsets.y.toFixed(3)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Z Offset (Forward/Back)</Label>
-                      <div className="flex items-center gap-2">
-                        <Slider
-                          value={[additionalLinkOffsets.z]}
-                          onValueChange={([value]) => setAdditionalLinkOffsets({ ...additionalLinkOffsets, z: value })}
-                          min={-0.1}
-                          max={0.1}
-                          step={0.001}
-                          className="flex-1"
-                        />
-                        <span className="text-xs text-muted-foreground w-12 text-right">
-                          {additionalLinkOffsets.z.toFixed(3)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
               )}
             </>

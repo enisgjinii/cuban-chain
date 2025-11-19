@@ -9,6 +9,8 @@ import { getMaterialColor } from "@/lib/chain-helpers";
 import {
   BASE_LINK_COUNT,
   ADDITIONAL_LINK_MESH_GROUPS,
+  DEFAULT_ADDITIONAL_LINK_OFFSET,
+  type AdditionalLinkOffsetMap,
 } from "@/lib/chain-geometry";
 
 interface ModelViewerProps {
@@ -29,7 +31,7 @@ interface ModelViewerProps {
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
   sceneRef?: React.MutableRefObject<any>;
-  additionalLinkOffsets?: { x: number; y: number; z: number };
+  additionalLinkOffsets?: AdditionalLinkOffsetMap;
 }
 
 export function ModelViewer({
@@ -50,7 +52,7 @@ export function ModelViewer({
   onRecordingComplete,
   showRecordingIndicator = false,
   sceneRef,
-  additionalLinkOffsets = { x: -0.009, y: 0.007, z: 0.006 },
+  additionalLinkOffsets = {},
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const gltf = useGLTF(url);
@@ -177,6 +179,16 @@ export function ModelViewer({
   useEffect(() => {
     if (!scene) return;
 
+    // Remove any previously created extra-link clones before recalculating
+    if (clonesRef.current.length) {
+      clonesRef.current.forEach((obj) => {
+        try {
+          scene.remove(obj);
+        } catch {}
+      });
+      clonesRef.current = [];
+    }
+
     const specialMeshMap = new Map<string, number>();
     ADDITIONAL_LINK_MESH_GROUPS.forEach((names, groupIdx) => {
       names.forEach((name) => specialMeshMap.set(name, groupIdx));
@@ -189,6 +201,11 @@ export function ModelViewer({
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
+
+        // Skip any previously created extra-link clones from being grouped as regular meshes
+        if ((mesh as any).userData?.__isExtraLinkClone) {
+          return;
+        }
 
         if (!originalPositions.current.has(mesh.uuid)) {
           originalPositions.current.set(mesh.uuid, mesh.position.clone());
@@ -282,8 +299,14 @@ export function ModelViewer({
       (effectiveBase + averageSpan * 2.1) * (chainSpacing ?? 1.1);
 
     const spacingVector = baseDirection.clone().multiplyScalar(spacingMagnitude);
+    const baseAnchor =
+      groupCenters[groupCenters.length - 1]?.clone() ?? new THREE.Vector3();
 
-    const lateralShift = new THREE.Vector3(additionalLinkOffsets.x, additionalLinkOffsets.y, additionalLinkOffsets.z);
+    const getOffsetVector = (linkNumber: number) => {
+      const offsets =
+        additionalLinkOffsets?.[linkNumber] ?? DEFAULT_ADDITIONAL_LINK_OFFSET;
+      return new THREE.Vector3(offsets.x, offsets.y, offsets.z);
+    };
 
     specialMeshData.forEach((group, groupIdx) => {
       const requiredLength = BASE_LINK_COUNT + groupIdx + 1;
@@ -297,9 +320,9 @@ export function ModelViewer({
         )
         .divideScalar(group.length);
 
-      const lastBaseCenter =
-        groupCenters[groupCenters.length - 1] ?? specialCenter.clone();
-      const targetCenter = lastBaseCenter
+      const linkNumber = BASE_LINK_COUNT + groupIdx + 1;
+      const lateralShift = getOffsetVector(linkNumber);
+      const targetCenter = baseAnchor
         .clone()
         .add(spacingVector.clone().multiplyScalar(groupIdx + 1))
         .add(lateralShift);
@@ -312,11 +335,56 @@ export function ModelViewer({
         }
         mesh.visible = shouldDisplay;
       });
+
     });
+
+    // Clone the first additional group if we need more extra links than are provided in the model
+    const totalNeededExtras = Math.max(chainConfig.chainLength - BASE_LINK_COUNT, 0);
+    const providedExtras = ADDITIONAL_LINK_MESH_GROUPS.length;
+    const missingExtras = Math.max(totalNeededExtras - providedExtras, 0);
+
+    if (missingExtras > 0 && specialMeshData.length > 0) {
+      const sourceGroup = specialMeshData[0]; // Reuse the 8th-link meshes "as-is"
+      if (sourceGroup.length > 0) {
+        const sourceOriginalCenter = sourceGroup
+          .reduce((acc, entry) => acc.add(entry.worldPos.clone()), new THREE.Vector3())
+          .divideScalar(sourceGroup.length);
+
+        for (let i = 0; i < missingExtras; i++) {
+          const groupIdx = providedExtras + i;
+          const linkNumber = BASE_LINK_COUNT + groupIdx + 1;
+          const lateralShift = getOffsetVector(linkNumber);
+          const targetCenter = baseAnchor
+            .clone()
+            .add(spacingVector.clone().multiplyScalar(groupIdx + 1))
+            .add(lateralShift);
+          const offset = targetCenter.clone().sub(sourceOriginalCenter);
+
+          // Create clones for each mesh in the source group
+          sourceGroup.forEach(({ mesh }) => {
+            const clone = mesh.clone(true) as THREE.Mesh;
+            
+            // Use the original position from the ref
+            const srcOriginalPos = originalPositions.current.get(mesh.uuid) ?? mesh.position.clone();
+            clone.position.copy(srcOriginalPos.clone().add(offset));
+            clone.visible = true;
+            clone.name = `${mesh.name}_extra_${providedExtras + i + 1}`;
+            (clone as any).userData = {
+              ...(clone as any).userData,
+              __isExtraLinkClone: true,
+            };
+            scene.add(clone);
+            clonesRef.current.push(clone);
+          });
+        }
+      }
+    }
 
     console.log("Chain length:", chainConfig.chainLength);
     console.log("Visible base links:", Math.min(chainConfig.chainLength, BASE_LINK_COUNT));
-    console.log("Special link groups shown:", specialMeshData.filter((_, idx) => chainConfig.chainLength >= BASE_LINK_COUNT + idx + 1).length);
+    const shownProvidedExtras = specialMeshData.filter((_, idx) => chainConfig.chainLength >= BASE_LINK_COUNT + idx + 1).length;
+    const shownClonedExtras = Math.max(chainConfig.chainLength - BASE_LINK_COUNT - shownProvidedExtras, 0);
+    console.log("Special link groups shown (provided, cloned):", shownProvidedExtras, shownClonedExtras);
   }, [scene, chainConfig.chainLength, chainSpacing, additionalLinkOffsets]);
 
   // Apply materials to the model

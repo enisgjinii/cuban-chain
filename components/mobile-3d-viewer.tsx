@@ -6,6 +6,7 @@ import { Suspense, useRef, useEffect, useState } from "react";
 import { ModelViewer } from "@/components/model-viewer";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Move3D, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
+import type { AdditionalLinkOffsetMap } from "@/lib/chain-geometry";
 
 interface Mobile3DViewerProps {
   modelUrl: string;
@@ -36,7 +37,7 @@ interface Mobile3DViewerProps {
   isRecording: boolean;
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
-  additionalLinkOffsets?: { x: number; y: number; z: number };
+  additionalLinkOffsets?: AdditionalLinkOffsetMap;
 }
 
 export function Mobile3DViewer({
