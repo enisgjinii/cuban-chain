@@ -6,6 +6,10 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig } from "@/lib/chain-config-types";
 import { getMaterialColor } from "@/lib/chain-helpers";
+import {
+  BASE_LINK_COUNT,
+  ADDITIONAL_LINK_MESH_GROUPS,
+} from "@/lib/chain-geometry";
 
 interface ModelViewerProps {
   url: string;
@@ -25,6 +29,7 @@ interface ModelViewerProps {
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
   sceneRef?: React.MutableRefObject<any>;
+  additionalLinkOffsets?: { x: number; y: number; z: number };
 }
 
 export function ModelViewer({
@@ -45,6 +50,7 @@ export function ModelViewer({
   onRecordingComplete,
   showRecordingIndicator = false,
   sceneRef,
+  additionalLinkOffsets = { x: -0.009, y: 0.007, z: 0.006 },
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const gltf = useGLTF(url);
@@ -68,6 +74,7 @@ export function ModelViewer({
     return () => clearTimeout(timer);
   }, [url]); // Reset loading when URL changes
   const originalMaterials = useRef<Map<string, THREE.Material>>(new Map());
+  const originalPositions = useRef<Map<string, THREE.Vector3>>(new Map());
   const appliedHistory = useRef<
     Array<{ name: string; material: THREE.Material }>
   >([]);
@@ -170,51 +177,147 @@ export function ModelViewer({
   useEffect(() => {
     if (!scene) return;
 
-    // Special meshes that form additional links (shown when chainLength >= their link number)
-    const specialMeshPair = ["B5-24-古巴链-OK-版-倒铜_1009", "B5-24-古巴链-OK-版-倒铜_1010"];
-    
-    // Collect all meshes with their positions
-    const regularMeshData: Array<{ name: string; mesh: THREE.Mesh; x: number }> = [];
-    let specialMeshes: THREE.Mesh[] = [];
-    
+    const specialMeshMap = new Map<string, number>();
+    ADDITIONAL_LINK_MESH_GROUPS.forEach((names, groupIdx) => {
+      names.forEach((name) => specialMeshMap.set(name, groupIdx));
+    });
+
+    const regularMeshData: Array<{ mesh: THREE.Mesh; worldPos: THREE.Vector3 }> = [];
+    const specialMeshData: Array<Array<{ mesh: THREE.Mesh; worldPos: THREE.Vector3 }>> =
+      ADDITIONAL_LINK_MESH_GROUPS.map(() => []);
+
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        if (mesh.name && mesh.name !== "Plane") {
-          // Get world position
-          const worldPos = new THREE.Vector3();
-          mesh.getWorldPosition(worldPos);
-          
-          // Separate special meshes from regular ones
-          if (specialMeshPair.includes(mesh.name)) {
-            specialMeshes.push(mesh);
-          } else {
-            regularMeshData.push({ name: mesh.name, mesh, x: worldPos.x });
+
+        if (!originalPositions.current.has(mesh.uuid)) {
+          originalPositions.current.set(mesh.uuid, mesh.position.clone());
+        } else {
+          const originalPos = originalPositions.current.get(mesh.uuid);
+          if (originalPos) {
+            mesh.position.copy(originalPos);
           }
+        }
+
+        if (mesh.name === "Plane") {
+          mesh.visible = false;
+          return;
+        }
+
+        const worldPos = new THREE.Vector3();
+        mesh.getWorldPosition(worldPos);
+
+        const specialGroupIdx = specialMeshMap.get(mesh.name);
+        if (specialGroupIdx !== undefined) {
+          specialMeshData[specialGroupIdx].push({ mesh, worldPos });
+        } else {
+          regularMeshData.push({ mesh, worldPos });
         }
       }
     });
 
     // Sort regular meshes by X position (left to right)
-    regularMeshData.sort((a, b) => a.x - b.x);
+    regularMeshData.sort((a, b) => a.worldPos.x - b.worldPos.x);
 
-    // Divide regular meshes into 7 base links - ALL ALWAYS VISIBLE
-    regularMeshData.forEach((data) => {
-      data.mesh.visible = true;
+    const meshesPerLink = Math.max(
+      1,
+      Math.ceil(regularMeshData.length / BASE_LINK_COUNT),
+    );
+    const groupCenters: THREE.Vector3[] = [];
+    const groupSpans: number[] = [];
+
+    for (let i = 0; i < BASE_LINK_COUNT; i++) {
+      const startIdx = i * meshesPerLink;
+      const endIdx = Math.min(startIdx + meshesPerLink, regularMeshData.length);
+      const group = regularMeshData.slice(startIdx, endIdx);
+      if (!group.length) continue;
+
+      const center = group
+        .reduce(
+          (acc, entry) => acc.add(entry.worldPos.clone()),
+          new THREE.Vector3(),
+        )
+        .divideScalar(group.length);
+      groupCenters.push(center);
+
+      const xs = group.map((entry) => entry.worldPos.x);
+      const span = Math.abs(Math.max(...xs) - Math.min(...xs)) || 0.01;
+      groupSpans.push(span);
+
+      const shouldShow = i < Math.min(chainConfig.chainLength, BASE_LINK_COUNT);
+      group.forEach(({ mesh }) => {
+        mesh.visible = shouldShow;
+      });
+    }
+
+    let baseDirection = new THREE.Vector3(1, 0, 0);
+    let baseDistance = 0.02;
+
+    if (groupCenters.length >= 2) {
+      baseDirection = groupCenters[groupCenters.length - 1]
+        .clone()
+        .sub(groupCenters[groupCenters.length - 2]);
+      baseDistance = baseDirection.length();
+      if (baseDistance === 0) {
+        baseDistance =
+          groupSpans.reduce((sum, span) => sum + span, 0) /
+            (groupSpans.length || 1) || 0.02;
+      }
+      baseDirection.normalize();
+    } else if (regularMeshData.length >= 2) {
+      const dir = regularMeshData[regularMeshData.length - 1].worldPos
+        .clone()
+        .sub(regularMeshData[0].worldPos);
+      baseDistance = dir.length() / BASE_LINK_COUNT;
+      baseDirection = dir.normalize();
+    }
+
+    const averageSpan =
+      groupSpans.length > 0
+        ? groupSpans.reduce((sum, span) => sum + span, 0) / groupSpans.length
+        : baseDistance;
+
+    const effectiveBase = baseDistance || averageSpan || 0.02;
+    const spacingMagnitude =
+      (effectiveBase + averageSpan * 2.1) * (chainSpacing ?? 1.1);
+
+    const spacingVector = baseDirection.clone().multiplyScalar(spacingMagnitude);
+
+    const lateralShift = new THREE.Vector3(additionalLinkOffsets.x, additionalLinkOffsets.y, additionalLinkOffsets.z);
+
+    specialMeshData.forEach((group, groupIdx) => {
+      const requiredLength = BASE_LINK_COUNT + groupIdx + 1;
+      const shouldDisplay = chainConfig.chainLength >= requiredLength;
+      if (!group.length) return;
+
+      const specialCenter = group
+        .reduce(
+          (acc, entry) => acc.add(entry.worldPos.clone()),
+          new THREE.Vector3(),
+        )
+        .divideScalar(group.length);
+
+      const lastBaseCenter =
+        groupCenters[groupCenters.length - 1] ?? specialCenter.clone();
+      const targetCenter = lastBaseCenter
+        .clone()
+        .add(spacingVector.clone().multiplyScalar(groupIdx + 1))
+        .add(lateralShift);
+      const offset = targetCenter.clone().sub(specialCenter);
+
+      group.forEach(({ mesh }) => {
+        const originalPos = originalPositions.current.get(mesh.uuid);
+        if (originalPos) {
+          mesh.position.copy(originalPos.clone().add(offset));
+        }
+        mesh.visible = shouldDisplay;
+      });
     });
-    
-    // Special meshes are shown based on chainLength
-    // Link 8 = first special pair (1009, 1010)
-    specialMeshes.forEach((mesh) => {
-      mesh.visible = chainConfig.chainLength >= 8;
-    });
-    
-    // Debug logging
+
     console.log("Chain length:", chainConfig.chainLength);
-    console.log("Special meshes found:", specialMeshes.length);
-    console.log("Special meshes visible:", chainConfig.chainLength >= 8);
-    console.log("Regular meshes:", regularMeshData.length);
-  }, [scene, chainConfig.chainLength]);
+    console.log("Visible base links:", Math.min(chainConfig.chainLength, BASE_LINK_COUNT));
+    console.log("Special link groups shown:", specialMeshData.filter((_, idx) => chainConfig.chainLength >= BASE_LINK_COUNT + idx + 1).length);
+  }, [scene, chainConfig.chainLength, chainSpacing, additionalLinkOffsets]);
 
   // Apply materials to the model
   useEffect(() => {

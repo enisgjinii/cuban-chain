@@ -46,6 +46,11 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showRecordingIndicator, setShowRecordingIndicator] =
     useState<boolean>(false);
+  const [additionalLinkOffsets, setAdditionalLinkOffsets] = useState({
+    x: -0.009, // lateral shift (left)
+    y: 0.007,  // up
+    z: 0.006,  // forward
+  });
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
 
@@ -273,6 +278,8 @@ export default function Home() {
           onStartRecording={handleStartRecording}
           isRecording={isRecording}
           sceneRef={sceneRef}
+          additionalLinkOffsets={additionalLinkOffsets}
+          setAdditionalLinkOffsets={setAdditionalLinkOffsets}
         />
       </div>
 
@@ -314,6 +321,7 @@ export default function Home() {
             isMobile={isMobile}
             autoZoom={autoZoom}
             setAutoZoom={setAutoZoom}
+            additionalLinkOffsets={additionalLinkOffsets}
           />
         ) : (
           <Canvas
@@ -344,6 +352,7 @@ export default function Home() {
                   onRecordingComplete={handleRecordingComplete}
                   showRecordingIndicator={showRecordingIndicator}
                   sceneRef={sceneRef}
+                  additionalLinkOffsets={additionalLinkOffsets}
                 />
               </Stage>
 

@@ -36,6 +36,7 @@ interface Mobile3DViewerProps {
   isRecording: boolean;
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
+  additionalLinkOffsets?: { x: number; y: number; z: number };
 }
 
 export function Mobile3DViewer({
@@ -67,6 +68,7 @@ export function Mobile3DViewer({
   setAutoZoom,
   onRecordingComplete,
   showRecordingIndicator,
+  additionalLinkOffsets,
 }: Mobile3DViewerProps) {
   const cameraRef = useRef<any>(null);
   const [modelScale, setModelScale] = useState(1);
@@ -211,6 +213,7 @@ export function Mobile3DViewer({
               isRecording={isRecording}
               onRecordingComplete={onRecordingComplete}
               showRecordingIndicator={showRecordingIndicator}
+              additionalLinkOffsets={additionalLinkOffsets}
             />
           </Stage>
 
