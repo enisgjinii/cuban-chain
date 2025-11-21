@@ -391,6 +391,9 @@ export function ModelViewer({
   useEffect(() => {
     if (!scene) return;
 
+    // Group meshes by link index based on position
+    const meshData: Array<{ mesh: THREE.Mesh; x: number }> = [];
+    
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
@@ -401,29 +404,57 @@ export function ModelViewer({
           return;
         }
 
-        // Get material color from the first link (or selected link if available)
-        const linkIndex = Math.min(
-          selectedLinkIndex || 0,
-          chainConfig.links.length - 1,
-        );
-        const linkConfig = chainConfig.links[linkIndex];
-        const materialColor = getMaterialColor(
-          linkConfig?.material || "silver",
-        );
-
-        // Create and apply material
-        const material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(materialColor),
-          metalness: 0.9,
-          roughness: 0.1,
-        });
-
-        mesh.material = material;
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        // Get world position for sorting
+        const worldPos = new THREE.Vector3();
+        mesh.getWorldPosition(worldPos);
+        meshData.push({ mesh, x: worldPos.x });
       }
     });
-  }, [scene, chainConfig.links, selectedLinkIndex]);
+
+    // Sort meshes by X position (left to right)
+    meshData.sort((a, b) => a.x - b.x);
+
+    // Calculate how many meshes per link
+    const meshesPerLink = Math.max(
+      1,
+      Math.ceil(meshData.length / chainConfig.chainLength),
+    );
+
+    // Apply materials to each link based on its configuration
+    meshData.forEach(({ mesh }, index) => {
+      // Determine which link this mesh belongs to
+      const linkIndex = Math.min(
+        Math.floor(index / meshesPerLink),
+        chainConfig.links.length - 1,
+      );
+      
+      const linkConfig = chainConfig.links[linkIndex];
+      if (!linkConfig) return;
+
+      const materialColor = getMaterialColor(linkConfig.material || "silver");
+
+      // Add slight highlight to selected link
+      const isSelected = linkIndex === selectedLinkIndex;
+      const baseColor = new THREE.Color(materialColor);
+      
+      // If selected, add a slight brightening effect
+      if (isSelected) {
+        baseColor.multiplyScalar(1.15);
+      }
+
+      // Create and apply material
+      const material = new THREE.MeshStandardMaterial({
+        color: baseColor,
+        metalness: 0.9,
+        roughness: isSelected ? 0.05 : 0.1, // Make selected link slightly shinier
+        emissive: isSelected ? baseColor.clone().multiplyScalar(0.1) : undefined,
+      });
+
+      mesh.material = material;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    });
+  }, [scene, chainConfig.links, chainConfig.chainLength, selectedLinkIndex]);
 
   // Recording functionality
   useEffect(() => {

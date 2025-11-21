@@ -161,3 +161,31 @@ export function createDefaultGemstoneColors(
     };
   }
 }
+
+/**
+ * Copy configuration from one link to all other links
+ */
+export function copyLinkToAll(
+  config: ChainConfig,
+  sourceLinkIndex: number,
+): ChainConfig {
+  if (sourceLinkIndex < 0 || sourceLinkIndex >= config.links.length) {
+    return config;
+  }
+
+  const sourceLink = config.links[sourceLinkIndex];
+  const newLinks = config.links.map(() => ({
+    ...sourceLink,
+    surfaces: {
+      top1: { ...sourceLink.surfaces.top1 },
+      top2: { ...sourceLink.surfaces.top2 },
+      side1: { ...sourceLink.surfaces.side1 },
+      side2: { ...sourceLink.surfaces.side2 },
+    },
+  }));
+
+  return {
+    ...config,
+    links: newLinks,
+  };
+}

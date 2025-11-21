@@ -28,6 +28,8 @@ import {
   Camera,
   Video,
   VideoOff,
+  Link,
+  Copy,
 } from "lucide-react";
 import type {
   ChainConfig,
@@ -41,6 +43,7 @@ import {
   updateSurface,
   getMaterialColor,
   createDefaultGemstoneColors,
+  copyLinkToAll,
 } from "@/lib/chain-helpers";
 
 interface CustomizerPanelProps {
@@ -227,6 +230,92 @@ export function CustomizerPanel({
       <div className="h-full flex flex-col">
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {/* Individual Link Selection */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="link-select"
+              className="text-xs font-semibold flex items-center gap-1"
+            >
+              <Link className="w-3 h-3" />
+              Select Link to Customize
+            </Label>
+            <Select
+              value={String(selectedLinkIndex)}
+              onValueChange={(value) => setSelectedLinkIndex(Number(value))}
+            >
+              <SelectTrigger className="w-full h-8">
+                <SelectValue placeholder="Choose link..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg max-h-64">
+                {Array.from({ length: chainConfig.chainLength }, (_, idx) => (
+                  <SelectItem key={idx} value={String(idx)}>
+                    Link {idx + 1}
+                    {currentLink && chainConfig.links[idx] && 
+                     chainConfig.links[idx].material !== "silver" && 
+                     ` (${chainConfig.links[idx].material})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="text-[10px] text-muted-foreground px-1">
+              Editing: Link {selectedLinkIndex + 1} of {chainConfig.chainLength}
+            </div>
+          </div>
+
+          {/* Copy to All Links Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setChainConfig(copyLinkToAll(chainConfig, selectedLinkIndex))}
+            className="w-full h-7 text-xs"
+          >
+            <Copy className="w-3 h-3 mr-1" />
+            Copy Link {selectedLinkIndex + 1} to All Links
+          </Button>
+
+          <Separator />
+
+          {/* Surface Selection */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Surface Selection</Label>
+            <div className="grid grid-cols-2 gap-1">
+              <Button
+                variant={selectedSurface === "top1" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedSurface("top1")}
+                className="h-7 text-xs"
+              >
+                Top 1
+              </Button>
+              <Button
+                variant={selectedSurface === "top2" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedSurface("top2")}
+                className="h-7 text-xs"
+              >
+                Top 2
+              </Button>
+              <Button
+                variant={selectedSurface === "side1" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedSurface("side1")}
+                className="h-7 text-xs"
+              >
+                Side 1
+              </Button>
+              <Button
+                variant={selectedSurface === "side2" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedSurface("side2")}
+                className="h-7 text-xs"
+              >
+                Side 2
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Material Selection */}
           <div className="space-y-2">
             <Label
