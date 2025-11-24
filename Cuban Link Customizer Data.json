@@ -2,427 +2,427 @@
   "meshes": [
     {
       "index": 0,
-      "name": "sm_cubanLink_gold_a1",
+      "name": "Chain_End_A",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 1,
-      "name": "Cube",
+      "name": "Link1_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 2,
-      "name": "Cube001",
+      "name": "Link1_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 3,
-      "name": "Cube002",
+      "name": "Link1_Part03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 4,
-      "name": "Cube003",
+      "name": "Link1_Part04",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 5,
-      "name": "Cube004",
+      "name": "Link1_Part05",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 6,
-      "name": "Cube005",
+      "name": "Link1_Part06",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 7,
-      "name": "Cube006",
+      "name": "Link1_Part07",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 8,
-      "name": "Cube007",
+      "name": "Link1_Part08",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 9,
-      "name": "Cube008",
+      "name": "Link1_Part09",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 10,
-      "name": "Cube009",
+      "name": "Link1_Part10",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 11,
-      "name": "Cube010",
+      "name": "Link1_Part11",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 12,
-      "name": "Cube011",
+      "name": "Link1_Part12",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 13,
-      "name": "Cube012",
+      "name": "Link1_Part13",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 14,
-      "name": "Diamond_Octagon001",
+      "name": "Link1_Diamond01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 15,
-      "name": "Diamond_Octagon002",
+      "name": "Link1_Diamond02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 16,
-      "name": "Diamond_Octagon003",
+      "name": "Link1_Diamond03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 17,
-      "name": "fill",
+      "name": "Fill_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 18,
-      "name": "sm_cubanLink_gold_b1",
+      "name": "Chain_End_B",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 19,
-      "name": "fill001",
+      "name": "Fill_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 20,
-      "name": "B5-24-古巴链-OK-版-倒铜_1006",
+      "name": "ExtraLink_Part06",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 21,
-      "name": "B5-24-古巴链-OK-版-倒铜_1007",
+      "name": "ExtraLink_Part07",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 22,
-      "name": "Cube013",
+      "name": "Link2_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 23,
-      "name": "Cube014",
+      "name": "Link2_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 24,
-      "name": "Cube015",
+      "name": "Link2_Part03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 25,
-      "name": "Cube016",
+      "name": "Link2_Part04",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 26,
-      "name": "Cube017",
+      "name": "Link2_Part05",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 27,
-      "name": "Cube018",
+      "name": "Link2_Part06",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 28,
-      "name": "Cube020",
+      "name": "Link2_Part08",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 29,
-      "name": "Cube021",
+      "name": "Link2_Part09",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 30,
-      "name": "Cube022",
+      "name": "Link2_Part10",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 31,
-      "name": "Cube023",
+      "name": "Link2_Part11",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 32,
-      "name": "Cube024",
+      "name": "Link2_Part12",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 33,
-      "name": "Cube025",
+      "name": "Link2_Part13",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 34,
-      "name": "Diamond_Octagon007",
+      "name": "Extra_Diamond01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 35,
-      "name": "file2002",
+      "name": "File_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 36,
-      "name": "file2004",
+      "name": "File_Part04",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 37,
-      "name": "file2005",
+      "name": "File_Part05",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 38,
-      "name": "B5-24-古巴链-OK-版-倒铜_1009",
+      "name": "ExtraLink_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 39,
-      "name": "B5-24-古巴链-OK-版-倒铜_1010",
+      "name": "ExtraLink_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 40,
-      "name": "B5-24-古巴链-OK-版-倒铜_1008",
+      "name": "ExtraLink_Part03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 41,
-      "name": "B5-24-古巴链-OK-版-倒铜_1002",
+      "name": "ExtraLink_Part04",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 42,
-      "name": "B5-24-古巴链-OK-版-倒铜_1001",
+      "name": "ExtraLink_Part05",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 43,
-      "name": "Cube019",
+      "name": "Link2_Part07",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 44,
-      "name": "Cube026",
+      "name": "Link3_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 45,
-      "name": "Cube027",
+      "name": "Link3_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 46,
-      "name": "Cube028",
+      "name": "Link3_Part03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 47,
-      "name": "Cube029",
+      "name": "Link3_Part04",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 48,
-      "name": "Cube030",
+      "name": "Link3_Part05",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 49,
-      "name": "Cube031",
+      "name": "Link3_Part06",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 50,
-      "name": "Cube032",
+      "name": "Link3_Part07",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 51,
-      "name": "Cube033",
+      "name": "Link3_Part08",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 52,
-      "name": "file2001",
+      "name": "File_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 53,
-      "name": "file2003",
+      "name": "File_Part03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 54,
-      "name": "Plane",
+      "name": "Ground_Plane",
       "visible": false,
       "type": "mesh"
     },
     {
       "index": 55,
-      "name": "B5-24-古巴链-OK-版-倒铜_1005",
+      "name": "ExtraLink_Part12",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 56,
-      "name": "Cube034",
+      "name": "Link3_Part09",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 57,
-      "name": "Cube035",
+      "name": "Link3_Part10",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 58,
-      "name": "Cube036",
+      "name": "Link3_Part11",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 59,
-      "name": "Cube037",
+      "name": "Link3_Part12",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 60,
-      "name": "Cube038",
+      "name": "Link3_Part13",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 61,
-      "name": "Cube039",
+      "name": "Link4_Part01",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 62,
-      "name": "Cube040",
+      "name": "Link4_Part02",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 63,
-      "name": "Cube041",
+      "name": "Link4_Part03",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 64,
-      "name": "Cube042",
+      "name": "Link4_Part04",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 65,
-      "name": "file2006",
+      "name": "File_Part06",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 66,
-      "name": "file2007",
+      "name": "File_Part07",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 67,
-      "name": "B5-24-古巴链-OK-版-倒铜_1011",
+      "name": "ExtraLink_Part08",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 68,
-      "name": "B5-24-古巴链-OK-版-倒铜_1014",
+      "name": "ExtraLink_Part09",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 69,
-      "name": "B5-24-古巴链-OK-版-倒铜_1015",
+      "name": "ExtraLink_Part10",
       "visible": true,
       "type": "mesh"
     },
     {
       "index": 70,
-      "name": "B5-24-古巴链-OK-版-倒铜_1016",
+      "name": "ExtraLink_Part11",
       "visible": true,
       "type": "mesh"
     }

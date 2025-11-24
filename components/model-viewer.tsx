@@ -12,6 +12,7 @@ import {
   DEFAULT_ADDITIONAL_LINK_OFFSET,
   type AdditionalLinkOffsetMap,
 } from "@/lib/chain-geometry";
+import { MESH_RENAMES } from "@/lib/mesh-names";
 
 interface ModelViewerProps {
   url: string;
@@ -141,6 +142,11 @@ export function ModelViewer({
     const nodes: string[] = [];
 
     scene.traverse((child) => {
+      // Apply renaming if a mapping exists
+      if (child.name && MESH_RENAMES[child.name]) {
+        child.name = MESH_RENAMES[child.name];
+      }
+
       if (child.name) {
         if ((child as THREE.Mesh).isMesh) {
           meshes.push(child.name);
