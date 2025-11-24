@@ -184,7 +184,7 @@ export function ModelViewer({
       clonesRef.current.forEach((obj) => {
         try {
           scene.remove(obj);
-        } catch {}
+        } catch { }
       });
       clonesRef.current = [];
     }
@@ -278,7 +278,7 @@ export function ModelViewer({
       if (baseDistance === 0) {
         baseDistance =
           groupSpans.reduce((sum, span) => sum + span, 0) /
-            (groupSpans.length || 1) || 0.02;
+          (groupSpans.length || 1) || 0.02;
       }
       baseDirection.normalize();
     } else if (regularMeshData.length >= 2) {
@@ -346,27 +346,46 @@ export function ModelViewer({
     if (missingExtras > 0 && specialMeshData.length > 0) {
       const sourceGroup = specialMeshData[0]; // Reuse the 8th-link meshes "as-is"
       if (sourceGroup.length > 0) {
+        // Calculate the center using the original world positions (before any offset is applied)
         const sourceOriginalCenter = sourceGroup
           .reduce((acc, entry) => acc.add(entry.worldPos.clone()), new THREE.Vector3())
           .divideScalar(sourceGroup.length);
 
+        // Calculate where the 8th link is positioned
+        const eighthLinkLateralShift = getOffsetVector(BASE_LINK_COUNT + 1);
+        const eighthLinkCenter = baseAnchor
+          .clone()
+          .add(spacingVector.clone().multiplyScalar(1))
+          .add(eighthLinkLateralShift);
+
+        // Use a tighter spacing for plain links (0.7x of the base spacing)
+        const plainLinkSpacing = spacingVector.clone().multiplyScalar(0.7);
+
         for (let i = 0; i < missingExtras; i++) {
-          const groupIdx = providedExtras + i;
-          const linkNumber = BASE_LINK_COUNT + groupIdx + 1;
+          const linkNumber = BASE_LINK_COUNT + providedExtras + i + 1;
           const lateralShift = getOffsetVector(linkNumber);
-          const targetCenter = baseAnchor
+
+          // Position each cloned link relative to the 8th link's position
+          const targetCenter = eighthLinkCenter
             .clone()
-            .add(spacingVector.clone().multiplyScalar(groupIdx + 1))
-            .add(lateralShift);
+            .add(plainLinkSpacing.clone().multiplyScalar(i + 1))
+            .add(lateralShift)
+            .sub(eighthLinkLateralShift); // Remove the 8th link's lateral shift, we'll add the new one
+
+          // Calculate the offset the same way as for the 8th link
           const offset = targetCenter.clone().sub(sourceOriginalCenter);
 
           // Create clones for each mesh in the source group
           sourceGroup.forEach(({ mesh }) => {
             const clone = mesh.clone(true) as THREE.Mesh;
-            
-            // Use the original position from the ref
-            const srcOriginalPos = originalPositions.current.get(mesh.uuid) ?? mesh.position.clone();
-            clone.position.copy(srcOriginalPos.clone().add(offset));
+
+            // Get the original local position of the source mesh
+            const originalPos = originalPositions.current.get(mesh.uuid);
+            if (originalPos) {
+              // Apply the same offset approach as the 8th link positioning
+              clone.position.copy(originalPos.clone().add(offset));
+            }
+
             clone.visible = true;
             clone.name = `${mesh.name}_extra_${providedExtras + i + 1}`;
             (clone as any).userData = {
@@ -393,7 +412,7 @@ export function ModelViewer({
 
     // Group meshes by link index based on position
     const meshData: Array<{ mesh: THREE.Mesh; x: number }> = [];
-    
+
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
@@ -427,7 +446,7 @@ export function ModelViewer({
         Math.floor(index / meshesPerLink),
         chainConfig.links.length - 1,
       );
-      
+
       const linkConfig = chainConfig.links[linkIndex];
       if (!linkConfig) return;
 
@@ -436,7 +455,7 @@ export function ModelViewer({
       // Add slight highlight to selected link
       const isSelected = linkIndex === selectedLinkIndex;
       const baseColor = new THREE.Color(materialColor);
-      
+
       // If selected, add a slight brightening effect
       if (isSelected) {
         baseColor.multiplyScalar(1.15);
@@ -448,12 +467,12 @@ export function ModelViewer({
         metalness: 0.9,
         roughness: isSelected ? 0.05 : 0.1, // Make selected link slightly shinier
       };
-      
+
       // Only add emissive if selected
       if (isSelected) {
         materialConfig.emissive = baseColor.clone().multiplyScalar(0.1);
       }
-      
+
       const material = new THREE.MeshStandardMaterial(materialConfig);
 
       mesh.material = material;
