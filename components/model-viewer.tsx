@@ -443,12 +443,18 @@ export function ModelViewer({
       }
 
       // Create and apply material
-      const material = new THREE.MeshStandardMaterial({
+      const materialConfig: any = {
         color: baseColor,
         metalness: 0.9,
         roughness: isSelected ? 0.05 : 0.1, // Make selected link slightly shinier
-        emissive: isSelected ? baseColor.clone().multiplyScalar(0.1) : undefined,
-      });
+      };
+      
+      // Only add emissive if selected
+      if (isSelected) {
+        materialConfig.emissive = baseColor.clone().multiplyScalar(0.1);
+      }
+      
+      const material = new THREE.MeshStandardMaterial(materialConfig);
 
       mesh.material = material;
       mesh.castShadow = true;

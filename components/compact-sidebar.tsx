@@ -254,6 +254,55 @@ export function CompactSidebar({
     setGroupVisibility(prev => ({ ...prev, [linkIndex]: newVisibility }));
   };
 
+  const toggleDiamonds = () => {
+    if (!sceneRef?.current) return;
+    
+    // Find all diamond-related meshes and nodes
+    const diamondPatterns = ['Diamond_Octagon', 'loc_diamonds', 'loc_diamond_side'];
+    
+    sceneRef.current.traverse((child: any) => {
+      if (child.name) {
+        const isDiamond = diamondPatterns.some(pattern => 
+          child.name.includes(pattern)
+        );
+        
+        if (isDiamond) {
+          child.visible = !child.visible;
+          setNodeVisibility(prev => ({ ...prev, [child.name]: child.visible }));
+        }
+      }
+    });
+  };
+
+  const addDiamonds = () => {
+    if (!sceneRef?.current) {
+      console.log('No scene reference available');
+      return;
+    }
+    
+    console.log('Adding diamonds...');
+    // Find all diamond-related meshes and nodes and make them visible
+    const diamondPatterns = ['Diamond_Octagon', 'loc_diamonds', 'loc_diamond_side'];
+    let count = 0;
+    
+    sceneRef.current.traverse((child: any) => {
+      if (child.name) {
+        const isDiamond = diamondPatterns.some(pattern => 
+          child.name.includes(pattern)
+        );
+        
+        if (isDiamond) {
+          console.log(`Making ${child.name} visible`);
+          child.visible = true;
+          setNodeVisibility(prev => ({ ...prev, [child.name]: true }));
+          count++;
+        }
+      }
+    });
+    
+    console.log(`Made ${count} diamond elements visible`);
+  };
+
   const downloadSceneData = () => {
     const sceneData = {
       meshes: meshes.map((name, idx) => ({
@@ -622,6 +671,28 @@ export function CompactSidebar({
                 </SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* Test Buttons for Diamonds */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addDiamonds}
+                className="h-8 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Diamonds
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleDiamonds}
+                className="h-8 text-xs"
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                Toggle
+              </Button>
+            </div>
           </div>
 
           {/* Conditional Options Based on Selection */}
