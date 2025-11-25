@@ -169,18 +169,6 @@ export function ModelViewer({
     }
   }, [scene, onMeshesAndNodesExtracted]);
 
-  // Hide the Plane mesh
-  useEffect(() => {
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        if (mesh.name === "Plane") {
-          mesh.visible = false;
-        }
-      }
-    });
-  }, [scene]);
-
   // Control visibility of link meshes based on chainLength
   useEffect(() => {
     if (!scene) return;
@@ -223,9 +211,9 @@ export function ModelViewer({
         }
 
         if (mesh.name === "Plane") {
-          mesh.visible = false;
-          return;
-        }
+            scene.remove(mesh);
+            return;
+          }
 
         const worldPos = new THREE.Vector3();
         mesh.getWorldPosition(worldPos);
@@ -425,7 +413,7 @@ export function ModelViewer({
 
         // Hide the Plane mesh
         if (mesh.name === "Plane") {
-          mesh.visible = false;
+          scene.remove(mesh);
           return;
         }
 
