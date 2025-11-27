@@ -275,47 +275,6 @@ export function CustomizerPanel({
 
           <Separator />
 
-          {/* Surface Selection */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">Surface Selection</Label>
-            <div className="grid grid-cols-2 gap-1">
-              <Button
-                variant={selectedSurface === "top1" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedSurface("top1")}
-                className="h-7 text-xs"
-              >
-                Top 1
-              </Button>
-              <Button
-                variant={selectedSurface === "top2" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedSurface("top2")}
-                className="h-7 text-xs"
-              >
-                Top 2
-              </Button>
-              <Button
-                variant={selectedSurface === "side1" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedSurface("side1")}
-                className="h-7 text-xs"
-              >
-                Side 1
-              </Button>
-              <Button
-                variant={selectedSurface === "side2" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedSurface("side2")}
-                className="h-7 text-xs"
-              >
-                Side 2
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
           {/* Material Selection */}
           <div className="space-y-2">
             <Label
