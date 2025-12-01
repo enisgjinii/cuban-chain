@@ -45,6 +45,38 @@ export function ModelViewer({
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [pattern1Offset, setPattern1Offset] = useState(0.2);
+  const [modelOffsets, setModelOffsets] = useState<Record<string, number>>({});
+  const [chainPattern, setChainPattern] = useState<'linear' | 'alternating' | 'custom'>('linear');
+  const [customSpacing, setCustomSpacing] = useState<Record<string, number>>({});
+
+  // Advanced positioning logic - unique positioning for each model type
+  const calculatePosition = (index: number, url: string, totalModels: number) => {
+    const modelKey = url.split('/').pop() || `model-${index}`;
+    
+    // Use individual model offset if set, otherwise fall back to unique positioning
+    if (modelOffsets[modelKey] !== undefined) {
+      return modelOffsets[modelKey];
+    }
+    
+    // Pattern 1 uses the slider value directly
+    if (url === "/models/Pattern 1.glb") {
+      return pattern1Offset;
+    }
+    
+    // Unique positioning for each model type
+    const uniquePositions: Record<string, number> = {
+      "part1.glb": 0.00,      // First model at origin
+      "part3.glb": 0.15,      // Slightly to the right
+      "part4.glb": 0.28,      // Further right
+      "part5.glb": 0.41,      // Continuing
+      "part6.glb": 0.54,      // More spacing
+      "part7.glb": 0.67,      // Even more
+      "enamel.glb": 0.80,     // Enamel at the end
+    };
+    
+    // Return unique position for this model type, or fallback
+    return uniquePositions[modelKey] ?? (index * 0.02);
+  };
 
   // Load multiple GLTFs
   const gltfs = urls.map(url => useGLTF(url));
@@ -53,27 +85,23 @@ export function ModelViewer({
   // Create a main scene to hold all models
   const mainScene = useMemo(() => {
     const scene = new THREE.Scene();
+    const totalModels = urls.length;
     
     scenes.forEach((modelScene, index) => {
       if (modelScene) {
         // Clone the scene to avoid modifying the original
         const clonedScene = modelScene.clone();
         
-        // Position models next to each other
-        // First model at origin, others positioned to the right
-        if (index > 0) {
-          // Use pattern1Offset for Pattern 1, reduced spacing for others
-          const isPattern1 = urls[index] === "/models/Pattern 1.glb";
-          const offset = isPattern1 ? pattern1Offset : index * 0.1; // Balanced spacing
-          clonedScene.position.x = offset;
-        }
+        // Use advanced positioning logic
+        const position = calculatePosition(index, urls[index], totalModels);
+        clonedScene.position.x = position;
         
         scene.add(clonedScene);
       }
     });
     
     return scene;
-  }, [scenes, pattern1Offset, chainSpacing, urls]);
+  }, [scenes, pattern1Offset, chainSpacing, urls, chainPattern, customSpacing, modelOffsets]);
 
   // Update sceneRef whenever mainScene is available
   useEffect(() => {
@@ -93,7 +121,7 @@ export function ModelViewer({
     return () => clearTimeout(timer);
   }, [urls.join(',')]); // Reset loading when URLs change
   const clonesRef = useRef<THREE.Object3D[]>([]);
-  const boundingBoxRef = useRef<THREE.BoxHelper | null>(null);
+  const boundingBoxRefs = useRef<THREE.BoxHelper[]>([]);
   const { gl, scene: threeScene, camera } = useThree();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -102,24 +130,35 @@ export function ModelViewer({
   const blingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const blobCreatedRef = useRef<boolean>(false);
 
-  // Bounding box functionality
+  // Cleanup bounding boxes on unmount
   useEffect(() => {
-    if (showBoundingBox && mainScene) {
-      // Remove existing bounding box
-      if (boundingBoxRef.current) {
-        threeScene.remove(boundingBoxRef.current);
-        boundingBoxRef.current = null;
-      }
+    return () => {
+      // Remove all bounding boxes when component unmounts
+      boundingBoxRefs.current.forEach(box => {
+        threeScene.remove(box);
+      });
+      boundingBoxRefs.current = [];
+    };
+  }, [threeScene]);
 
-      // Create new bounding box
-      const box = new THREE.Box3().setFromObject(mainScene);
-      const helper = new THREE.BoxHelper(mainScene, 0x00ff00);
-      boundingBoxRef.current = helper;
-      threeScene.add(helper);
-    } else if (!showBoundingBox && boundingBoxRef.current) {
-      // Remove bounding box when disabled
-      threeScene.remove(boundingBoxRef.current);
-      boundingBoxRef.current = null;
+  // Individual bounding boxes for each model
+  useEffect(() => {
+    // Remove all existing bounding boxes
+    boundingBoxRefs.current.forEach(box => {
+      threeScene.remove(box);
+    });
+    boundingBoxRefs.current = [];
+
+    if (showBoundingBox && mainScene) {
+      // Create bounding box for each cloned model (direct children of mainScene)
+      mainScene.children.forEach((child) => {
+        if (child instanceof THREE.Object3D) {
+          // Create bounding box for this individual cloned model
+          const helper = new THREE.BoxHelper(child, 0x00ff00);
+          boundingBoxRefs.current.push(helper);
+          threeScene.add(helper);
+        }
+      });
     }
   }, [showBoundingBox, mainScene, threeScene]);
 
@@ -180,7 +219,50 @@ export function ModelViewer({
     }
   }, [mainScene]);
 
-  // Pattern 1 position control
+  // Advanced controls event listeners
+  useEffect(() => {
+    const handlePattern1PositionUpdate = (event: CustomEvent) => {
+      const { offset } = event.detail;
+      setPattern1Offset(offset);
+    };
+
+    const handleChainPatternChange = (event: CustomEvent) => {
+      const { pattern } = event.detail;
+      setChainPattern(pattern);
+    };
+
+    const handleCustomSpacingUpdate = (event: CustomEvent) => {
+      const { modelKey, spacing } = event.detail;
+      setCustomSpacing(prev => ({
+        ...prev,
+        [modelKey]: spacing
+      }));
+    };
+
+    const handleModelOffsetUpdate = (event: CustomEvent) => {
+      const { modelKey, offset } = event.detail;
+      setModelOffsets(prev => ({
+        ...prev,
+        [modelKey]: offset
+      }));
+    };
+
+    // Add event listeners
+    window.addEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
+    window.addEventListener("changeChainPattern", handleChainPatternChange as EventListener);
+    window.addEventListener("updateCustomSpacing", handleCustomSpacingUpdate as EventListener);
+    window.addEventListener("updateModelOffset", handleModelOffsetUpdate as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
+      window.removeEventListener("changeChainPattern", handleChainPatternChange as EventListener);
+      window.removeEventListener("updateCustomSpacing", handleCustomSpacingUpdate as EventListener);
+      window.removeEventListener("updateModelOffset", handleModelOffsetUpdate as EventListener);
+    };
+  }, []);
+
+  // Pattern 1 position control (legacy - kept for compatibility)
   useEffect(() => {
     const handlePattern1PositionUpdate = (event: CustomEvent) => {
       const { offset } = event.detail;

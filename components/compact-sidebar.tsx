@@ -143,6 +143,9 @@ export function CompactSidebar({
   const [groupVisibility, setGroupVisibility] = useState<Record<number, boolean>>({});
   const [selectedModelForMaterial, setSelectedModelForMaterial] = useState<string>("all");
   const [pattern1Offset, setPattern1Offset] = useState<number>(0.2);
+  const [modelOffsets, setModelOffsets] = useState<Record<string, number>>({});
+  const [chainPattern, setChainPattern] = useState<'linear' | 'alternating' | 'custom'>('linear');
+  const [customSpacing, setCustomSpacing] = useState<Record<string, number>>({});
   const extraLinkCount = Math.max(chainConfig.chainLength - BASE_LINK_COUNT, 0);
   const [activeExtraLink, setActiveExtraLink] = useState<number>(
     BASE_LINK_COUNT + 1,
@@ -564,6 +567,90 @@ export function CompactSidebar({
             </Select>
           </div>
 
+          {/* Advanced Chain Controls */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium flex items-center gap-2">
+              <Settings className="w-3 h-3" />
+              Chain Pattern
+            </Label>
+            <Select
+              value={chainPattern}
+              onValueChange={(value: 'linear' | 'alternating' | 'custom') => {
+                setChainPattern(value);
+                // Update pattern via custom event
+                if (typeof window !== "undefined") {
+                  const event = new CustomEvent("changeChainPattern", {
+                    detail: { pattern: value },
+                  });
+                  window.dispatchEvent(event);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="Select pattern..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg">
+                <SelectItem value="linear">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-blue-500" />
+                    Linear
+                  </div>
+                </SelectItem>
+                <SelectItem value="alternating">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-green-500" />
+                    Alternating
+                  </div>
+                </SelectItem>
+                <SelectItem value="custom">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-purple-500" />
+                    Custom
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {chainPattern === 'custom' && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-2">
+                <Wrench className="w-3 h-3" />
+                Custom Spacing
+              </Label>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {modelUrls?.map((url, index) => {
+                  const modelKey = url.split('/').pop() || `model-${index}`;
+                  const currentSpacing = customSpacing[modelKey] || 0.05;
+                  return (
+                    <div key={modelKey} className="flex items-center gap-2 text-xs">
+                      <span className="flex-1 truncate">{modelKey}</span>
+                      <input
+                        type="number"
+                        value={currentSpacing}
+                        onChange={(e) => {
+                          const newSpacing = parseFloat(e.target.value) || 0.05;
+                          setCustomSpacing(prev => ({ ...prev, [modelKey]: newSpacing }));
+                          // Update via custom event
+                          if (typeof window !== "undefined") {
+                            const event = new CustomEvent("updateCustomSpacing", {
+                              detail: { modelKey, spacing: newSpacing },
+                            });
+                            window.dispatchEvent(event);
+                          }
+                        }}
+                        className="w-16 px-1 py-0.5 text-xs border rounded"
+                        step="0.01"
+                        min="0.01"
+                        max="0.5"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Pattern 1 Position Control */}
           {modelUrls && modelUrls.includes("/models/Pattern 1.glb") && (
             <div className="space-y-2">
@@ -594,6 +681,63 @@ export function CompactSidebar({
                   <span>{pattern1Offset.toFixed(1)}</span>
                   <span>Further</span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Individual Model Position Controls */}
+          {modelUrls && modelUrls.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-2">
+                <Move3D className="w-3 h-3" />
+                Model Positions
+              </Label>
+              <div className="max-h-48 overflow-y-auto space-y-2">
+                {modelUrls.map((url, index) => {
+                  const modelKey = url.split('/').pop() || `model-${index}`;
+                  const currentOffset = modelOffsets[modelKey] ?? (() => {
+        // Unique default positions for each model type
+        const uniquePositions: Record<string, number> = {
+          "part1.glb": 0.00,
+          "part3.glb": 0.15,
+          "part4.glb": 0.28,
+          "part5.glb": 0.41,
+          "part6.glb": 0.54,
+          "part7.glb": 0.67,
+          "enamel.glb": 0.80,
+        };
+        return uniquePositions[modelKey] ?? (index * 0.02);
+      })();
+                  const isPattern1 = url === "/models/Pattern 1.glb";
+                  
+                  return (
+                    <div key={modelKey} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="truncate font-medium">{modelKey}</span>
+                        <span className="text-muted-foreground">{currentOffset.toFixed(2)}</span>
+                      </div>
+                      <Slider
+                        value={[currentOffset]}
+                        onValueChange={(value) => {
+                          const newOffset = value[0];
+                          setModelOffsets(prev => ({ ...prev, [modelKey]: newOffset }));
+                          
+                          // Update via custom event
+                          if (typeof window !== "undefined") {
+                            const event = new CustomEvent("updateModelOffset", {
+                              detail: { modelKey, offset: newOffset },
+                            });
+                            window.dispatchEvent(event);
+                          }
+                        }}
+                        max={2}
+                        min={0}
+                        step={0.01}
+                        className="w-full h-2"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -636,6 +780,108 @@ export function CompactSidebar({
               >
                 <Plus className="w-3 h-3 mr-1" />
                 Add Part 1
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/part3.glb")) {
+                      setModelUrls([...modelUrls, "/models/part3.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/part3.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Part 3
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/part4.glb")) {
+                      setModelUrls([...modelUrls, "/models/part4.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/part4.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Part 4
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/part5.glb")) {
+                      setModelUrls([...modelUrls, "/models/part5.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/part5.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Part 5
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/part6.glb")) {
+                      setModelUrls([...modelUrls, "/models/part6.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/part6.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Part 6
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/part7.glb")) {
+                      setModelUrls([...modelUrls, "/models/part7.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/part7.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Part 7
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/enamel.glb")) {
+                      setModelUrls([...modelUrls, "/models/enamel.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/enamel.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Enamel
               </Button>
               <Button
                 variant="destructive"
