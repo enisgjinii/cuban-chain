@@ -10,9 +10,19 @@ import { Mobile3DViewer } from "@/components/mobile-3d-viewer";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
 import { createDefaultConfig } from "@/lib/chain-helpers";
 
+// Default model URLs for initial chain
+const DEFAULT_MODEL_URLS = [
+  "/models/part1.glb",
+  "/models/part3.glb",
+  "/models/part4.glb",
+  "/models/part5.glb",
+  "/models/part6.glb",
+  "/models/part7.glb",
+];
+
 export default function Home() {
-  const [modelUrls, setModelUrls] = useState<string[]>(["/models/part1.glb"]);
-  const [chainConfig, setChainConfig] = useState<ChainConfig>(createDefaultConfig(7));
+  const [modelUrls, setModelUrls] = useState<string[]>(DEFAULT_MODEL_URLS);
+  const [chainConfig, setChainConfig] = useState<ChainConfig>(createDefaultConfig(DEFAULT_MODEL_URLS.length));
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>("top1");
   const [meshes, setMeshes] = useState<string[]>([]);
   const [nodes, setNodes] = useState<string[]>([]);
@@ -28,6 +38,13 @@ export default function Home() {
   const [showRecordingIndicator, setShowRecordingIndicator] = useState<boolean>(false);
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
+
+  // Sync chain config length with model URLs
+  useEffect(() => {
+    if (chainConfig.chainLength !== modelUrls.length) {
+      setChainConfig(createDefaultConfig(modelUrls.length));
+    }
+  }, [modelUrls.length]);
 
   useEffect(() => {
     const checkMobile = () => {

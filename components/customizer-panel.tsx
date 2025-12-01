@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Link, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Link, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import type {
   ChainConfig,
   SurfaceId,
@@ -60,13 +60,13 @@ interface CustomizerPanelProps {
   isMobile?: boolean;
 }
 
-// Material options
-const MATERIALS: Array<{ label: string; value: Material }> = [
-  { label: "Silver", value: "silver" },
-  { label: "Gold", value: "gold" },
-  { label: "Grey", value: "grey" },
-  { label: "Black", value: "black" },
-  { label: "White", value: "white" },
+// Material options with colors for visual display
+const MATERIALS: Array<{ label: string; value: Material; color: string }> = [
+  { label: "Silver", value: "silver", color: "#c0c0c0" },
+  { label: "Gold", value: "gold", color: "#ffd700" },
+  { label: "Grey", value: "grey", color: "#808080" },
+  { label: "Black", value: "black", color: "#1a1a1a" },
+  { label: "White", value: "white", color: "#f5f5f5" },
 ];
 
 // Diamond type options
@@ -87,8 +87,6 @@ const GEMSTONE_COLORS = [
   { label: "Blue", value: "#2563eb" },
   { label: "Yellow", value: "#eab308" },
   { label: "Orange", value: "#ea580c" },
-  { label: "Rainbow1", value: "rainbow1" },
-  { label: "Rainbow2", value: "rainbow2" },
 ];
 
 // Enamel colors
@@ -137,14 +135,23 @@ export function CustomizerPanel({
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [applyInserts, setApplyInserts] = useState(false);
   const [applyToSides, setApplyToSides] = useState(false);
-  const [applyMode, setApplyMode] = useState(false);
+  const [applyToAll, setApplyToAll] = useState(true);
   const [showChainAssembly, setShowChainAssembly] = useState(false);
   const [selectedLinkType, setSelectedLinkType] = useState<ChainLinkType>("part1");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
+  // Use modelUrls length as the source of truth for link count
+  const linkCount = modelUrls.length;
   const currentLink = chainConfig.links[selectedLinkIndex];
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface];
   const isTopSurface = selectedSurface === "top1" || selectedSurface === "top2";
+
+  // Keep selected link index valid when link count changes
+  useEffect(() => {
+    if (selectedLinkIndex >= linkCount) {
+      setSelectedLinkIndex(Math.max(0, linkCount - 1));
+    }
+  }, [linkCount, selectedLinkIndex]);
 
   // Get color options based on surface type
   const getColorOptions = () => {
@@ -179,18 +186,23 @@ export function CustomizerPanel({
     }
   };
 
-  // Handle material change
+  // Handle material change for individual link or all
   const handleMaterialChange = (material: Material) => {
-    if (applyMode) {
-      setChainConfig(updateLinkMaterial(chainConfig, selectedLinkIndex, material));
-    } else {
+    if (applyToAll) {
       setChainConfig(applyMaterialToAllLinks(chainConfig, material));
+      window.dispatchEvent(
+        new CustomEvent("applyMaterialToModel", {
+          detail: { material, targetModel: "all", targetIndex: -1 },
+        })
+      );
+    } else {
+      setChainConfig(updateLinkMaterial(chainConfig, selectedLinkIndex, material));
+      window.dispatchEvent(
+        new CustomEvent("applyMaterialToModel", {
+          detail: { material, targetModel: "specific", targetIndex: selectedLinkIndex },
+        })
+      );
     }
-    window.dispatchEvent(
-      new CustomEvent("applyMaterialToModel", {
-        detail: { material, targetModel: applyMode ? "specific" : "all", targetIndex: selectedLinkIndex },
-      })
-    );
   };
 
   // Handle diamond type change
@@ -248,8 +260,19 @@ export function CustomizerPanel({
   // Handle chain length change
   const handleChainLengthChange = (length: number) => {
     setChainConfig(setChainLength(chainConfig, length));
-    if (selectedLinkIndex >= length) {
-      setSelectedLinkIndex(Math.max(0, length - 1));
+  };
+
+  // Navigate to previous link
+  const goToPreviousLink = () => {
+    if (selectedLinkIndex > 0) {
+      setSelectedLinkIndex(selectedLinkIndex - 1);
+    }
+  };
+
+  // Navigate to next link
+  const goToNextLink = () => {
+    if (selectedLinkIndex < linkCount - 1) {
+      setSelectedLinkIndex(selectedLinkIndex + 1);
     }
   };
 
@@ -283,18 +306,13 @@ export function CustomizerPanel({
     [setModelUrls]
   );
 
-  // Handle Apply to button
-  const handleApplyTo = () => {
-    setApplyMode(!applyMode);
-  };
-
-  // Handle Undo
-  const handleUndo = () => {
-    onUndo?.();
-  };
-
   const colorOptions = getColorOptions();
   const showColorDropdown = applyInserts && currentSurfaceConfig?.type && currentSurfaceConfig.type !== "empty";
+
+  // Get material color for display
+  const getMaterialColor = (material: Material) => {
+    return MATERIALS.find((m) => m.value === material)?.color || "#c0c0c0";
+  };
 
   return (
     <div
@@ -306,8 +324,85 @@ export function CustomizerPanel({
         Customizer
       </h2>
 
+      {/* Link Selection - Individual Design */}
+      <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+        <div className="flex items-center justify-between mb-2">
+          <Label className="text-xs font-medium text-gray-600">
+            Select Link to Customize
+          </Label>
+          <div className="flex items-center gap-1">
+            <Checkbox
+              id="apply-all"
+              checked={applyToAll}
+              onCheckedChange={(checked) => setApplyToAll(!!checked)}
+            />
+            <Label htmlFor="apply-all" className="text-xs text-gray-500 cursor-pointer">
+              All
+            </Label>
+          </div>
+        </div>
+
+        {!applyToAll && (
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousLink}
+                disabled={selectedLinkIndex === 0}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex-1 text-center">
+                <span className="text-sm font-medium">
+                  Link {selectedLinkIndex + 1} of {linkCount}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextLink}
+                disabled={selectedLinkIndex === linkCount - 1}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Visual Link Selector */}
+            <div className="flex gap-1 overflow-x-auto py-1 px-1">
+              {modelUrls.map((_, index) => {
+                const link = chainConfig.links[index];
+                const material = link?.material || "silver";
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedLinkIndex(index)}
+                    className={`flex-shrink-0 w-8 h-8 rounded-md border-2 transition-all ${
+                      selectedLinkIndex === index
+                        ? "border-blue-500 ring-2 ring-blue-200"
+                        : "border-gray-300 hover:border-gray-400"
+                    }`}
+                    style={{ backgroundColor: getMaterialColor(material) }}
+                    title={`Link ${index + 1} - ${material}`}
+                  >
+                    <span className="text-xs font-bold text-white drop-shadow-md">
+                      {index + 1}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Material Selection */}
       <div className="mb-3">
+        <Label className="text-xs text-gray-500 mb-1 block">
+          {applyToAll ? "Material (All Links)" : `Material (Link ${selectedLinkIndex + 1})`}
+        </Label>
         <Select
           value={currentLink?.material || "silver"}
           onValueChange={(v) => handleMaterialChange(v as Material)}
@@ -318,12 +413,20 @@ export function CustomizerPanel({
           <SelectContent>
             {MATERIALS.map((mat) => (
               <SelectItem key={mat.value} value={mat.value}>
-                {mat.label}
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded-full border border-gray-300"
+                    style={{ backgroundColor: mat.color }}
+                  />
+                  {mat.label}
+                </div>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
+
+      <Separator className="my-3" />
 
       {/* Apply Inserts Checkbox */}
       <div className="flex items-center gap-2 mb-3">
@@ -403,24 +506,12 @@ export function CustomizerPanel({
         </Label>
       </div>
 
-      {/* Apply to / Undo buttons - Fixed styling */}
+      {/* Undo button */}
       <div className="flex gap-3 mb-4">
-        <Button
-          variant={applyMode ? "default" : "outline"}
-          size="sm"
-          onClick={handleApplyTo}
-          className={`flex-1 h-9 ${
-            applyMode
-              ? "bg-blue-500 hover:bg-blue-600 text-white"
-              : "border-gray-300 text-gray-600 hover:bg-gray-50"
-          }`}
-        >
-          Apply to
-        </Button>
         <Button
           variant="outline"
           size="sm"
-          onClick={handleUndo}
+          onClick={onUndo}
           className="flex-1 h-9 border-gray-300 text-gray-600 hover:bg-gray-50"
         >
           Undo
