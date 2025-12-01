@@ -136,13 +136,30 @@ export function CustomizerPanel({
   const handleMaterialChange = (material: Material) => {
     if (applyToAll) {
       setChainConfig(applyMaterialToAllLinks(chainConfig, material));
+      // Dispatch event for all links
+      window.dispatchEvent(new CustomEvent("applyMaterialToModel", {
+        detail: { material, targetModel: "all", targetIndex: -1 }
+      }));
     } else {
       setChainConfig(updateLinkMaterial(chainConfig, selectedLinkIndex, material));
+      // Dispatch event for specific link
+      window.dispatchEvent(new CustomEvent("applyMaterialToModel", {
+        detail: { material, targetModel: "specific", targetIndex: selectedLinkIndex }
+      }));
     }
   };
 
   const handleApplyMaterialAlternating = (material: Material) => {
-    setChainConfig(applyMaterialToAlternatingLinks(chainConfig, material, selectedLinkIndex % 2));
+    const newConfig = applyMaterialToAlternatingLinks(chainConfig, material, selectedLinkIndex % 2);
+    setChainConfig(newConfig);
+    // Dispatch events for alternating links
+    newConfig.links.forEach((link, index) => {
+      if (link.material === material) {
+        window.dispatchEvent(new CustomEvent("applyMaterialToModel", {
+          detail: { material, targetModel: "specific", targetIndex: index }
+        }));
+      }
+    });
   };
 
   // Surface type handler
@@ -162,10 +179,29 @@ export function CustomizerPanel({
 
     if (applyToAll) {
       setChainConfig(applySurfaceToAllLinks(chainConfig, selectedSurface, newSurfaceConfig));
+      // Dispatch events for all links
+      chainConfig.links.forEach((_, index) => {
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+        }));
+      });
     } else if (applyToSides && !isTopSurface) {
       setChainConfig(applySurfaceToAllSideSurfaces(chainConfig, newSurfaceConfig));
+      // Dispatch events for all links (both side surfaces)
+      chainConfig.links.forEach((_, index) => {
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId: "side1", surfaceConfig: newSurfaceConfig }
+        }));
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId: "side2", surfaceConfig: newSurfaceConfig }
+        }));
+      });
     } else {
       setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
+      // Dispatch event for specific link/surface
+      window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+        detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+      }));
     }
   };
 
@@ -194,8 +230,18 @@ export function CustomizerPanel({
 
     if (applyToAll) {
       setChainConfig(applySurfaceToAllLinks(chainConfig, selectedSurface, newSurfaceConfig));
+      // Dispatch events for all links
+      chainConfig.links.forEach((_, index) => {
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+        }));
+      });
     } else {
       setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
+      // Dispatch event for specific link
+      window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+        detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+      }));
     }
   };
 
@@ -205,8 +251,16 @@ export function CustomizerPanel({
 
     if (applyToAll) {
       setChainConfig(applySurfaceToAllLinks(chainConfig, selectedSurface, newSurfaceConfig));
+      chainConfig.links.forEach((_, index) => {
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+        }));
+      });
     } else {
       setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
+      window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+        detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+      }));
     }
   };
 
@@ -216,14 +270,35 @@ export function CustomizerPanel({
 
     if (applyToAll) {
       setChainConfig(applySurfaceToAllLinks(chainConfig, selectedSurface, newSurfaceConfig));
+      chainConfig.links.forEach((_, index) => {
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+        }));
+      });
     } else {
       setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
+      window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+        detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: newSurfaceConfig }
+      }));
     }
   };
 
   // Copy current link to all
   const handleCopyToAll = () => {
-    setChainConfig(copyLinkToAll(chainConfig, selectedLinkIndex));
+    const newConfig = copyLinkToAll(chainConfig, selectedLinkIndex);
+    setChainConfig(newConfig);
+    // Dispatch events for all links to update 3D view
+    const sourceLink = chainConfig.links[selectedLinkIndex];
+    newConfig.links.forEach((_, index) => {
+      window.dispatchEvent(new CustomEvent("applyMaterialToModel", {
+        detail: { material: sourceLink.material, targetModel: "specific", targetIndex: index }
+      }));
+      (["top1", "top2", "side1", "side2"] as const).forEach(surfaceId => {
+        window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+          detail: { linkIndex: index, surfaceId, surfaceConfig: sourceLink.surfaces[surfaceId] }
+        }));
+      });
+    });
   };
 
   return (

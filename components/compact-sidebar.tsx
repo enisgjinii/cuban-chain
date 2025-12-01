@@ -193,16 +193,28 @@ export function CompactSidebar({
     setSelectedPreset(presetName);
   }, [setModelUrls]);
 
+  const [diamondsVisible, setDiamondsVisible] = useState(true);
+  
   const toggleDiamonds = useCallback(() => {
-    if (!sceneRef?.current) return;
-    const patterns = ['Diamond_Octagon', 'loc_diamonds', 'loc_diamond_side'];
-    sceneRef.current.traverse((child: THREE.Object3D) => {
-      if (child.name && patterns.some(p => child.name.includes(p))) {
-        child.visible = !child.visible;
-        setNodeVisibility(prev => ({ ...prev, [child.name]: child.visible }));
-      }
-    });
-  }, [sceneRef]);
+    const newVisible = !diamondsVisible;
+    setDiamondsVisible(newVisible);
+    
+    // Dispatch event to toggle diamonds in 3D view
+    window.dispatchEvent(new CustomEvent("toggleDiamonds", {
+      detail: { visible: newVisible }
+    }));
+    
+    // Also update via sceneRef for immediate feedback
+    if (sceneRef?.current) {
+      const patterns = ['Diamond_Octagon', 'loc_diamonds', 'loc_diamond_side', 'gem', 'Gem', 'stone', 'Stone'];
+      sceneRef.current.traverse((child: THREE.Object3D) => {
+        if (child.name && patterns.some(p => child.name.includes(p))) {
+          child.visible = newVisible;
+          setNodeVisibility(prev => ({ ...prev, [child.name]: newVisible }));
+        }
+      });
+    }
+  }, [sceneRef, diamondsVisible]);
 
   const downloadSceneData = useCallback(() => {
     const data = { modelUrls, chainSpacing, chainPattern, linkOffsets, exportedAt: new Date().toISOString() };
@@ -241,17 +253,34 @@ export function CompactSidebar({
       config = { type, engravingDesign: "pattern1" };
     }
     setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, config));
+    
+    // Dispatch event to update 3D view
+    window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+      detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: config }
+    }));
   };
 
   const handleGemstoneColorChange = (color: string) => {
     if (!currentSurfaceConfig?.gemstoneColors) return;
     const isTopSurface = selectedSurface === "top1" || selectedSurface === "top2";
     const colors = { stone1: color, stone2: color, ...(isTopSurface && { stone3: color }) };
-    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, { ...currentSurfaceConfig, gemstoneColors: colors }));
+    const newConfig = { ...currentSurfaceConfig, gemstoneColors: colors };
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newConfig));
+    
+    // Dispatch event to update 3D view
+    window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+      detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: newConfig }
+    }));
   };
 
   const handleEnamelColorChange = (color: string) => {
-    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, { ...currentSurfaceConfig, enamelColor: color }));
+    const newConfig = { ...currentSurfaceConfig, enamelColor: color };
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newConfig));
+    
+    // Dispatch event to update 3D view
+    window.dispatchEvent(new CustomEvent("applySurfaceConfig", {
+      detail: { linkIndex: selectedLinkIndex, surfaceId: selectedSurface, surfaceConfig: newConfig }
+    }));
   };
 
 

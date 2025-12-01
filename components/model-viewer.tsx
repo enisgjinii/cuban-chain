@@ -4,11 +4,22 @@ import { useGLTF } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import type { ChainConfig } from "@/lib/chain-config-types";
+import type { ChainConfig, Material } from "@/lib/chain-config-types";
 import {
   type ChainAssembly,
   convertUrlsToChainAssembly,
 } from "@/lib/chain-manager";
+import {
+  applyChainConfigToScene,
+  applyLinkConfigToContainer,
+  createBaseMaterial,
+  createGemstoneMaterial,
+  createEnamelMaterial,
+  toggleDiamondsVisibility,
+  isDiamondMesh,
+  isEnamelMesh,
+  isBodyMesh,
+} from "@/lib/chain-geometry";
 
 interface ModelViewerProps {
   urls: string[];
@@ -264,6 +275,14 @@ export function ModelViewer({
     }
   }, [mainScene, sceneRef]);
 
+  // Apply chainConfig to the scene whenever it changes
+  useEffect(() => {
+    if (!mainScene) return;
+    
+    // Apply the chain configuration to all links
+    applyChainConfigToScene(mainScene, chainConfig);
+  }, [mainScene, chainConfig]);
+
   // Handle loading state
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -369,37 +388,47 @@ export function ModelViewer({
         if (shouldApply) {
           child.traverse((mesh) => {
             if (mesh instanceof THREE.Mesh) {
-              mesh.material = createMaterial(material);
+              // Only apply to body meshes, not diamonds or enamel
+              if (isBodyMesh(mesh.name) && !isDiamondMesh(mesh.name) && !isEnamelMesh(mesh.name)) {
+                mesh.material = createBaseMaterial(material as Material);
+              }
             }
           });
         }
       });
     };
 
+    // Handle surface customization events
+    const handleSurfaceApplication = (event: CustomEvent) => {
+      const { linkIndex, surfaceId, surfaceConfig } = event.detail;
+      
+      if (linkIndex >= 0 && linkIndex < mainScene.children.length) {
+        const container = mainScene.children[linkIndex];
+        const linkConfig = chainConfig.links[linkIndex];
+        if (linkConfig) {
+          applyLinkConfigToContainer(container, linkConfig);
+        }
+      }
+    };
+
+    // Handle toggle diamonds visibility
+    const handleToggleDiamonds = (event: CustomEvent) => {
+      const { visible } = event.detail;
+      toggleDiamondsVisibility(mainScene, visible);
+    };
+
     window.addEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
+    window.addEventListener("applySurfaceConfig", handleSurfaceApplication as EventListener);
+    window.addEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
 
     return () => {
       window.removeEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
+      window.removeEventListener("applySurfaceConfig", handleSurfaceApplication as EventListener);
+      window.removeEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
     };
-  }, [mainScene]);
+  }, [mainScene, chainConfig]);
 
-  // Helper function to create materials - all 5 materials per technical brief
-  const createMaterial = (materialType: string) => {
-    switch (materialType) {
-      case "silver":
-        return new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.1 });
-      case "gold":
-        return new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
-      case "grey":
-        return new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 0.7, roughness: 0.3 });
-      case "black":
-        return new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.5 });
-      case "white":
-        return new THREE.MeshStandardMaterial({ color: 0xf5f5f5, metalness: 0.3, roughness: 0.2 });
-      default:
-        return new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.1 });
-    }
-  };
+
 
   // Recording functionality
   useEffect(() => {
