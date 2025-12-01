@@ -201,7 +201,8 @@ export function ModelViewer({
         
         // Calculate position along the chain (X-axis only for horizontal line)
         // Use a consistent step size based on reference width and spacing
-        const stepSize = referenceWidth * (1 - chainSpacing);
+        // Spacing set to 0.55
+        const stepSize = referenceWidth * 0.55;
         const xPos = index * stepSize;
         
         // Position only on X axis - keep Y and Z at 0 for straight horizontal line
