@@ -36,6 +36,7 @@ import {
   Minus,
   Link,
   Copy,
+  Move3D,
 } from "lucide-react";
 import type {
   ChainConfig,
@@ -141,6 +142,7 @@ export function CompactSidebar({
   const [meshGroups, setMeshGroups] = useState<Array<{ linkIndex: number; meshes: string[] }>>([]);
   const [groupVisibility, setGroupVisibility] = useState<Record<number, boolean>>({});
   const [selectedModelForMaterial, setSelectedModelForMaterial] = useState<string>("all");
+  const [pattern1Offset, setPattern1Offset] = useState<number>(0.2);
   const extraLinkCount = Math.max(chainConfig.chainLength - BASE_LINK_COUNT, 0);
   const [activeExtraLink, setActiveExtraLink] = useState<number>(
     BASE_LINK_COUNT + 1,
@@ -362,10 +364,22 @@ export function CompactSidebar({
     
     // Apply material to specific model via custom event
     if (typeof window !== "undefined") {
+      // Extract the URL and index from the selected value
+      let targetModel = selectedModelForMaterial;
+      let targetIndex = -1;
+      
+      if (selectedModelForMaterial !== "all") {
+        // Parse value like "/models/part1.glb-1" to get URL and index
+        const parts = selectedModelForMaterial.split("-");
+        targetModel = parts.slice(0, -1).join("-");
+        targetIndex = parseInt(parts[parts.length - 1]);
+      }
+      
       const event = new CustomEvent("applyMaterialToModel", {
         detail: {
           material,
-          targetModel: selectedModelForMaterial,
+          targetModel: selectedModelForMaterial === "all" ? "all" : targetModel,
+          targetIndex: selectedModelForMaterial === "all" ? -1 : targetIndex,
         },
       });
       window.dispatchEvent(event);
@@ -539,7 +553,7 @@ export function CompactSidebar({
                   </div>
                 </SelectItem>
                 {modelUrls?.map((url, index) => (
-                  <SelectItem key={url} value={url}>
+                  <SelectItem key={`${url}-${index}`} value={`${url}-${index}`}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-gray-400" />
                       Part {index + 1}
@@ -549,6 +563,40 @@ export function CompactSidebar({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Pattern 1 Position Control */}
+          {modelUrls && modelUrls.includes("/models/Pattern 1.glb") && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium flex items-center gap-2">
+                <Move3D className="w-3 h-3" />
+                Pattern 1 Position
+              </Label>
+              <div className="space-y-2">
+                <Slider
+                  value={[pattern1Offset]}
+                  onValueChange={(value) => {
+                    setPattern1Offset(value[0]);
+                    // Update model position via custom event
+                    if (typeof window !== "undefined") {
+                      const event = new CustomEvent("updatePattern1Position", {
+                        detail: { offset: value[0] },
+                      });
+                      window.dispatchEvent(event);
+                    }
+                  }}
+                  max={2}
+                  min={0.1}
+                  step={0.1}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Closer</span>
+                  <span>{pattern1Offset.toFixed(1)}</span>
+                  <span>Further</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Model Controls */}
           <div className="space-y-2">
@@ -573,6 +621,21 @@ export function CompactSidebar({
               >
                 <Plus className="w-3 h-3 mr-1" />
                 Add Pattern 1
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    // Always allow adding more part1.glb instances
+                    setModelUrls([...modelUrls, "/models/part1.glb"]);
+                  }
+                }}
+                className="w-full h-8 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Part 1
               </Button>
               <Button
                 variant="destructive"
@@ -851,16 +914,6 @@ export function CompactSidebar({
                 <RotateCw className="w-4 h-4 mr-1" />
                 Rotate
               </Button>
-
-              <Button
-                variant={showDebug ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowDebug?.(!showDebug)}
-                className="flex-1"
-              >
-                <Bug className="w-4 h-4 mr-1" />
-                Debug
-              </Button>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -896,165 +949,6 @@ export function CompactSidebar({
               </Button>
             </div>
           </div>
-
-          {showDebug && (
-            <>
-              <Separator />
-              
-              {/* Scene Nodes/Meshes */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium flex items-center gap-2">
-                    <Box className="w-3 h-3" />
-                    Scene Nodes ({meshes.length} meshes, {nodes.length} nodes)
-                  </Label>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setChainLength(chainConfig.chainLength + 1)}
-                      className="h-6 px-2"
-                      title="Add new link"
-                      disabled={chainConfig.chainLength >= MAX_CHAIN_LINKS}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={downloadSceneData}
-                      className="h-6 px-2"
-                      title="Download scene data as JSON"
-                    >
-                      <Download className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Auto-Grouped Mesh Links */}
-                {meshGroups.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                      Auto-Grouped Links
-                    </div>
-                    <div className="max-h-64 overflow-y-auto space-y-1 rounded border border-border/50 bg-muted/30 p-2">
-                      {meshGroups.map((group) => {
-                        const isGroupVisible = groupVisibility[group.linkIndex] !== false;
-                        return (
-                          <div key={`group-${group.linkIndex}`} className="space-y-1">
-                            {/* Group Header */}
-                            <div className="flex items-center justify-between rounded bg-primary/10 px-2 py-1.5 text-xs font-medium">
-                              <span>
-                                Link {group.linkIndex} ({group.meshes.length} meshes)
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => toggleGroupVisibility(group.linkIndex)}
-                                className="hover:bg-accent rounded p-1"
-                                title={isGroupVisible ? "Hide all" : "Show all"}
-                              >
-                                {isGroupVisible ? (
-                                  <Eye className="h-3 w-3 text-primary" />
-                                ) : (
-                                  <EyeOff className="h-3 w-3 text-muted-foreground/50" />
-                                )}
-                              </button>
-                            </div>
-                            {/* Individual Meshes in Group */}
-                            {group.meshes.map((mesh, idx) => {
-                              const isVisible = nodeVisibility[mesh] !== false;
-                              return (
-                                <div
-                                  key={`group-${group.linkIndex}-mesh-${idx}`}
-                                  className="flex items-center justify-between rounded bg-background/50 px-2 py-1 text-[11px] hover:bg-background/80 ml-2"
-                                >
-                                  <span className="truncate" title={mesh}>{mesh}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleNodeVisibility(mesh)}
-                                    className="hover:bg-accent rounded p-1"
-                                    title={isVisible ? "Hide" : "Show"}
-                                  >
-                                    {isVisible ? (
-                                      <Eye className="h-3 w-3 text-muted-foreground" />
-                                    ) : (
-                                      <EyeOff className="h-3 w-3 text-muted-foreground/50" />
-                                    )}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* All Meshes (Flat View) */}
-                <div className="max-h-64 overflow-y-auto space-y-1 rounded border border-border/50 bg-muted/30 p-2">
-                  {meshes.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">All Meshes</div>
-                      {meshes.map((mesh, idx) => {
-                        const isVisible = nodeVisibility[mesh] !== false;
-                        return (
-                          <div
-                            key={`mesh-${idx}`}
-                            className="flex items-center justify-between rounded bg-background/50 px-2 py-1 text-xs hover:bg-background/80"
-                          >
-                            <span className="truncate" title={mesh}>{mesh}</span>
-                            <button
-                              type="button"
-                              onClick={() => toggleNodeVisibility(mesh)}
-                              className="hover:bg-accent rounded p-1"
-                              title={isVisible ? "Hide" : "Show"}
-                            >
-                              {isVisible ? (
-                                <Eye className="h-3 w-3 text-muted-foreground" />
-                              ) : (
-                                <EyeOff className="h-3 w-3 text-muted-foreground/50" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {nodes.length > 0 && (
-                    <div className="space-y-1 mt-2">
-                      <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">Nodes</div>
-                      {nodes.map((node, idx) => {
-                        const isVisible = nodeVisibility[node] !== false;
-                        return (
-                          <div
-                            key={`node-${idx}`}
-                            className="flex items-center justify-between rounded bg-background/30 px-2 py-1 text-xs hover:bg-background/60"
-                          >
-                            <span className="truncate" title={node}>{node}</span>
-                            <button
-                              type="button"
-                              onClick={() => toggleNodeVisibility(node)}
-                              className="hover:bg-accent rounded p-1"
-                              title={isVisible ? "Hide" : "Show"}
-                            >
-                              {isVisible ? (
-                                <Eye className="h-3 w-3 text-muted-foreground" />
-                              ) : (
-                                <EyeOff className="h-3 w-3 text-muted-foreground/50" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              
-            </>
-          )}
         </div>
       </div>
     </Card>

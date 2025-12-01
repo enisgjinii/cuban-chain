@@ -32,20 +32,20 @@ export function ModelViewer({
   selectedMesh,
   hoveredMesh,
   chainSpacing = 0.95,
-  applyMode,
+  applyMode = false,
   setApplyMode,
-  undoCounter,
-  autoFitModel,
-  showBoundingBox,
+  undoCounter = 0,
+  autoFitModel = false,
+  showBoundingBox = false,
   autoRotate = false,
   isRecording = false,
   onRecordingComplete,
   showRecordingIndicator = false,
   sceneRef,
-  
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [pattern1Offset, setPattern1Offset] = useState(0.2);
+
   // Load multiple GLTFs
   const gltfs = urls.map(url => useGLTF(url));
   const scenes = gltfs.map(gltf => gltf.scene);
@@ -60,9 +60,12 @@ export function ModelViewer({
         const clonedScene = modelScene.clone();
         
         // Position models next to each other
-        // part1.glb at origin, Pattern 1 offset to the right
+        // First model at origin, others positioned to the right
         if (index > 0) {
-          clonedScene.position.x = index * chainSpacing; // Use chainSpacing instead of hardcoded 2
+          // Use pattern1Offset for Pattern 1, reduced spacing for others
+          const isPattern1 = urls[index] === "/models/Pattern 1.glb";
+          const offset = isPattern1 ? pattern1Offset : index * 0.1; // Balanced spacing
+          clonedScene.position.x = offset;
         }
         
         scene.add(clonedScene);
@@ -70,7 +73,7 @@ export function ModelViewer({
     });
     
     return scene;
-  }, [scenes]);
+  }, [scenes, pattern1Offset, chainSpacing, urls]);
 
   // Update sceneRef whenever mainScene is available
   useEffect(() => {
@@ -177,16 +180,44 @@ export function ModelViewer({
     }
   }, [mainScene]);
 
+  // Pattern 1 position control
+  useEffect(() => {
+    const handlePattern1PositionUpdate = (event: CustomEvent) => {
+      const { offset } = event.detail;
+      
+      // Update the pattern1Offset state, which will trigger mainScene recalculation
+      setPattern1Offset(offset);
+    };
+
+    // Add event listener
+    window.addEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
+    };
+  }, []);
+
   // Material application logic
   useEffect(() => {
     const handleMaterialApplication = (event: CustomEvent) => {
-      const { material, targetModel } = event.detail;
+      const { material, targetModel, targetIndex } = event.detail;
       
       scenes.forEach((scene, index) => {
         if (!scene) return;
         
-        const modelUrl = urls[index];
-        const shouldApply = targetModel === "all" || targetModel === modelUrl;
+        let shouldApply = false;
+        
+        if (targetModel === "all") {
+          shouldApply = true;
+        } else if (targetIndex >= 0) {
+          // Apply to specific model by index
+          shouldApply = index === targetIndex;
+        } else {
+          // Legacy fallback - apply by URL
+          const modelUrl = urls[index];
+          shouldApply = modelUrl === targetModel;
+        }
         
         if (shouldApply) {
           scene.traverse((child) => {
