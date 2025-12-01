@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Maximize2, Move3D, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 
 interface Mobile3DViewerProps {
-  modelUrl: string;
+  modelUrls: string[];
   chainConfig: any;
   selectedSurface: any;
   meshes: string[];
@@ -38,7 +38,7 @@ interface Mobile3DViewerProps {
 }
 
 export function Mobile3DViewer({
-  modelUrl,
+  modelUrls,
   chainConfig,
   selectedSurface,
   meshes,
@@ -196,7 +196,7 @@ export function Mobile3DViewer({
 
           <Stage environment="city" intensity={0.6} adjustCamera={autoZoom}>
             <ModelViewer
-              url={modelUrl}
+              urls={modelUrls}
               chainConfig={chainConfig}
               selectedMesh={selectedMesh}
               hoveredMesh={hoveredMesh}

@@ -15,11 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Camera, Move3D, Copy, Menu, Video, VideoOff } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
-import { createDefaultConfig } from "@/lib/chain-helpers";
+import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
 // link-specific geometry offsets removed
 
 export default function Home() {
-  const [modelUrl, setModelUrl] = useState<string>("/models/enamel.glb");
+  const [modelUrls, setModelUrls] = useState<string[]>(["/models/part1.glb"]);
   const [chainConfig, setChainConfig] = useState<ChainConfig>(
     createDefaultConfig(7),
   );
@@ -29,7 +29,7 @@ export default function Home() {
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
   const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
   const [autoFitModel, setAutoFitModel] = useState<boolean>(false);
-  const [chainSpacing, setChainSpacing] = useState<number>(0.95);
+  const [chainSpacing, setChainSpacing] = useState<number>(0.3);
   const [applyMode, setApplyMode] = useState<boolean>(false);
   const [undoCounter, setUndoCounter] = useState<number>(0);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
@@ -48,6 +48,10 @@ export default function Home() {
     useState<boolean>(false);
   // removed additionalLinkOffsets state (no per-link offsets)
   const cameraRef = useRef<any>(null);
+
+  const handleSetChainLength = (length: number) => {
+    setChainConfig(setChainLength(chainConfig, length));
+  };
   const sceneRef = useRef<any>(null);
 
   // Detect mobile device
@@ -218,8 +222,8 @@ export default function Home() {
           if (config.chainConfig) {
             setChainConfig(config.chainConfig);
           }
-          if (config.modelUrl) {
-            setModelUrl(config.modelUrl);
+          if (config.modelUrls) {
+            setModelUrls(config.modelUrls);
           }
         } catch (error) {
           console.error("Failed to load configuration:", error);
@@ -256,6 +260,7 @@ export default function Home() {
           nodes={nodes}
           onSelectMesh={handleSelectMesh}
           onHoverMesh={handleHoverMesh}
+          setChainLength={handleSetChainLength}
           chainSpacing={chainSpacing}
           setChainSpacing={setChainSpacing}
           onUndo={() => setUndoCounter((c) => c + 1)}
@@ -267,7 +272,8 @@ export default function Home() {
           onStartRecording={handleStartRecording}
           isRecording={isRecording}
           sceneRef={sceneRef}
-          
+          modelUrls={modelUrls}
+          setModelUrls={setModelUrls}
         />
       </div>
 
@@ -283,7 +289,7 @@ export default function Home() {
       >
         {isMobile ? (
           <Mobile3DViewer
-            modelUrl={modelUrl}
+            modelUrls={modelUrls}
             chainConfig={chainConfig}
             selectedSurface={selectedSurface}
             meshes={meshes}
@@ -308,7 +314,6 @@ export default function Home() {
             isMobile={isMobile}
             autoZoom={autoZoom}
             setAutoZoom={setAutoZoom}
-            additionalLinkOffsets={additionalLinkOffsets}
           />
         ) : (
           <Canvas
@@ -323,7 +328,7 @@ export default function Home() {
 
               <Stage environment="city" intensity={0.6} adjustCamera={autoZoom}>
                 <ModelViewer
-                  url={modelUrl}
+                  urls={modelUrls}
                   chainConfig={chainConfig}
                   onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
                   selectedMesh={selectedMesh}
@@ -407,6 +412,7 @@ export default function Home() {
         setChainConfig={setChainConfig}
         selectedSurface={selectedSurface}
         setSelectedSurface={setSelectedSurface}
+        setChainLength={handleSetChainLength}
         onSaveConfiguration={handleSaveConfiguration}
         onLoadConfiguration={handleLoadConfigurationClick}
         meshes={meshes}
@@ -429,8 +435,8 @@ export default function Home() {
         setShowBoundingBox={setShowBoundingBox}
         showDebug={showDebug}
         setShowDebug={setShowDebug}
-        modelUrl={modelUrl}
-        setModelUrl={setModelUrl}
+        modelUrls={modelUrls}
+        setModelUrls={setModelUrls}
         autoZoom={autoZoom}
         setAutoZoom={setAutoZoom}
         onCaptureImage={handleCaptureImage}

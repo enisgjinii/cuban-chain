@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Sparkles,
   Move3D,
+  Plus,
 } from "lucide-react";
 import { CustomizerPanel } from "@/components/customizer-panel";
 
@@ -24,6 +25,7 @@ interface MobileBottomNavProps {
   setChainConfig: (config: ChainConfig) => void;
   selectedSurface: SurfaceId;
   setSelectedSurface: (surface: SurfaceId) => void;
+  setChainLength: (length: number) => void;
   onSaveConfiguration: () => void;
   onLoadConfiguration: () => void;
   meshes: string[];
@@ -46,8 +48,8 @@ interface MobileBottomNavProps {
   setShowBoundingBox: (show: boolean) => void;
   showDebug: boolean;
   setShowDebug: (show: boolean) => void;
-  modelUrl: string;
-  setModelUrl: (url: string) => void;
+  modelUrls: string[];
+  setModelUrls: (urls: string[]) => void;
   isRecording: boolean;
   setIsRecording: (recording: boolean) => void;
   showRecordingIndicator: boolean;
@@ -64,6 +66,7 @@ export function MobileBottomNav({
   setChainConfig,
   selectedSurface,
   setSelectedSurface,
+  setChainLength,
   onSaveConfiguration,
   onLoadConfiguration,
   meshes,
@@ -82,6 +85,8 @@ export function MobileBottomNav({
   onCaptureImage,
   onStartRecording,
   isRecording,
+  modelUrls,
+  setModelUrls,
 }: MobileBottomNavProps) {
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
@@ -399,6 +404,25 @@ export function MobileBottomNav({
                         <Download className="w-3 h-3 text-gray-600" />
                         <p className="text-xs font-medium text-gray-900">
                           Save Config
+                        </p>
+                      </div>
+                      <ChevronUp className="w-3 h-3 text-gray-400 rotate-90" />
+                    </button>
+                  </Card>
+                  <Card className="p-1.5 border-gray-200">
+                    <button
+                      onClick={() => {
+                        if (modelUrls && setModelUrls && !modelUrls.includes("/models/Pattern 1.glb")) {
+                          setModelUrls([...modelUrls, "/models/Pattern 1.glb"]);
+                        }
+                      }}
+                      disabled={!modelUrls || modelUrls.includes("/models/Pattern 1.glb")}
+                      className="w-full flex items-center justify-between disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-1">
+                        <Plus className="w-3 h-3 text-gray-600" />
+                        <p className="text-xs font-medium text-gray-900">
+                          Add Pattern 1
                         </p>
                       </div>
                       <ChevronUp className="w-3 h-3 text-gray-400 rotate-90" />

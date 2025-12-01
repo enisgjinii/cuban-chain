@@ -1,13 +1,13 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig } from "@/lib/chain-config-types";
 
 interface ModelViewerProps {
-  url: string;
+  urls: string[];
   chainConfig: ChainConfig;
   onMeshesAndNodesExtracted?: (meshes: string[], nodes: string[]) => void;
   selectedMesh?: string | null;
@@ -26,7 +26,7 @@ interface ModelViewerProps {
 }
 
 export function ModelViewer({
-  url,
+  urls,
   chainConfig,
   onMeshesAndNodesExtracted,
   selectedMesh,
@@ -45,15 +45,39 @@ export function ModelViewer({
   
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
-  const gltf = useGLTF(url);
-  const { scene } = gltf;
+  
+  // Load multiple GLTFs
+  const gltfs = urls.map(url => useGLTF(url));
+  const scenes = gltfs.map(gltf => gltf.scene);
 
-  // Update sceneRef whenever scene is available
+  // Create a main scene to hold all models
+  const mainScene = useMemo(() => {
+    const scene = new THREE.Scene();
+    
+    scenes.forEach((modelScene, index) => {
+      if (modelScene) {
+        // Clone the scene to avoid modifying the original
+        const clonedScene = modelScene.clone();
+        
+        // Position models next to each other
+        // part1.glb at origin, Pattern 1 offset to the right
+        if (index > 0) {
+          clonedScene.position.x = index * chainSpacing; // Use chainSpacing instead of hardcoded 2
+        }
+        
+        scene.add(clonedScene);
+      }
+    });
+    
+    return scene;
+  }, [scenes]);
+
+  // Update sceneRef whenever mainScene is available
   useEffect(() => {
-    if (sceneRef && scene) {
-      sceneRef.current = scene;
+    if (sceneRef && mainScene) {
+      sceneRef.current = mainScene;
     }
-  }, [scene, sceneRef]);
+  }, [mainScene, sceneRef]);
 
   // Handle loading state properly
   useEffect(() => {
@@ -64,7 +88,7 @@ export function ModelViewer({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [url]); // Reset loading when URL changes
+  }, [urls.join(',')]); // Reset loading when URLs change
   const clonesRef = useRef<THREE.Object3D[]>([]);
   const boundingBoxRef = useRef<THREE.BoxHelper | null>(null);
   const { gl, scene: threeScene, camera } = useThree();
@@ -77,7 +101,7 @@ export function ModelViewer({
 
   // Bounding box functionality
   useEffect(() => {
-    if (showBoundingBox && scene) {
+    if (showBoundingBox && mainScene) {
       // Remove existing bounding box
       if (boundingBoxRef.current) {
         threeScene.remove(boundingBoxRef.current);
@@ -85,8 +109,8 @@ export function ModelViewer({
       }
 
       // Create new bounding box
-      const box = new THREE.Box3().setFromObject(scene);
-      const helper = new THREE.BoxHelper(scene, 0xffff00);
+      const box = new THREE.Box3().setFromObject(mainScene);
+      const helper = new THREE.BoxHelper(mainScene, 0x00ff00);
       boundingBoxRef.current = helper;
       threeScene.add(helper);
     } else if (!showBoundingBox && boundingBoxRef.current) {
@@ -94,12 +118,12 @@ export function ModelViewer({
       threeScene.remove(boundingBoxRef.current);
       boundingBoxRef.current = null;
     }
-  }, [showBoundingBox, scene, threeScene]);
+  }, [showBoundingBox, mainScene, threeScene]);
 
   // Auto-fit model to prevent cutoff
   useEffect(() => {
-    if (autoFitModel && scene) {
-      const box = new THREE.Box3().setFromObject(scene);
+    if (autoFitModel && mainScene) {
+      const box = new THREE.Box3().setFromObject(mainScene);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
 
@@ -117,14 +141,14 @@ export function ModelViewer({
       camera.position.set(center.x, center.y, center.z + cameraZ);
       camera.lookAt(center);
     }
-  }, [autoFitModel, scene, camera]);
+  }, [autoFitModel, mainScene, camera]);
 
   // Extract meshes and nodes on load
   useEffect(() => {
     const meshes: string[] = [];
     const nodes: string[] = [];
 
-    scene.traverse((child) => {
+    mainScene.traverse((child) => {
       if (child.name) {
         if ((child as THREE.Mesh).isMesh) {
           meshes.push(child.name);
@@ -137,21 +161,69 @@ export function ModelViewer({
     if (onMeshesAndNodesExtracted) {
       onMeshesAndNodesExtracted(meshes, nodes);
     }
-  }, [scene, onMeshesAndNodesExtracted]);
+  }, [mainScene, onMeshesAndNodesExtracted]);
 
   // Previously link-splitting and cloning logic removed — model is used as-is
   useEffect(() => {
     // Clean up any previous clones if present
-    if (!scene) return;
+    if (!mainScene) return;
     if (clonesRef.current.length) {
       clonesRef.current.forEach((obj) => {
         try {
-          scene.remove(obj);
+          mainScene.remove(obj);
         } catch {}
       });
       clonesRef.current = [];
     }
-  }, [scene]);
+  }, [mainScene]);
+
+  // Material application logic
+  useEffect(() => {
+    const handleMaterialApplication = (event: CustomEvent) => {
+      const { material, targetModel } = event.detail;
+      
+      scenes.forEach((scene, index) => {
+        if (!scene) return;
+        
+        const modelUrl = urls[index];
+        const shouldApply = targetModel === "all" || targetModel === modelUrl;
+        
+        if (shouldApply) {
+          scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              // Apply material based on selection
+              const newMaterial = createMaterial(material);
+              child.material = newMaterial;
+            }
+          });
+        }
+      });
+    };
+
+    // Add event listener
+    window.addEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
+    };
+  }, [scenes, urls]);
+
+  // Helper function to create materials
+  const createMaterial = (materialType: string) => {
+    switch (materialType) {
+      case "silver":
+        return new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.1 });
+      case "gold":
+        return new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+      case "grey":
+        return new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 0.7, roughness: 0.3 });
+      case "black":
+        return new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 0.5, roughness: 0.5 });
+      default:
+        return new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.1 });
+    }
+  };
 
   // Material application and per-link coloring removed — models render with their own materials
 
@@ -265,7 +337,7 @@ export function ModelViewer({
 
   return (
     <>
-      <primitive object={scene} position={[0.2, 0, 0]} />
+      <primitive object={mainScene} />
     </>
   );
 }

@@ -49,6 +49,7 @@ import {
   updateSurface,
   getMaterialColor,
   createDefaultGemstoneColors,
+  setChainLength,
 } from "@/lib/chain-helpers";
 import {
   BASE_LINK_COUNT,
@@ -66,6 +67,7 @@ interface CompactSidebarProps {
   hoveredMesh?: string | null;
   onSelectMesh?: (mesh: string | null) => void;
   onHoverMesh?: (mesh: string | null) => void;
+  setChainLength: (length: number) => void;
   chainSpacing?: number;
   setChainSpacing?: (value: number) => void;
   onUndo?: () => void;
@@ -80,6 +82,8 @@ interface CompactSidebarProps {
   isRecording?: boolean;
   isInSheet?: boolean;
   sceneRef?: any;
+  modelUrls?: string[];
+  setModelUrls?: (urls: string[]) => void;
 }
 
 const surfaceTypeOptions: Array<{ name: string; value: SurfaceType }> = [
@@ -111,6 +115,7 @@ export function CompactSidebar({
   hoveredMesh,
   onSelectMesh,
   onHoverMesh,
+  setChainLength,
   chainSpacing,
   setChainSpacing,
   onUndo,
@@ -125,6 +130,8 @@ export function CompactSidebar({
   isRecording,
   isInSheet = false,
   sceneRef,
+  modelUrls,
+  setModelUrls,
   
 }: CompactSidebarProps) {
   const currentLink = chainConfig.links[0];
@@ -133,6 +140,7 @@ export function CompactSidebar({
   const [nodeVisibility, setNodeVisibility] = useState<Record<string, boolean>>({});
   const [meshGroups, setMeshGroups] = useState<Array<{ linkIndex: number; meshes: string[] }>>([]);
   const [groupVisibility, setGroupVisibility] = useState<Record<number, boolean>>({});
+  const [selectedModelForMaterial, setSelectedModelForMaterial] = useState<string>("all");
   const extraLinkCount = Math.max(chainConfig.chainLength - BASE_LINK_COUNT, 0);
   const [activeExtraLink, setActiveExtraLink] = useState<number>(
     BASE_LINK_COUNT + 1,
@@ -198,11 +206,42 @@ export function CompactSidebar({
     const visibility: Record<string, boolean> = {};
     sceneRef.current.traverse((child: any) => {
       if (child.name) {
-        visibility[child.name] = child.visible;
+        // Show all meshes by default
+        child.visible = true;
+        visibility[child.name] = true;
       }
     });
     setNodeVisibility(visibility);
   }, [meshes, nodes, sceneRef]);
+
+  // When chain length increases, hide all parts except Part01 for new links
+  useEffect(() => {
+    if (!sceneRef?.current) return;
+    const newLinkIndex = chainConfig.chainLength - 1;
+    if (newLinkIndex < 0) return;
+
+    // Find meshes for the new link
+    const linkMeshes: string[] = [];
+    sceneRef.current.traverse((child: any) => {
+      if (child.name && child.name.startsWith(`Link${newLinkIndex + 1}_`)) {
+        linkMeshes.push(child.name);
+      }
+    });
+
+    // Hide all except Part01
+    linkMeshes.forEach(meshName => {
+      const isPart01 = meshName.includes('_Part01') || meshName.includes('_Part1');
+      const shouldBeVisible = isPart01;
+      if (nodeVisibility[meshName] !== shouldBeVisible) {
+        sceneRef.current.traverse((child: any) => {
+          if (child.name === meshName) {
+            child.visible = shouldBeVisible;
+          }
+        });
+        setNodeVisibility(prev => ({ ...prev, [meshName]: shouldBeVisible }));
+      }
+    });
+  }, [chainConfig.chainLength, sceneRef]);
 
   const toggleNodeVisibility = (nodeName: string) => {
     if (!sceneRef?.current) return;
@@ -316,9 +355,21 @@ export function CompactSidebar({
   };
 
   const handleMaterialChange = (material: Material) => {
+    // Update chain config
     setChainConfig(
       updateLinkMaterial(chainConfig, 0, material),
     );
+    
+    // Apply material to specific model via custom event
+    if (typeof window !== "undefined") {
+      const event = new CustomEvent("applyMaterialToModel", {
+        detail: {
+          material,
+          targetModel: selectedModelForMaterial,
+        },
+      });
+      window.dispatchEvent(event);
+    }
   };
 
   const handleSurfaceTypeChange = (type: SurfaceType) => {
@@ -466,6 +517,90 @@ export function CompactSidebar({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Model Selection for Material */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium flex items-center gap-2">
+              <Settings className="w-3 h-3" />
+              Apply to Model
+            </Label>
+            <Select
+              value={selectedModelForMaterial}
+              onValueChange={setSelectedModelForMaterial}
+            >
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="Select model..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg">
+                <SelectItem value="all">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-blue-500" />
+                    All Models
+                  </div>
+                </SelectItem>
+                {modelUrls?.map((url, index) => (
+                  <SelectItem key={url} value={url}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded bg-gray-400" />
+                      Part {index + 1}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Model Controls */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium flex items-center gap-2">
+              <Settings className="w-3 h-3" />
+              Models
+            </Label>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (modelUrls && setModelUrls) {
+                    console.log('Current modelUrls:', modelUrls);
+                    if (!modelUrls.includes("/models/Pattern 1.glb")) {
+                      setModelUrls([...modelUrls, "/models/Pattern 1.glb"]);
+                    }
+                  }
+                }}
+                className="w-full h-8 text-xs"
+                disabled={!modelUrls || modelUrls.includes("/models/Pattern 1.glb")}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Pattern 1
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (setModelUrls) {
+                    setModelUrls(["/models/part1.glb"]);
+                    console.log('Models reset to:', ["/models/part1.glb"]);
+                  }
+                }}
+                className="w-full h-8 text-xs"
+              >
+                Reset Models
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('Current modelUrls:', modelUrls);
+                }}
+                className="w-full h-8 text-xs"
+              >
+                Show Models
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
 
           {/* Apply Inserts Checkbox */}
           <div className="flex items-center gap-2">
@@ -773,15 +908,27 @@ export function CompactSidebar({
                     <Box className="w-3 h-3" />
                     Scene Nodes ({meshes.length} meshes, {nodes.length} nodes)
                   </Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={downloadSceneData}
-                    className="h-6 px-2"
-                    title="Download scene data as JSON"
-                  >
-                    <Download className="h-3 w-3" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setChainLength(chainConfig.chainLength + 1)}
+                      className="h-6 px-2"
+                      title="Add new link"
+                      disabled={chainConfig.chainLength >= MAX_CHAIN_LINKS}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={downloadSceneData}
+                      className="h-6 px-2"
+                      title="Download scene data as JSON"
+                    >
+                      <Download className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Auto-Grouped Mesh Links */}
