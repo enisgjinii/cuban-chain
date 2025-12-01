@@ -38,8 +38,8 @@ const modelBoundsCache: Record<string, THREE.Box3> = {};
 // Model-specific connection offsets - these define how each model connects to the chain
 // Values are calibrated for proper chain link interlocking
 interface ModelConnectionConfig {
-  // Offset to apply when this model follows another
-  connectionOffset: { x: number; y: number; z: number };
+  // X offset to apply when this model follows another (for tighter/looser connection)
+  connectionOffsetX: number;
   // Whether to flip rotation for alternating pattern
   alternateRotation: boolean;
   // Scale factor if needed
@@ -48,47 +48,47 @@ interface ModelConnectionConfig {
 
 const MODEL_CONNECTION_CONFIG: Record<string, ModelConnectionConfig> = {
   "/models/part1.glb": {
-    connectionOffset: { x: 0, y: 0, z: 0 },
+    connectionOffsetX: 0,
     alternateRotation: false,
     scale: 1,
   },
   "/models/part3.glb": {
-    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
   "/models/part4.glb": {
-    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
   "/models/part5.glb": {
-    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
   "/models/part6.glb": {
-    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
   "/models/part7.glb": {
-    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
   "/models/enamel.glb": {
-    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
   "/models/Pattern 1.glb": {
-    connectionOffset: { x: -0.02, y: 0.01, z: 0.01 },
+    connectionOffsetX: -0.02,
     alternateRotation: true,
     scale: 1,
   },
   "/models/Cuban-Link.glb": {
-    connectionOffset: { x: 0, y: 0, z: 0 },
+    connectionOffsetX: 0,
     alternateRotation: false,
     scale: 1,
   },
@@ -96,7 +96,7 @@ const MODEL_CONNECTION_CONFIG: Record<string, ModelConnectionConfig> = {
 
 const getModelConfig = (url: string): ModelConnectionConfig => {
   return MODEL_CONNECTION_CONFIG[url] || {
-    connectionOffset: { x: 0, y: 0, z: 0 },
+    connectionOffsetX: 0,
     alternateRotation: false,
     scale: 1,
   };
@@ -176,11 +176,14 @@ export function ModelViewer({
       referenceWidth = firstBounds.size.x;
     }
     
+    // First pass: create and position all links
+    const containers: THREE.Group[] = [];
+    
     urls.forEach((url, index) => {
       const modelScene = scenes[index];
       if (modelScene) {
         const clonedScene = modelScene.clone(true);
-        const { center, size } = getCenteredBounds(url, modelScene);
+        const { center, size, bounds } = getCenteredBounds(url, modelScene);
         const config = getModelConfig(url);
         
         // Create a container group to handle positioning
@@ -196,19 +199,16 @@ export function ModelViewer({
         
         container.add(clonedScene);
         
-        // Calculate position along the chain
+        // Calculate position along the chain (X-axis only for horizontal line)
         // Use a consistent step size based on reference width and spacing
         const stepSize = referenceWidth * (1 - chainSpacing);
         const xPos = index * stepSize;
         
-        // Apply model-specific connection offset
-        const yOffset = config.connectionOffset.y * index;
-        const zOffset = config.connectionOffset.z * index;
-        
+        // Position only on X axis - keep Y and Z at 0 for straight horizontal line
         container.position.set(
-          xPos + config.connectionOffset.x,
-          yOffset,
-          zOffset
+          xPos + config.connectionOffsetX,
+          0, // Will be adjusted in second pass to align to ground
+          0  // Keep all links in the same Z plane for straight line
         );
         
         // Apply alternating rotation for chain link interlocking effect
@@ -219,18 +219,37 @@ export function ModelViewer({
         
         container.userData.linkIndex = index;
         container.userData.url = url;
+        container.userData.originalBounds = bounds;
+        containers.push(container);
         scene.add(container);
       }
     });
     
-    // Center the entire chain in the scene
+    // Second pass: align all links to the same ground level
+    // Find the lowest point across all links
+    let lowestY = 0;
+    containers.forEach(container => {
+      const bounds = new THREE.Box3().setFromObject(container);
+      if (bounds.min.y < lowestY) {
+        lowestY = bounds.min.y;
+      }
+    });
+    
+    // Adjust all containers so their lowest point is at Y=0
+    containers.forEach(container => {
+      const bounds = new THREE.Box3().setFromObject(container);
+      const adjustment = -bounds.min.y;
+      container.position.y += adjustment;
+    });
+    
+    // Third pass: center the entire chain horizontally and in Z
     if (scene.children.length > 0) {
       const chainBounds = new THREE.Box3().setFromObject(scene);
       const chainCenter = chainBounds.getCenter(new THREE.Vector3());
       scene.children.forEach(child => {
         child.position.x -= chainCenter.x;
-        child.position.y -= chainCenter.y;
         child.position.z -= chainCenter.z;
+        // Don't adjust Y - we want them on the ground
       });
     }
     
