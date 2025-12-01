@@ -43,14 +43,11 @@ import {
   updateSurface,
   getMaterialColor,
   createDefaultGemstoneColors,
-  copyLinkToAll,
 } from "@/lib/chain-helpers";
 
 interface CustomizerPanelProps {
   chainConfig: ChainConfig;
   setChainConfig: (config: ChainConfig) => void;
-  selectedLinkIndex: number;
-  setSelectedLinkIndex: (index: number) => void;
   selectedSurface: SurfaceId;
   setSelectedSurface: (surface: SurfaceId) => void;
   onSaveConfiguration: () => void;
@@ -59,7 +56,6 @@ interface CustomizerPanelProps {
   nodes: string[];
   onSelectMesh: (mesh: string | null) => void;
   onHoverMesh: (mesh: string | null) => void;
-  setChainLength: (length: number) => void;
   chainSpacing?: number;
   setChainSpacing?: (value: number) => void;
   onUndo?: () => void;
@@ -94,8 +90,6 @@ const enamelColors = [
 export function CustomizerPanel({
   chainConfig,
   setChainConfig,
-  selectedLinkIndex,
-  setSelectedLinkIndex,
   selectedSurface,
   setSelectedSurface,
   onSaveConfiguration,
@@ -104,7 +98,6 @@ export function CustomizerPanel({
   nodes,
   onSelectMesh,
   onHoverMesh,
-  setChainLength,
   chainSpacing,
   setChainSpacing,
   onUndo,
@@ -117,12 +110,12 @@ export function CustomizerPanel({
   isRecording,
   isInSheet = false,
 }: CustomizerPanelProps) {
-  const currentLink = chainConfig.links[selectedLinkIndex];
+  const currentLink = chainConfig.links[0];
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface];
 
   const handleMaterialChange = (material: Material) => {
     setChainConfig(
-      updateLinkMaterial(chainConfig, selectedLinkIndex, material),
+      updateLinkMaterial(chainConfig, 0, material),
     );
   };
 
@@ -150,7 +143,7 @@ export function CustomizerPanel({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -184,7 +177,7 @@ export function CustomizerPanel({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -200,7 +193,7 @@ export function CustomizerPanel({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -216,7 +209,7 @@ export function CustomizerPanel({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -230,51 +223,6 @@ export function CustomizerPanel({
       <div className="h-full flex flex-col">
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {/* Individual Link Selection */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="link-select"
-              className="text-xs font-semibold flex items-center gap-1"
-            >
-              <Link className="w-3 h-3" />
-              Select Link to Customize
-            </Label>
-            <Select
-              value={String(selectedLinkIndex)}
-              onValueChange={(value) => setSelectedLinkIndex(Number(value))}
-            >
-              <SelectTrigger className="w-full h-8">
-                <SelectValue placeholder="Choose link..." />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg max-h-64">
-                {Array.from({ length: chainConfig.chainLength }, (_, idx) => (
-                  <SelectItem key={idx} value={String(idx)}>
-                    Link {idx + 1}
-                    {currentLink && chainConfig.links[idx] && 
-                     chainConfig.links[idx].material !== "silver" && 
-                     ` (${chainConfig.links[idx].material})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="text-[10px] text-muted-foreground px-1">
-              Editing: Link {selectedLinkIndex + 1} of {chainConfig.chainLength}
-            </div>
-          </div>
-
-          {/* Copy to All Links Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setChainConfig(copyLinkToAll(chainConfig, selectedLinkIndex))}
-            className="w-full h-7 text-xs"
-          >
-            <Copy className="w-3 h-3 mr-1" />
-            Copy Link {selectedLinkIndex + 1} to All Links
-          </Button>
-
-          <Separator />
-
           {/* Material Selection */}
           <div className="space-y-2">
             <Label

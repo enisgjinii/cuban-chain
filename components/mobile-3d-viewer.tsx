@@ -6,12 +6,10 @@ import { Suspense, useRef, useEffect, useState } from "react";
 import { ModelViewer } from "@/components/model-viewer";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Move3D, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
-import type { AdditionalLinkOffsetMap } from "@/lib/chain-geometry";
 
 interface Mobile3DViewerProps {
   modelUrl: string;
   chainConfig: any;
-  selectedLinkIndex: number;
   selectedSurface: any;
   meshes: string[];
   nodes: string[];
@@ -37,13 +35,11 @@ interface Mobile3DViewerProps {
   isRecording: boolean;
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
-  additionalLinkOffsets?: AdditionalLinkOffsetMap;
 }
 
 export function Mobile3DViewer({
   modelUrl,
   chainConfig,
-  selectedLinkIndex,
   selectedSurface,
   meshes,
   nodes,
@@ -69,7 +65,7 @@ export function Mobile3DViewer({
   setAutoZoom,
   onRecordingComplete,
   showRecordingIndicator,
-  additionalLinkOffsets,
+  
 }: Mobile3DViewerProps) {
   const cameraRef = useRef<any>(null);
   const [modelScale, setModelScale] = useState(1);
@@ -210,11 +206,10 @@ export function Mobile3DViewer({
               undoCounter={undoCounter}
               autoRotate={autoRotate}
               showBoundingBox={showBoundingBox}
-              selectedLinkIndex={selectedLinkIndex}
               isRecording={isRecording}
               onRecordingComplete={onRecordingComplete}
               showRecordingIndicator={showRecordingIndicator}
-              additionalLinkOffsets={additionalLinkOffsets}
+              
             />
           </Stage>
 

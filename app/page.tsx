@@ -15,18 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Camera, Move3D, Copy, Menu, Video, VideoOff } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
-import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
-import {
-  DEFAULT_ADDITIONAL_LINK_OFFSET,
-  type AdditionalLinkOffsetMap,
-} from "@/lib/chain-geometry";
+import { createDefaultConfig } from "@/lib/chain-helpers";
+// link-specific geometry offsets removed
 
 export default function Home() {
-  const [modelUrl, setModelUrl] = useState<string>("/models/Cuban-Link.glb");
+  const [modelUrl, setModelUrl] = useState<string>("/models/enamel.glb");
   const [chainConfig, setChainConfig] = useState<ChainConfig>(
     createDefaultConfig(7),
   );
-  const [selectedLinkIndex, setSelectedLinkIndex] = useState<number>(0);
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>("top1");
   const [meshes, setMeshes] = useState<string[]>([]);
   const [nodes, setNodes] = useState<string[]>([]);
@@ -50,20 +46,7 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showRecordingIndicator, setShowRecordingIndicator] =
     useState<boolean>(false);
-  const createDefaultOffset = () => ({ ...DEFAULT_ADDITIONAL_LINK_OFFSET });
-  const [additionalLinkOffsets, setAdditionalLinkOffsets] = useState<AdditionalLinkOffsetMap>({
-    8: createDefaultOffset(),
-    9: createDefaultOffset(),
-  });
-  const handleAdditionalLinkOffsetChange = (
-    linkNumber: number,
-    offsets: { x: number; y: number; z: number },
-  ) => {
-    setAdditionalLinkOffsets((prev) => ({
-      ...prev,
-      [linkNumber]: offsets,
-    }));
-  };
+  // removed additionalLinkOffsets state (no per-link offsets)
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
 
@@ -223,10 +206,6 @@ export default function Home() {
     }
   }, [cameraRef.current]);
 
-  const handleSetChainLength = (length: number) => {
-    setChainConfig(setChainLength(chainConfig, length));
-  };
-
   const handleLoadConfiguration = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -269,8 +248,6 @@ export default function Home() {
         <CompactSidebar
           chainConfig={chainConfig}
           setChainConfig={setChainConfig}
-          selectedLinkIndex={selectedLinkIndex}
-          setSelectedLinkIndex={setSelectedLinkIndex}
           selectedSurface={selectedSurface}
           setSelectedSurface={setSelectedSurface}
           onSaveConfiguration={handleSaveConfiguration}
@@ -279,7 +256,6 @@ export default function Home() {
           nodes={nodes}
           onSelectMesh={handleSelectMesh}
           onHoverMesh={handleHoverMesh}
-          setChainLength={handleSetChainLength}
           chainSpacing={chainSpacing}
           setChainSpacing={setChainSpacing}
           onUndo={() => setUndoCounter((c) => c + 1)}
@@ -291,8 +267,7 @@ export default function Home() {
           onStartRecording={handleStartRecording}
           isRecording={isRecording}
           sceneRef={sceneRef}
-          additionalLinkOffsets={additionalLinkOffsets}
-          setAdditionalLinkOffsets={handleAdditionalLinkOffsetChange}
+          
         />
       </div>
 
@@ -310,7 +285,6 @@ export default function Home() {
           <Mobile3DViewer
             modelUrl={modelUrl}
             chainConfig={chainConfig}
-            selectedLinkIndex={selectedLinkIndex}
             selectedSurface={selectedSurface}
             meshes={meshes}
             nodes={nodes}
@@ -360,12 +334,11 @@ export default function Home() {
                   autoFitModel={autoFitModel}
                   showBoundingBox={showBoundingBox}
                   autoRotate={autoRotate}
-                  selectedLinkIndex={selectedLinkIndex}
                   isRecording={isRecording}
                   onRecordingComplete={handleRecordingComplete}
                   showRecordingIndicator={showRecordingIndicator}
                   sceneRef={sceneRef}
-                  additionalLinkOffsets={additionalLinkOffsets}
+                  
                 />
               </Stage>
 
@@ -432,8 +405,6 @@ export default function Home() {
       <MobileBottomNav
         chainConfig={chainConfig}
         setChainConfig={setChainConfig}
-        selectedLinkIndex={selectedLinkIndex}
-        setSelectedLinkIndex={setSelectedLinkIndex}
         selectedSurface={selectedSurface}
         setSelectedSurface={setSelectedSurface}
         onSaveConfiguration={handleSaveConfiguration}
@@ -468,7 +439,6 @@ export default function Home() {
         setIsRecording={setIsRecording}
         showRecordingIndicator={showRecordingIndicator}
         setShowRecordingIndicator={setShowRecordingIndicator}
-        setChainLength={handleSetChainLength}
         onUndo={() => setUndoCounter((c) => c + 1)}
       />
     </div>

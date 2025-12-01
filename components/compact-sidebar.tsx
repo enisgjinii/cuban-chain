@@ -49,20 +49,15 @@ import {
   updateSurface,
   getMaterialColor,
   createDefaultGemstoneColors,
-  copyLinkToAll,
 } from "@/lib/chain-helpers";
 import {
   BASE_LINK_COUNT,
   MAX_CHAIN_LINKS,
-  type AdditionalLinkOffsetMap,
-  DEFAULT_ADDITIONAL_LINK_OFFSET,
 } from "@/lib/chain-geometry";
 
 interface CompactSidebarProps {
   chainConfig: ChainConfig;
   setChainConfig: (config: ChainConfig) => void;
-  selectedLinkIndex: number;
-  setSelectedLinkIndex: (index: number) => void;
   selectedSurface: SurfaceId;
   setSelectedSurface: (surface: SurfaceId) => void;
   meshes: string[];
@@ -71,7 +66,6 @@ interface CompactSidebarProps {
   hoveredMesh?: string | null;
   onSelectMesh?: (mesh: string | null) => void;
   onHoverMesh?: (mesh: string | null) => void;
-  setChainLength: (length: number) => void;
   chainSpacing?: number;
   setChainSpacing?: (value: number) => void;
   onUndo?: () => void;
@@ -86,8 +80,6 @@ interface CompactSidebarProps {
   isRecording?: boolean;
   isInSheet?: boolean;
   sceneRef?: any;
-  additionalLinkOffsets?: AdditionalLinkOffsetMap;
-  setAdditionalLinkOffsets?: (link: number, offsets: { x: number; y: number; z: number }) => void;
 }
 
 const surfaceTypeOptions: Array<{ name: string; value: SurfaceType }> = [
@@ -111,8 +103,6 @@ const enamelColors = [
 export function CompactSidebar({
   chainConfig,
   setChainConfig,
-  selectedLinkIndex,
-  setSelectedLinkIndex,
   selectedSurface,
   setSelectedSurface,
   meshes,
@@ -121,7 +111,6 @@ export function CompactSidebar({
   hoveredMesh,
   onSelectMesh,
   onHoverMesh,
-  setChainLength,
   chainSpacing,
   setChainSpacing,
   onUndo,
@@ -136,10 +125,9 @@ export function CompactSidebar({
   isRecording,
   isInSheet = false,
   sceneRef,
-  additionalLinkOffsets,
-  setAdditionalLinkOffsets,
+  
 }: CompactSidebarProps) {
-  const currentLink = chainConfig.links[selectedLinkIndex];
+  const currentLink = chainConfig.links[0];
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface];
   
   const [nodeVisibility, setNodeVisibility] = useState<Record<string, boolean>>({});
@@ -159,17 +147,7 @@ export function CompactSidebar({
     }
   }, [extraLinkCount, activeExtraLink]);
 
-  const getCurrentExtraOffsets = () =>
-    additionalLinkOffsets?.[activeExtraLink] ?? DEFAULT_ADDITIONAL_LINK_OFFSET;
-
-  const handleExtraOffsetChange = (axis: "x" | "y" | "z", value: number) => {
-    if (!setAdditionalLinkOffsets) return;
-    const baseOffsets = getCurrentExtraOffsets();
-    setAdditionalLinkOffsets(activeExtraLink, {
-      ...baseOffsets,
-      [axis]: value,
-    });
-  };
+  // Additional link offset controls removed
 
   // Auto-group meshes by spatial position
   useEffect(() => {
@@ -339,7 +317,7 @@ export function CompactSidebar({
 
   const handleMaterialChange = (material: Material) => {
     setChainConfig(
-      updateLinkMaterial(chainConfig, selectedLinkIndex, material),
+      updateLinkMaterial(chainConfig, 0, material),
     );
   };
 
@@ -367,7 +345,7 @@ export function CompactSidebar({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -401,7 +379,7 @@ export function CompactSidebar({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -417,7 +395,7 @@ export function CompactSidebar({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -433,7 +411,7 @@ export function CompactSidebar({
     setChainConfig(
       updateSurface(
         chainConfig,
-        selectedLinkIndex,
+        0,
         selectedSurface,
         newSurfaceConfig,
       ),
@@ -447,86 +425,6 @@ export function CompactSidebar({
       <div className="h-full flex flex-col">
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
-          {/* Chain Length Control */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium flex items-center gap-2">
-              <Link className="w-3 h-3" />
-              Chain Length
-            </Label>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setChainLength(Math.max(1, chainConfig.chainLength - 1))}
-                disabled={chainConfig.chainLength <= 1}
-                className="h-9 px-3"
-              >
-                <Minus className="w-4 h-4" />
-              </Button>
-              <div className="flex-1 text-center">
-                <div className="text-2xl font-bold">{chainConfig.chainLength}</div>
-                <div className="text-[10px] text-muted-foreground">links</div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setChainLength(
-                    Math.min(chainConfig.chainLength + 1, MAX_CHAIN_LINKS),
-                  )
-                }
-                disabled={chainConfig.chainLength >= MAX_CHAIN_LINKS}
-                className="h-9 px-3"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Individual Link Selection */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium flex items-center gap-2">
-              <Settings className="w-3 h-3" />
-              Customize Link
-            </Label>
-            <Select
-              value={String(selectedLinkIndex)}
-              onValueChange={(value) => setSelectedLinkIndex(Number(value))}
-            >
-              <SelectTrigger className="w-full h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg max-h-64">
-                {Array.from({ length: chainConfig.chainLength }, (_, idx) => (
-                  <SelectItem key={idx} value={String(idx)}>
-                    Link {idx + 1}
-                    {currentLink && chainConfig.links[idx] && 
-                     chainConfig.links[idx].material !== "silver" && 
-                     ` (${chainConfig.links[idx].material})`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="text-[10px] text-muted-foreground px-1">
-              Currently editing: Link {selectedLinkIndex + 1} of {chainConfig.chainLength}
-            </div>
-          </div>
-
-          {/* Copy to All Links Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setChainConfig(copyLinkToAll(chainConfig, selectedLinkIndex))}
-            className="w-full h-8 text-xs"
-          >
-            <Copy className="w-3 h-3 mr-1" />
-            Copy Link {selectedLinkIndex + 1} to All Links
-          </Button>
-
-          <Separator />
-
           {/* Material Selection */}
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-2">
@@ -1007,84 +905,7 @@ export function CompactSidebar({
                 </div>
               </div>
 
-              {/* Additional Link Position Controls */}
-              {extraLinkCount > 0 && setAdditionalLinkOffsets && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                    <span>Additional Link Position</span>
-                    <Select
-                      value={String(activeExtraLink)}
-                      onValueChange={(value) => setActiveExtraLink(Number(value))}
-                    >
-                      <SelectTrigger className="h-7 w-28 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: extraLinkCount }, (_, idx) => BASE_LINK_COUNT + idx + 1).map((link) => (
-                          <SelectItem key={link} value={String(link)}>
-                            Link {link}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {(() => {
-                    const offsets = getCurrentExtraOffsets();
-                    return (
-                      <div className="space-y-2 rounded border border-border/50 bg-muted/30 p-3">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">X Offset (Left/Right)</Label>
-                          <div className="flex items-center gap-2">
-                            <Slider
-                              value={[offsets.x]}
-                              onValueChange={([value]) => handleExtraOffsetChange("x", value)}
-                              min={-0.1}
-                              max={0.1}
-                              step={0.001}
-                              className="flex-1"
-                            />
-                            <span className="text-xs text-muted-foreground w-12 text-right">
-                              {offsets.x.toFixed(3)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Y Offset (Up/Down)</Label>
-                          <div className="flex items-center gap-2">
-                            <Slider
-                              value={[offsets.y]}
-                              onValueChange={([value]) => handleExtraOffsetChange("y", value)}
-                              min={-0.1}
-                              max={0.1}
-                              step={0.001}
-                              className="flex-1"
-                            />
-                            <span className="text-xs text-muted-foreground w-12 text-right">
-                              {offsets.y.toFixed(3)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Z Offset (Forward/Back)</Label>
-                          <div className="flex items-center gap-2">
-                            <Slider
-                              value={[offsets.z]}
-                              onValueChange={([value]) => handleExtraOffsetChange("z", value)}
-                              min={-0.1}
-                              max={0.1}
-                              step={0.001}
-                              className="flex-1"
-                            />
-                            <span className="text-xs text-muted-foreground w-12 text-right">
-                              {offsets.z.toFixed(3)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+              
             </>
           )}
         </div>

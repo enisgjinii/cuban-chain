@@ -5,14 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig } from "@/lib/chain-config-types";
-import { getMaterialColor } from "@/lib/chain-helpers";
-import {
-  BASE_LINK_COUNT,
-  ADDITIONAL_LINK_MESH_GROUPS,
-  DEFAULT_ADDITIONAL_LINK_OFFSET,
-  type AdditionalLinkOffsetMap,
-} from "@/lib/chain-geometry";
-import { MESH_RENAMES } from "@/lib/mesh-names";
 
 interface ModelViewerProps {
   url: string;
@@ -27,12 +19,10 @@ interface ModelViewerProps {
   autoFitModel?: boolean;
   showBoundingBox?: boolean;
   autoRotate?: boolean;
-  selectedLinkIndex?: number;
   isRecording?: boolean;
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
   sceneRef?: React.MutableRefObject<any>;
-  additionalLinkOffsets?: AdditionalLinkOffsetMap;
 }
 
 export function ModelViewer({
@@ -48,12 +38,11 @@ export function ModelViewer({
   autoFitModel,
   showBoundingBox,
   autoRotate = false,
-  selectedLinkIndex = 0,
   isRecording = false,
   onRecordingComplete,
   showRecordingIndicator = false,
   sceneRef,
-  additionalLinkOffsets = {},
+  
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const gltf = useGLTF(url);
@@ -76,13 +65,7 @@ export function ModelViewer({
 
     return () => clearTimeout(timer);
   }, [url]); // Reset loading when URL changes
-  const originalMaterials = useRef<Map<string, THREE.Material>>(new Map());
-  const originalPositions = useRef<Map<string, THREE.Vector3>>(new Map());
-  const appliedHistory = useRef<
-    Array<{ name: string; material: THREE.Material }>
-  >([]);
   const clonesRef = useRef<THREE.Object3D[]>([]);
-  const gemstoneGroupsRef = useRef<THREE.Group[]>([]);
   const boundingBoxRef = useRef<THREE.BoxHelper | null>(null);
   const { gl, scene: threeScene, camera } = useThree();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -142,22 +125,9 @@ export function ModelViewer({
     const nodes: string[] = [];
 
     scene.traverse((child) => {
-      // Apply renaming if a mapping exists
-      if (child.name && MESH_RENAMES[child.name]) {
-        child.name = MESH_RENAMES[child.name];
-      }
-
       if (child.name) {
         if ((child as THREE.Mesh).isMesh) {
           meshes.push(child.name);
-          // Store original material if not already stored
-          const meshMaterial = (child as THREE.Mesh).material;
-          if (
-            !originalMaterials.current.has(child.name) &&
-            !(meshMaterial instanceof Array)
-          ) {
-            originalMaterials.current.set(child.name, meshMaterial.clone());
-          }
         } else {
           nodes.push(child.name);
         }
@@ -169,311 +139,21 @@ export function ModelViewer({
     }
   }, [scene, onMeshesAndNodesExtracted]);
 
-  // Control visibility of link meshes based on chainLength
+  // Previously link-splitting and cloning logic removed — model is used as-is
   useEffect(() => {
+    // Clean up any previous clones if present
     if (!scene) return;
-
-    // Remove any previously created extra-link clones before recalculating
     if (clonesRef.current.length) {
       clonesRef.current.forEach((obj) => {
         try {
           scene.remove(obj);
-        } catch { }
+        } catch {}
       });
       clonesRef.current = [];
     }
+  }, [scene]);
 
-    const specialMeshMap = new Map<string, number>();
-    ADDITIONAL_LINK_MESH_GROUPS.forEach((names, groupIdx) => {
-      names.forEach((name) => specialMeshMap.set(name, groupIdx));
-    });
-
-    const regularMeshData: Array<{ mesh: THREE.Mesh; worldPos: THREE.Vector3 }> = [];
-    const specialMeshData: Array<Array<{ mesh: THREE.Mesh; worldPos: THREE.Vector3 }>> =
-      ADDITIONAL_LINK_MESH_GROUPS.map(() => []);
-
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-
-        // Skip any previously created extra-link clones from being grouped as regular meshes
-        if ((mesh as any).userData?.__isExtraLinkClone) {
-          return;
-        }
-
-        if (!originalPositions.current.has(mesh.uuid)) {
-          originalPositions.current.set(mesh.uuid, mesh.position.clone());
-        } else {
-          const originalPos = originalPositions.current.get(mesh.uuid);
-          if (originalPos) {
-            mesh.position.copy(originalPos);
-          }
-        }
-
-        if (mesh.name === "Plane") {
-            scene.remove(mesh);
-            return;
-          }
-
-        const worldPos = new THREE.Vector3();
-        mesh.getWorldPosition(worldPos);
-
-        const specialGroupIdx = specialMeshMap.get(mesh.name);
-        if (specialGroupIdx !== undefined) {
-          specialMeshData[specialGroupIdx].push({ mesh, worldPos });
-        } else {
-          regularMeshData.push({ mesh, worldPos });
-        }
-      }
-    });
-
-    // Sort regular meshes by X position (left to right)
-    regularMeshData.sort((a, b) => a.worldPos.x - b.worldPos.x);
-
-    const meshesPerLink = Math.max(
-      1,
-      Math.ceil(regularMeshData.length / BASE_LINK_COUNT),
-    );
-    const groupCenters: THREE.Vector3[] = [];
-    const groupSpans: number[] = [];
-
-    for (let i = 0; i < BASE_LINK_COUNT; i++) {
-      const startIdx = i * meshesPerLink;
-      const endIdx = Math.min(startIdx + meshesPerLink, regularMeshData.length);
-      const group = regularMeshData.slice(startIdx, endIdx);
-      if (!group.length) continue;
-
-      const center = group
-        .reduce(
-          (acc, entry) => acc.add(entry.worldPos.clone()),
-          new THREE.Vector3(),
-        )
-        .divideScalar(group.length);
-      groupCenters.push(center);
-
-      const xs = group.map((entry) => entry.worldPos.x);
-      const span = Math.abs(Math.max(...xs) - Math.min(...xs)) || 0.01;
-      groupSpans.push(span);
-
-      const shouldShow = i < Math.min(chainConfig.chainLength, BASE_LINK_COUNT);
-      group.forEach(({ mesh }) => {
-        mesh.visible = shouldShow;
-      });
-    }
-
-    let baseDirection = new THREE.Vector3(1, 0, 0);
-    let baseDistance = 0.02;
-
-    if (groupCenters.length >= 2) {
-      baseDirection = groupCenters[groupCenters.length - 1]
-        .clone()
-        .sub(groupCenters[groupCenters.length - 2]);
-      baseDistance = baseDirection.length();
-      if (baseDistance === 0) {
-        baseDistance =
-          groupSpans.reduce((sum, span) => sum + span, 0) /
-          (groupSpans.length || 1) || 0.02;
-      }
-      baseDirection.normalize();
-    } else if (regularMeshData.length >= 2) {
-      const dir = regularMeshData[regularMeshData.length - 1].worldPos
-        .clone()
-        .sub(regularMeshData[0].worldPos);
-      baseDistance = dir.length() / BASE_LINK_COUNT;
-      baseDirection = dir.normalize();
-    }
-
-    const averageSpan =
-      groupSpans.length > 0
-        ? groupSpans.reduce((sum, span) => sum + span, 0) / groupSpans.length
-        : baseDistance;
-
-    const effectiveBase = baseDistance || averageSpan || 0.02;
-    const spacingMagnitude =
-      (effectiveBase + averageSpan * 2.1) * (chainSpacing ?? 1.1);
-
-    const spacingVector = baseDirection.clone().multiplyScalar(spacingMagnitude);
-    const baseAnchor =
-      groupCenters[groupCenters.length - 1]?.clone() ?? new THREE.Vector3();
-
-    const getOffsetVector = (linkNumber: number) => {
-      const offsets =
-        additionalLinkOffsets?.[linkNumber] ?? DEFAULT_ADDITIONAL_LINK_OFFSET;
-      return new THREE.Vector3(offsets.x, offsets.y, offsets.z);
-    };
-
-    specialMeshData.forEach((group, groupIdx) => {
-      const requiredLength = BASE_LINK_COUNT + groupIdx + 1;
-      const shouldDisplay = chainConfig.chainLength >= requiredLength;
-      if (!group.length) return;
-
-      const specialCenter = group
-        .reduce(
-          (acc, entry) => acc.add(entry.worldPos.clone()),
-          new THREE.Vector3(),
-        )
-        .divideScalar(group.length);
-
-      const linkNumber = BASE_LINK_COUNT + groupIdx + 1;
-      const lateralShift = getOffsetVector(linkNumber);
-      const targetCenter = baseAnchor
-        .clone()
-        .add(spacingVector.clone().multiplyScalar(groupIdx + 1))
-        .add(lateralShift);
-      const offset = targetCenter.clone().sub(specialCenter);
-
-      group.forEach(({ mesh }) => {
-        const originalPos = originalPositions.current.get(mesh.uuid);
-        if (originalPos) {
-          mesh.position.copy(originalPos.clone().add(offset));
-        }
-        mesh.visible = shouldDisplay;
-      });
-
-    });
-
-    // Clone the first additional group if we need more extra links than are provided in the model
-    const totalNeededExtras = Math.max(chainConfig.chainLength - BASE_LINK_COUNT, 0);
-    const providedExtras = ADDITIONAL_LINK_MESH_GROUPS.length;
-    const missingExtras = Math.max(totalNeededExtras - providedExtras, 0);
-
-    if (missingExtras > 0 && specialMeshData.length > 0) {
-      const sourceGroup = specialMeshData[0]; // Reuse the 8th-link meshes "as-is"
-      if (sourceGroup.length > 0) {
-        // Calculate the center using the original world positions (before any offset is applied)
-        const sourceOriginalCenter = sourceGroup
-          .reduce((acc, entry) => acc.add(entry.worldPos.clone()), new THREE.Vector3())
-          .divideScalar(sourceGroup.length);
-
-        // Calculate where the 8th link is positioned
-        const eighthLinkLateralShift = getOffsetVector(BASE_LINK_COUNT + 1);
-        const eighthLinkCenter = baseAnchor
-          .clone()
-          .add(spacingVector.clone().multiplyScalar(1))
-          .add(eighthLinkLateralShift);
-
-        // Use a tighter spacing for plain links (0.7x of the base spacing)
-        const plainLinkSpacing = spacingVector.clone().multiplyScalar(0.7);
-
-        for (let i = 0; i < missingExtras; i++) {
-          const linkNumber = BASE_LINK_COUNT + providedExtras + i + 1;
-          const lateralShift = getOffsetVector(linkNumber);
-
-          // Position each cloned link relative to the 8th link's position
-          const targetCenter = eighthLinkCenter
-            .clone()
-            .add(plainLinkSpacing.clone().multiplyScalar(i + 1))
-            .add(lateralShift)
-            .sub(eighthLinkLateralShift); // Remove the 8th link's lateral shift, we'll add the new one
-
-          // Calculate the offset the same way as for the 8th link
-          const offset = targetCenter.clone().sub(sourceOriginalCenter);
-
-          // Create clones for each mesh in the source group
-          sourceGroup.forEach(({ mesh }) => {
-            const clone = mesh.clone(true) as THREE.Mesh;
-
-            // Get the original local position of the source mesh
-            const originalPos = originalPositions.current.get(mesh.uuid);
-            if (originalPos) {
-              // Apply the same offset approach as the 8th link positioning
-              clone.position.copy(originalPos.clone().add(offset));
-            }
-
-            clone.visible = true;
-            clone.name = `${mesh.name}_extra_${providedExtras + i + 1}`;
-            (clone as any).userData = {
-              ...(clone as any).userData,
-              __isExtraLinkClone: true,
-            };
-            scene.add(clone);
-            clonesRef.current.push(clone);
-          });
-        }
-      }
-    }
-
-    console.log("Chain length:", chainConfig.chainLength);
-    console.log("Visible base links:", Math.min(chainConfig.chainLength, BASE_LINK_COUNT));
-    const shownProvidedExtras = specialMeshData.filter((_, idx) => chainConfig.chainLength >= BASE_LINK_COUNT + idx + 1).length;
-    const shownClonedExtras = Math.max(chainConfig.chainLength - BASE_LINK_COUNT - shownProvidedExtras, 0);
-    console.log("Special link groups shown (provided, cloned):", shownProvidedExtras, shownClonedExtras);
-  }, [scene, chainConfig.chainLength, chainSpacing, additionalLinkOffsets]);
-
-  // Apply materials to the model
-  useEffect(() => {
-    if (!scene) return;
-
-    // Group meshes by link index based on position
-    const meshData: Array<{ mesh: THREE.Mesh; x: number }> = [];
-
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-
-        // Hide the Plane mesh
-        if (mesh.name === "Plane") {
-          scene.remove(mesh);
-          return;
-        }
-
-        // Get world position for sorting
-        const worldPos = new THREE.Vector3();
-        mesh.getWorldPosition(worldPos);
-        meshData.push({ mesh, x: worldPos.x });
-      }
-    });
-
-    // Sort meshes by X position (left to right)
-    meshData.sort((a, b) => a.x - b.x);
-
-    // Calculate how many meshes per link
-    const meshesPerLink = Math.max(
-      1,
-      Math.ceil(meshData.length / chainConfig.chainLength),
-    );
-
-    // Apply materials to each link based on its configuration
-    meshData.forEach(({ mesh }, index) => {
-      // Determine which link this mesh belongs to
-      const linkIndex = Math.min(
-        Math.floor(index / meshesPerLink),
-        chainConfig.links.length - 1,
-      );
-
-      const linkConfig = chainConfig.links[linkIndex];
-      if (!linkConfig) return;
-
-      const materialColor = getMaterialColor(linkConfig.material || "silver");
-
-      // Add slight highlight to selected link
-      const isSelected = linkIndex === selectedLinkIndex;
-      const baseColor = new THREE.Color(materialColor);
-
-      // If selected, add a slight brightening effect
-      if (isSelected) {
-        baseColor.multiplyScalar(1.15);
-      }
-
-      // Create and apply material
-      const materialConfig: any = {
-        color: baseColor,
-        metalness: 0.9,
-        roughness: isSelected ? 0.05 : 0.1, // Make selected link slightly shinier
-      };
-
-      // Only add emissive if selected
-      if (isSelected) {
-        materialConfig.emissive = baseColor.clone().multiplyScalar(0.1);
-      }
-
-      const material = new THREE.MeshStandardMaterial(materialConfig);
-
-      mesh.material = material;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-    });
-  }, [scene, chainConfig.links, chainConfig.chainLength, selectedLinkIndex]);
+  // Material application and per-link coloring removed — models render with their own materials
 
   // Recording functionality
   useEffect(() => {

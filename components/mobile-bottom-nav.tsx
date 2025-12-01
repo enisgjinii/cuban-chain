@@ -22,8 +22,6 @@ import { CustomizerPanel } from "@/components/customizer-panel";
 interface MobileBottomNavProps {
   chainConfig: ChainConfig;
   setChainConfig: (config: ChainConfig) => void;
-  selectedLinkIndex: number;
-  setSelectedLinkIndex: (index: number) => void;
   selectedSurface: SurfaceId;
   setSelectedSurface: (surface: SurfaceId) => void;
   onSaveConfiguration: () => void;
@@ -54,7 +52,6 @@ interface MobileBottomNavProps {
   setIsRecording: (recording: boolean) => void;
   showRecordingIndicator: boolean;
   setShowRecordingIndicator: (show: boolean) => void;
-  setChainLength: (length: number) => void;
   onUndo: () => void;
   autoZoom: boolean;
   setAutoZoom: (zoom: boolean) => void;
@@ -65,8 +62,6 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({
   chainConfig,
   setChainConfig,
-  selectedLinkIndex,
-  setSelectedLinkIndex,
   selectedSurface,
   setSelectedSurface,
   onSaveConfiguration,
@@ -75,7 +70,6 @@ export function MobileBottomNav({
   nodes,
   onSelectMesh,
   onHoverMesh,
-  setChainLength,
   chainSpacing,
   setChainSpacing,
   onUndo,
@@ -204,8 +198,6 @@ export function MobileBottomNav({
                   <CustomizerPanel
                     chainConfig={chainConfig}
                     setChainConfig={setChainConfig}
-                    selectedLinkIndex={selectedLinkIndex}
-                    setSelectedLinkIndex={setSelectedLinkIndex}
                     selectedSurface={selectedSurface}
                     setSelectedSurface={setSelectedSurface}
                     onSaveConfiguration={onSaveConfiguration}
@@ -214,7 +206,6 @@ export function MobileBottomNav({
                     nodes={nodes}
                     onSelectMesh={onSelectMesh}
                     onHoverMesh={onHoverMesh}
-                    setChainLength={setChainLength}
                     chainSpacing={chainSpacing}
                     setChainSpacing={setChainSpacing}
                     onUndo={onUndo}
