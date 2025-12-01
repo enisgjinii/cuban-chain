@@ -1,10 +1,14 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig } from "@/lib/chain-config-types";
+import {
+  type ChainAssembly,
+  convertUrlsToChainAssembly,
+} from "@/lib/chain-manager";
 
 interface ModelViewerProps {
   urls: string[];
@@ -23,7 +27,80 @@ interface ModelViewerProps {
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
   sceneRef?: React.MutableRefObject<any>;
+  // New props for advanced chain management
+  chainAssembly?: ChainAssembly;
+  onChainAssemblyChange?: (assembly: ChainAssembly) => void;
 }
+
+// Cache for loaded model bounds
+const modelBoundsCache: Record<string, THREE.Box3> = {};
+
+// Model-specific connection offsets - these define how each model connects to the chain
+// Values are calibrated for proper chain link interlocking
+interface ModelConnectionConfig {
+  // Offset to apply when this model follows another
+  connectionOffset: { x: number; y: number; z: number };
+  // Whether to flip rotation for alternating pattern
+  alternateRotation: boolean;
+  // Scale factor if needed
+  scale: number;
+}
+
+const MODEL_CONNECTION_CONFIG: Record<string, ModelConnectionConfig> = {
+  "/models/part1.glb": {
+    connectionOffset: { x: 0, y: 0, z: 0 },
+    alternateRotation: false,
+    scale: 1,
+  },
+  "/models/part3.glb": {
+    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/part4.glb": {
+    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/part5.glb": {
+    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/part6.glb": {
+    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/part7.glb": {
+    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/enamel.glb": {
+    connectionOffset: { x: -0.01, y: 0.005, z: 0.005 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/Pattern 1.glb": {
+    connectionOffset: { x: -0.02, y: 0.01, z: 0.01 },
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/Cuban-Link.glb": {
+    connectionOffset: { x: 0, y: 0, z: 0 },
+    alternateRotation: false,
+    scale: 1,
+  },
+};
+
+const getModelConfig = (url: string): ModelConnectionConfig => {
+  return MODEL_CONNECTION_CONFIG[url] || {
+    connectionOffset: { x: 0, y: 0, z: 0 },
+    alternateRotation: false,
+    scale: 1,
+  };
+};
 
 export function ModelViewer({
   urls,
@@ -31,7 +108,7 @@ export function ModelViewer({
   onMeshesAndNodesExtracted,
   selectedMesh,
   hoveredMesh,
-  chainSpacing = 0.95,
+  chainSpacing = 0.02,
   applyMode = false,
   setApplyMode,
   undoCounter = 0,
@@ -42,85 +119,139 @@ export function ModelViewer({
   onRecordingComplete,
   showRecordingIndicator = false,
   sceneRef,
+  chainAssembly: externalChainAssembly,
+  onChainAssemblyChange,
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
-  const [pattern1Offset, setPattern1Offset] = useState(0.2);
-  const [modelOffsets, setModelOffsets] = useState<Record<string, number>>({});
-  const [chainPattern, setChainPattern] = useState<'linear' | 'alternating' | 'custom'>('linear');
-  const [customSpacing, setCustomSpacing] = useState<Record<string, number>>({});
-
-  // Advanced positioning logic - unique positioning for each model type
-  const calculatePosition = (index: number, url: string, totalModels: number) => {
-    const modelKey = url.split('/').pop() || `model-${index}`;
-    
-    // Use individual model offset if set, otherwise fall back to unique positioning
-    if (modelOffsets[modelKey] !== undefined) {
-      return modelOffsets[modelKey];
+  const [internalChainAssembly, setInternalChainAssembly] = useState<ChainAssembly | null>(null);
+  
+  // Use external chain assembly if provided, otherwise use internal
+  const chainAssembly = externalChainAssembly || internalChainAssembly;
+  const setChainAssembly = useCallback((assembly: ChainAssembly) => {
+    if (onChainAssemblyChange) {
+      onChainAssemblyChange(assembly);
+    } else {
+      setInternalChainAssembly(assembly);
     }
-    
-    // Pattern 1 uses the slider value directly
-    if (url === "/models/Pattern 1.glb") {
-      return pattern1Offset;
-    }
-    
-    // Unique positioning for each model type
-    const uniquePositions: Record<string, number> = {
-      "part1.glb": 0.00,      // First model at origin
-      "part3.glb": 0.15,      // Slightly to the right
-      "part4.glb": 0.28,      // Further right
-      "part5.glb": 0.41,      // Continuing
-      "part6.glb": 0.54,      // More spacing
-      "part7.glb": 0.67,      // Even more
-      "enamel.glb": 0.80,     // Enamel at the end
-    };
-    
-    // Return unique position for this model type, or fallback
-    return uniquePositions[modelKey] ?? (index * 0.02);
-  };
+  }, [onChainAssemblyChange]);
 
-  // Load multiple GLTFs
+  // Memoize the URLs string to prevent unnecessary re-renders
+  const urlsKey = urls.join(',');
+
+  // Initialize chain assembly from URLs if not provided externally
+  useEffect(() => {
+    if (!externalChainAssembly && urls.length > 0) {
+      const assembly = convertUrlsToChainAssembly(urls, chainSpacing);
+      setInternalChainAssembly(assembly);
+    }
+  }, [urlsKey, chainSpacing, externalChainAssembly]);
+
+  // Load all GLTFs - this is safe because urls array length determines hook count
   const gltfs = urls.map(url => useGLTF(url));
-  const scenes = gltfs.map(gltf => gltf.scene);
+  
+  // Create a stable reference for scenes
+  const scenes = useMemo(() => {
+    return gltfs.map(gltf => gltf.scene);
+  }, [urlsKey, gltfs.length]);
 
-  // Create a main scene to hold all models
+  // Get or calculate centered bounds for a model
+  const getCenteredBounds = useCallback((url: string, scene: THREE.Object3D): { bounds: THREE.Box3; center: THREE.Vector3; size: THREE.Vector3 } => {
+    if (!modelBoundsCache[url]) {
+      modelBoundsCache[url] = new THREE.Box3().setFromObject(scene);
+    }
+    const bounds = modelBoundsCache[url];
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    return { bounds, center, size };
+  }, []);
+
+  // Create the main scene with properly connected chain links
   const mainScene = useMemo(() => {
     const scene = new THREE.Scene();
-    const totalModels = urls.length;
     
-    scenes.forEach((modelScene, index) => {
+    // Calculate the link width for consistent spacing (use first model as reference)
+    let referenceWidth = 0.05; // Default fallback
+    if (scenes[0]) {
+      const firstBounds = getCenteredBounds(urls[0], scenes[0]);
+      referenceWidth = firstBounds.size.x;
+    }
+    
+    urls.forEach((url, index) => {
+      const modelScene = scenes[index];
       if (modelScene) {
-        // Clone the scene to avoid modifying the original
-        const clonedScene = modelScene.clone();
+        const clonedScene = modelScene.clone(true);
+        const { center, size } = getCenteredBounds(url, modelScene);
+        const config = getModelConfig(url);
         
-        // Use advanced positioning logic
-        const position = calculatePosition(index, urls[index], totalModels);
-        clonedScene.position.x = position;
+        // Create a container group to handle positioning
+        const container = new THREE.Group();
         
-        scene.add(clonedScene);
+        // Center the model within its container
+        clonedScene.position.set(-center.x, -center.y, -center.z);
+        
+        // Apply model-specific scale
+        if (config.scale !== 1) {
+          clonedScene.scale.setScalar(config.scale);
+        }
+        
+        container.add(clonedScene);
+        
+        // Calculate position along the chain
+        // Use a consistent step size based on reference width and spacing
+        const stepSize = referenceWidth * (1 - chainSpacing);
+        const xPos = index * stepSize;
+        
+        // Apply model-specific connection offset
+        const yOffset = config.connectionOffset.y * index;
+        const zOffset = config.connectionOffset.z * index;
+        
+        container.position.set(
+          xPos + config.connectionOffset.x,
+          yOffset,
+          zOffset
+        );
+        
+        // Apply alternating rotation for chain link interlocking effect
+        if (config.alternateRotation && index % 2 === 1) {
+          // Slight rotation for alternating links to simulate interlocking
+          container.rotation.z = Math.PI * 0.02;
+        }
+        
+        container.userData.linkIndex = index;
+        container.userData.url = url;
+        scene.add(container);
       }
     });
     
+    // Center the entire chain in the scene
+    if (scene.children.length > 0) {
+      const chainBounds = new THREE.Box3().setFromObject(scene);
+      const chainCenter = chainBounds.getCenter(new THREE.Vector3());
+      scene.children.forEach(child => {
+        child.position.x -= chainCenter.x;
+        child.position.y -= chainCenter.y;
+        child.position.z -= chainCenter.z;
+      });
+    }
+    
     return scene;
-  }, [scenes, pattern1Offset, chainSpacing, urls, chainPattern, customSpacing, modelOffsets]);
+  }, [urlsKey, scenes, chainSpacing, getCenteredBounds]);
 
-  // Update sceneRef whenever mainScene is available
+  // Update sceneRef
   useEffect(() => {
     if (sceneRef && mainScene) {
       sceneRef.current = mainScene;
     }
   }, [mainScene, sceneRef]);
 
-  // Handle loading state properly
+  // Handle loading state
   useEffect(() => {
-    // useGLTF handles loading internally, so we'll use a small delay
-    // to ensure the model is properly mounted and rendered
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 500);
-
     return () => clearTimeout(timer);
-  }, [urls.join(',')]); // Reset loading when URLs change
-  const clonesRef = useRef<THREE.Object3D[]>([]);
+  }, [urls.join(',')]);
+
   const boundingBoxRefs = useRef<THREE.BoxHelper[]>([]);
   const { gl, scene: threeScene, camera } = useThree();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -133,7 +264,6 @@ export function ModelViewer({
   // Cleanup bounding boxes on unmount
   useEffect(() => {
     return () => {
-      // Remove all bounding boxes when component unmounts
       boundingBoxRefs.current.forEach(box => {
         threeScene.remove(box);
       });
@@ -143,17 +273,14 @@ export function ModelViewer({
 
   // Individual bounding boxes for each model
   useEffect(() => {
-    // Remove all existing bounding boxes
     boundingBoxRefs.current.forEach(box => {
       threeScene.remove(box);
     });
     boundingBoxRefs.current = [];
 
     if (showBoundingBox && mainScene) {
-      // Create bounding box for each cloned model (direct children of mainScene)
       mainScene.children.forEach((child) => {
         if (child instanceof THREE.Object3D) {
-          // Create bounding box for this individual cloned model
           const helper = new THREE.BoxHelper(child, 0x00ff00);
           boundingBoxRefs.current.push(helper);
           threeScene.add(helper);
@@ -162,22 +289,20 @@ export function ModelViewer({
     }
   }, [showBoundingBox, mainScene, threeScene]);
 
-  // Auto-fit model to prevent cutoff
+  // Auto-fit model
   useEffect(() => {
     if (autoFitModel && mainScene) {
       const box = new THREE.Box3().setFromObject(mainScene);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
 
-      // Adjust camera to fit the entire model
       const maxDim = Math.max(size.x, size.y, size.z);
-      let cameraZ = 5; // Default distance
+      let cameraZ = 5;
 
       if (camera instanceof THREE.PerspectiveCamera) {
-        const perspectiveCamera = camera as THREE.PerspectiveCamera;
-        const fov = perspectiveCamera.fov * (Math.PI / 180);
+        const fov = camera.fov * (Math.PI / 180);
         cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-        cameraZ *= 1.5; // Add some padding
+        cameraZ *= 1.5;
       }
 
       camera.position.set(center.x, center.y, center.z + cameraZ);
@@ -185,7 +310,7 @@ export function ModelViewer({
     }
   }, [autoFitModel, mainScene, camera]);
 
-  // Extract meshes and nodes on load
+  // Extract meshes and nodes
   useEffect(() => {
     const meshes: string[] = [];
     const nodes: string[] = [];
@@ -205,122 +330,38 @@ export function ModelViewer({
     }
   }, [mainScene, onMeshesAndNodesExtracted]);
 
-  // Previously link-splitting and cloning logic removed — model is used as-is
-  useEffect(() => {
-    // Clean up any previous clones if present
-    if (!mainScene) return;
-    if (clonesRef.current.length) {
-      clonesRef.current.forEach((obj) => {
-        try {
-          mainScene.remove(obj);
-        } catch {}
-      });
-      clonesRef.current = [];
-    }
-  }, [mainScene]);
-
-  // Advanced controls event listeners
-  useEffect(() => {
-    const handlePattern1PositionUpdate = (event: CustomEvent) => {
-      const { offset } = event.detail;
-      setPattern1Offset(offset);
-    };
-
-    const handleChainPatternChange = (event: CustomEvent) => {
-      const { pattern } = event.detail;
-      setChainPattern(pattern);
-    };
-
-    const handleCustomSpacingUpdate = (event: CustomEvent) => {
-      const { modelKey, spacing } = event.detail;
-      setCustomSpacing(prev => ({
-        ...prev,
-        [modelKey]: spacing
-      }));
-    };
-
-    const handleModelOffsetUpdate = (event: CustomEvent) => {
-      const { modelKey, offset } = event.detail;
-      setModelOffsets(prev => ({
-        ...prev,
-        [modelKey]: offset
-      }));
-    };
-
-    // Add event listeners
-    window.addEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
-    window.addEventListener("changeChainPattern", handleChainPatternChange as EventListener);
-    window.addEventListener("updateCustomSpacing", handleCustomSpacingUpdate as EventListener);
-    window.addEventListener("updateModelOffset", handleModelOffsetUpdate as EventListener);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
-      window.removeEventListener("changeChainPattern", handleChainPatternChange as EventListener);
-      window.removeEventListener("updateCustomSpacing", handleCustomSpacingUpdate as EventListener);
-      window.removeEventListener("updateModelOffset", handleModelOffsetUpdate as EventListener);
-    };
-  }, []);
-
-  // Pattern 1 position control (legacy - kept for compatibility)
-  useEffect(() => {
-    const handlePattern1PositionUpdate = (event: CustomEvent) => {
-      const { offset } = event.detail;
-      
-      // Update the pattern1Offset state, which will trigger mainScene recalculation
-      setPattern1Offset(offset);
-    };
-
-    // Add event listener
-    window.addEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener("updatePattern1Position", handlePattern1PositionUpdate as EventListener);
-    };
-  }, []);
-
-  // Material application logic
+  // Event listeners for material application
   useEffect(() => {
     const handleMaterialApplication = (event: CustomEvent) => {
       const { material, targetModel, targetIndex } = event.detail;
       
-      scenes.forEach((scene, index) => {
-        if (!scene) return;
-        
+      mainScene.children.forEach((child, index) => {
         let shouldApply = false;
         
         if (targetModel === "all") {
           shouldApply = true;
         } else if (targetIndex >= 0) {
-          // Apply to specific model by index
           shouldApply = index === targetIndex;
         } else {
-          // Legacy fallback - apply by URL
-          const modelUrl = urls[index];
-          shouldApply = modelUrl === targetModel;
+          shouldApply = child.userData.url === targetModel;
         }
         
         if (shouldApply) {
-          scene.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              // Apply material based on selection
-              const newMaterial = createMaterial(material);
-              child.material = newMaterial;
+          child.traverse((mesh) => {
+            if (mesh instanceof THREE.Mesh) {
+              mesh.material = createMaterial(material);
             }
           });
         }
       });
     };
 
-    // Add event listener
     window.addEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
-    
-    // Cleanup
+
     return () => {
       window.removeEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
     };
-  }, [scenes, urls]);
+  }, [mainScene]);
 
   // Helper function to create materials
   const createMaterial = (materialType: string) => {
@@ -338,27 +379,23 @@ export function ModelViewer({
     }
   };
 
-  // Material application and per-link coloring removed — models render with their own materials
-
   // Recording functionality
   useEffect(() => {
     if (isRecording && !mediaRecorderRef.current) {
-      // Store original background and set white background for recording
       const originalClearColor = new THREE.Color();
       gl.getClearColor(originalClearColor);
       const originalClearAlpha = gl.getClearAlpha();
-      gl.setClearColor(0xffffff, 1); // White background
+      gl.setClearColor(0xffffff, 1);
 
-      // Start recording
       const canvas = gl.domElement;
-      const stream = canvas.captureStream(30); // 30 FPS
+      const stream = canvas.captureStream(30);
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: "video/webm;codecs=vp8",
       });
 
       recordedChunksRef.current = [];
       recordingStartTimeRef.current = Date.now();
-      blobCreatedRef.current = false; // Reset flag for new recording
+      blobCreatedRef.current = false;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -367,25 +404,19 @@ export function ModelViewer({
       };
 
       mediaRecorder.onstop = () => {
-        // Clear bling interval
         if (blingIntervalRef.current) {
           clearInterval(blingIntervalRef.current);
           blingIntervalRef.current = null;
         }
 
-        // Restore original background
         gl.setClearColor(originalClearColor, originalClearAlpha);
 
-        // Create blob only once
         if (recordedChunksRef.current.length > 0 && !blobCreatedRef.current) {
           blobCreatedRef.current = true;
-          const blob = new Blob(recordedChunksRef.current, {
-            type: "video/webm",
-          });
+          const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
           onRecordingComplete?.(blob);
         }
 
-        // Clear refs
         mediaRecorderRef.current = null;
         recordedChunksRef.current = [];
       };
@@ -393,64 +424,46 @@ export function ModelViewer({
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
 
-      // Add red recording line
       const geometry = new THREE.BufferGeometry();
-      const material = new THREE.LineBasicMaterial({
-        color: 0xff0000,
-        linewidth: 2,
-      });
+      const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
       const points = [new THREE.Vector3(-2, 2, 0), new THREE.Vector3(2, 2, 0)];
       geometry.setFromPoints(points);
       recordingLineRef.current = new THREE.Line(geometry, material);
       threeScene.add(recordingLineRef.current);
 
-      // Add blinging canvas effect
       let blingState = false;
       blingIntervalRef.current = setInterval(() => {
         blingState = !blingState;
         if (recordingLineRef.current) {
-          const material = recordingLineRef.current
-            .material as THREE.LineBasicMaterial;
-          material.color.setHex(blingState ? 0xff0000 : 0xffffff); // Red to white flash
-          material.linewidth = blingState ? 3 : 2;
+          const mat = recordingLineRef.current.material as THREE.LineBasicMaterial;
+          mat.color.setHex(blingState ? 0xff0000 : 0xffffff);
+          mat.linewidth = blingState ? 3 : 2;
         }
-      }, 500); // Flash every 500ms
+      }, 500);
     } else if (!isRecording && mediaRecorderRef.current) {
-      // Clear bling interval
       if (blingIntervalRef.current) {
         clearInterval(blingIntervalRef.current);
         blingIntervalRef.current = null;
       }
 
-      // Stop recording
       mediaRecorderRef.current.stop();
 
-      // Remove red recording line
       if (recordingLineRef.current) {
         threeScene.remove(recordingLineRef.current);
         recordingLineRef.current = null;
       }
     }
-  }, [isRecording, gl, threeScene]);
+  }, [isRecording, gl, threeScene, onRecordingComplete]);
 
   // Auto-stop recording after 5 seconds
   useFrame(() => {
-    if (
-      isRecording &&
-      mediaRecorderRef.current &&
-      recordingStartTimeRef.current
-    ) {
+    if (isRecording && mediaRecorderRef.current && recordingStartTimeRef.current) {
       const elapsed = Date.now() - recordingStartTimeRef.current;
       if (elapsed >= 5000) {
-        // 5 seconds
         mediaRecorderRef.current.stop();
       }
     }
   });
 
-  return (
-    <>
-      <primitive object={mainScene} />
-    </>
-  );
+  return <primitive object={mainScene} />;
 }
