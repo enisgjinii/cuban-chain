@@ -189,3 +189,117 @@ export function copyLinkToAll(
     links: newLinks,
   };
 }
+
+/**
+ * Apply material to all links
+ */
+export function applyMaterialToAllLinks(
+  config: ChainConfig,
+  material: Material,
+): ChainConfig {
+  const newLinks = config.links.map((link) => ({
+    ...link,
+    material,
+  }));
+
+  return {
+    ...config,
+    links: newLinks,
+  };
+}
+
+/**
+ * Apply material to alternating links (every other link)
+ */
+export function applyMaterialToAlternatingLinks(
+  config: ChainConfig,
+  material: Material,
+  startIndex: number = 0,
+): ChainConfig {
+  const newLinks = config.links.map((link, index) => {
+    if ((index - startIndex) % 2 === 0) {
+      return { ...link, material };
+    }
+    return link;
+  });
+
+  return {
+    ...config,
+    links: newLinks,
+  };
+}
+
+/**
+ * Apply surface configuration to all links for a specific surface
+ */
+export function applySurfaceToAllLinks(
+  config: ChainConfig,
+  surfaceId: SurfaceId,
+  surfaceConfig: SurfaceConfig,
+): ChainConfig {
+  const newLinks = config.links.map((link) => ({
+    ...link,
+    surfaces: {
+      ...link.surfaces,
+      [surfaceId]: { ...surfaceConfig },
+    },
+  }));
+
+  return {
+    ...config,
+    links: newLinks,
+  };
+}
+
+/**
+ * Apply surface configuration to all top surfaces (top1 and top2) of all links
+ */
+export function applySurfaceToAllTopSurfaces(
+  config: ChainConfig,
+  surfaceConfig: SurfaceConfig,
+): ChainConfig {
+  const newLinks = config.links.map((link) => ({
+    ...link,
+    surfaces: {
+      ...link.surfaces,
+      top1: { ...surfaceConfig },
+      top2: { ...surfaceConfig },
+    },
+  }));
+
+  return {
+    ...config,
+    links: newLinks,
+  };
+}
+
+/**
+ * Apply surface configuration to all side surfaces (side1 and side2) of all links
+ */
+export function applySurfaceToAllSideSurfaces(
+  config: ChainConfig,
+  surfaceConfig: SurfaceConfig,
+): ChainConfig {
+  // Adjust gemstone count for side surfaces (2 instead of 3)
+  const adjustedConfig = { ...surfaceConfig };
+  if (adjustedConfig.gemstoneColors?.stone3) {
+    adjustedConfig.gemstoneColors = {
+      stone1: adjustedConfig.gemstoneColors.stone1,
+      stone2: adjustedConfig.gemstoneColors.stone2,
+    };
+  }
+
+  const newLinks = config.links.map((link) => ({
+    ...link,
+    surfaces: {
+      ...link.surfaces,
+      side1: { ...adjustedConfig },
+      side2: { ...adjustedConfig },
+    },
+  }));
+
+  return {
+    ...config,
+    links: newLinks,
+  };
+}

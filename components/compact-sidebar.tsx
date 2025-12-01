@@ -14,6 +14,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Palette,
   Wrench,
@@ -40,9 +41,15 @@ import type {
   SurfaceConfig,
 } from "@/lib/chain-config-types";
 import {
+  MATERIAL_OPTIONS,
+  GEMSTONE_COLORS,
+  ENAMEL_COLORS,
+} from "@/lib/chain-config-types";
+import {
   updateLinkMaterial,
   updateSurface,
   createDefaultGemstoneColors,
+  applyMaterialToAllLinks,
 } from "@/lib/chain-helpers";
 import {
   type ChainLinkType,
@@ -99,6 +106,8 @@ export function CompactSidebar({
   chainConfig,
   setChainConfig,
   selectedSurface,
+  setSelectedSurface,
+  setChainLength,
   chainSpacing = 0.02,
   setChainSpacing,
   onSaveConfiguration,
@@ -114,15 +123,24 @@ export function CompactSidebar({
   meshes,
   nodes,
 }: CompactSidebarProps) {
-  const currentLink = chainConfig.links[0];
+  const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
+  const currentLink = chainConfig.links[selectedLinkIndex];
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface];
   
   const [nodeVisibility, setNodeVisibility] = useState<Record<string, boolean>>({});
+  const [applyToAllLinks, setApplyToAllLinks] = useState(false);
   const [selectedModelForMaterial, setSelectedModelForMaterial] = useState<string>("all");
   const [chainPattern, setChainPattern] = useState<ChainPattern>("linear");
   const [selectedLinkType, setSelectedLinkType] = useState<ChainLinkType>("part1");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [linkOffsets, setLinkOffsets] = useState<Record<number, { x: number; y: number; z: number }>>({});
+
+  // Keep selected link index valid when chain length changes
+  useEffect(() => {
+    if (selectedLinkIndex >= chainConfig.chainLength) {
+      setSelectedLinkIndex(Math.max(0, chainConfig.chainLength - 1));
+    }
+  }, [chainConfig.chainLength, selectedLinkIndex]);
 
   useEffect(() => {
     if (!sceneRef?.current) return;
@@ -198,7 +216,11 @@ export function CompactSidebar({
   }, [modelUrls, chainSpacing, chainPattern, linkOffsets]);
 
   const handleMaterialChange = (material: Material) => {
-    setChainConfig(updateLinkMaterial(chainConfig, 0, material));
+    if (applyToAllLinks) {
+      setChainConfig(applyMaterialToAllLinks(chainConfig, material));
+    } else {
+      setChainConfig(updateLinkMaterial(chainConfig, selectedLinkIndex, material));
+    }
     let targetIndex = -1;
     if (selectedModelForMaterial !== "all") {
       const parts = selectedModelForMaterial.split("-");
@@ -218,17 +240,18 @@ export function CompactSidebar({
     } else if (type === "engraving") {
       config = { type, engravingDesign: "pattern1" };
     }
-    setChainConfig(updateSurface(chainConfig, 0, selectedSurface, config));
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, config));
   };
 
   const handleGemstoneColorChange = (color: string) => {
     if (!currentSurfaceConfig?.gemstoneColors) return;
-    const colors = { stone1: color, stone2: color, ...(currentSurfaceConfig.gemstoneColors.stone3 && { stone3: color }) };
-    setChainConfig(updateSurface(chainConfig, 0, selectedSurface, { ...currentSurfaceConfig, gemstoneColors: colors }));
+    const isTopSurface = selectedSurface === "top1" || selectedSurface === "top2";
+    const colors = { stone1: color, stone2: color, ...(isTopSurface && { stone3: color }) };
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, { ...currentSurfaceConfig, gemstoneColors: colors }));
   };
 
   const handleEnamelColorChange = (color: string) => {
-    setChainConfig(updateSurface(chainConfig, 0, selectedSurface, { ...currentSurfaceConfig, enamelColor: color }));
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, { ...currentSurfaceConfig, enamelColor: color }));
   };
 
 
@@ -236,6 +259,58 @@ export function CompactSidebar({
     <Card className="w-80 h-full rounded-2xl border-r bg-card max-h-[90vh] overflow-hidden">
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          
+          {/* Chain Length Control */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium flex items-center gap-2">
+              <Link className="w-3 h-3" />
+              Chain Length: {chainConfig.chainLength} links
+            </Label>
+            <Slider
+              value={[chainConfig.chainLength]}
+              onValueChange={([v]) => setChainLength(v)}
+              min={1}
+              max={20}
+              step={1}
+              className="w-full"
+            />
+          </div>
+
+          {/* Link Selection */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">
+              Select Link ({selectedLinkIndex + 1} of {chainConfig.chainLength})
+            </Label>
+            <div className="flex gap-1 overflow-x-auto py-1">
+              {chainConfig.links.map((link, index) => (
+                <Button
+                  key={index}
+                  variant={selectedLinkIndex === index ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedLinkIndex(index)}
+                  className="h-7 w-7 p-0 flex-shrink-0"
+                  style={{
+                    backgroundColor: selectedLinkIndex === index 
+                      ? undefined 
+                      : MATERIAL_OPTIONS.find(m => m.value === link.material)?.color,
+                  }}
+                >
+                  {index + 1}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="apply-all-links"
+                checked={applyToAllLinks}
+                onCheckedChange={(checked) => setApplyToAllLinks(!!checked)}
+                className="w-4 h-4"
+              />
+              <Label htmlFor="apply-all-links" className="text-xs">Apply changes to all links</Label>
+            </div>
+          </div>
+
+          <Separator />
           
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-2">
@@ -346,10 +421,14 @@ export function CompactSidebar({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="silver"><div className="flex items-center gap-2"><Circle className="w-3 h-3 fill-gray-400" />Silver</div></SelectItem>
-                <SelectItem value="gold"><div className="flex items-center gap-2"><Circle className="w-3 h-3 fill-yellow-500" />Gold</div></SelectItem>
-                <SelectItem value="grey"><div className="flex items-center gap-2"><Circle className="w-3 h-3 fill-gray-600" />Grey</div></SelectItem>
-                <SelectItem value="black"><div className="flex items-center gap-2"><Circle className="w-3 h-3 fill-black" />Black</div></SelectItem>
+                {MATERIAL_OPTIONS.map((material) => (
+                  <SelectItem key={material.value} value={material.value}>
+                    <div className="flex items-center gap-2">
+                      <Circle className="w-3 h-3" style={{ fill: material.color, color: material.color }} />
+                      {material.name}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={selectedModelForMaterial} onValueChange={setSelectedModelForMaterial}>
@@ -367,16 +446,45 @@ export function CompactSidebar({
 
           <Separator />
 
+          {/* Surface Selection */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Surface Selection</Label>
+            <div className="grid grid-cols-4 gap-1">
+              {[
+                { id: "top1" as SurfaceId, label: "Top 1" },
+                { id: "top2" as SurfaceId, label: "Top 2" },
+                { id: "side1" as SurfaceId, label: "Side 1" },
+                { id: "side2" as SurfaceId, label: "Side 2" },
+              ].map((surface) => (
+                <Button
+                  key={surface.id}
+                  variant={selectedSurface === surface.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedSurface(surface.id)}
+                  className="h-7 text-xs"
+                >
+                  {surface.label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedSurface.startsWith("top") ? "Top surfaces: 3 gemstones each" : "Side surfaces: 2 gemstones each"}
+            </p>
+          </div>
+
+          <Separator />
+
           <div className="space-y-2">
             <Label className="text-xs font-medium flex items-center gap-2">
               <Wrench className="w-3 h-3" />
-              Diamonds
+              Surface Type
             </Label>
             <Select value={currentSurfaceConfig?.type || "empty"} onValueChange={(v) => handleSurfaceTypeChange(v as SurfaceType)}>
               <SelectTrigger className="w-full h-8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="empty">Empty (Base Material)</SelectItem>
                 <SelectItem value="gemstones">Diamonds</SelectItem>
                 <SelectItem value="moissanites">Moissanites</SelectItem>
                 <SelectItem value="enamel">Enamel</SelectItem>
@@ -390,23 +498,25 @@ export function CompactSidebar({
           </div>
 
           {currentSurfaceConfig?.type === "gemstones" && (
-            <Button variant="outline" size="sm" className="w-full h-6 text-xs" onClick={() => handleGemstoneColorChange("#ffffff")}>
-              Colourless
-            </Button>
+            <div className="grid grid-cols-5 gap-1">
+              {GEMSTONE_COLORS.slice(0, 5).map(c => (
+                <Button key={c.value} variant="outline" size="sm" className="h-6 p-0" style={{ backgroundColor: c.value }} onClick={() => handleGemstoneColorChange(c.value)} title={c.name} />
+              ))}
+            </div>
           )}
 
           {currentSurfaceConfig?.type === "moissanites" && (
-            <div className="grid grid-cols-3 gap-1">
-              {["#ffffff", "#000000", "#16a34a", "#dc2626", "#2563eb", "#eab308"].map(c => (
-                <Button key={c} variant="outline" size="sm" className="h-6" style={{ backgroundColor: c }} onClick={() => handleGemstoneColorChange(c)} />
+            <div className="grid grid-cols-5 gap-1">
+              {GEMSTONE_COLORS.map(c => (
+                <Button key={c.value} variant="outline" size="sm" className="h-6 p-0" style={{ backgroundColor: c.value }} onClick={() => handleGemstoneColorChange(c.value)} title={c.name} />
               ))}
             </div>
           )}
 
           {currentSurfaceConfig?.type === "enamel" && (
-            <div className="grid grid-cols-4 gap-1">
-              {["#000000", "#ffffff", "#16a34a", "#dc2626", "#2563eb", "#eab308", "#ea580c", "#b8b8ff"].map(c => (
-                <Button key={c} variant="outline" size="sm" className="h-6 p-0" style={{ backgroundColor: c }} onClick={() => handleEnamelColorChange(c)} />
+            <div className="grid grid-cols-5 gap-1">
+              {ENAMEL_COLORS.map(c => (
+                <Button key={c.value} variant="outline" size="sm" className="h-6 p-0" style={{ backgroundColor: c.value }} onClick={() => handleEnamelColorChange(c.value)} title={c.name} />
               ))}
             </div>
           )}

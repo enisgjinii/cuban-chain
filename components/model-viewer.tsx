@@ -383,7 +383,7 @@ export function ModelViewer({
     };
   }, [mainScene]);
 
-  // Helper function to create materials
+  // Helper function to create materials - all 5 materials per technical brief
   const createMaterial = (materialType: string) => {
     switch (materialType) {
       case "silver":
@@ -393,7 +393,9 @@ export function ModelViewer({
       case "grey":
         return new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 0.7, roughness: 0.3 });
       case "black":
-        return new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 0.5, roughness: 0.5 });
+        return new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.5 });
+      case "white":
+        return new THREE.MeshStandardMaterial({ color: 0xf5f5f5, metalness: 0.3, roughness: 0.2 });
       default:
         return new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.1 });
     }
