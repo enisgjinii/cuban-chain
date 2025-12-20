@@ -132,6 +132,27 @@ export default function Home() {
     setUndoCounter((c) => c + 1);
   };
 
+  const handleChainLengthChange = (length: number) => {
+    // Determine if we need to add or remove links
+    if (length > modelUrls.length) {
+      // Adding links
+      const toAdd = length - modelUrls.length;
+      const newUrls = [...modelUrls];
+      for (let i = 0; i < toAdd; i++) {
+        // Use the last model as template or default to part3.glb (common link)
+        const template = modelUrls.length > 0 ? modelUrls[modelUrls.length - 1] : "/models/part3.glb";
+        newUrls.push(template);
+      }
+      setModelUrls(newUrls);
+      setChainConfig(prev => setChainLength(prev, length));
+    } else if (length < modelUrls.length) {
+      // Removing links
+      const newUrls = modelUrls.slice(0, length);
+      setModelUrls(newUrls);
+      setChainConfig(prev => setChainLength(prev, length));
+    }
+  };
+
   return (
     <div className="relative min-h-screen w-full bg-gray-100">
       <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6">

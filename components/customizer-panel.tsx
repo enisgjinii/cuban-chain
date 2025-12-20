@@ -59,6 +59,7 @@ interface CustomizerPanelProps {
   modelUrls?: string[];
   setModelUrls?: (urls: string[]) => void;
   isMobile?: boolean;
+  onChainLengthChange?: (length: number) => void;
 }
 
 // Material options with colors for visual display
@@ -136,6 +137,7 @@ export function CustomizerPanel({
   modelUrls = [],
   setModelUrls,
   isMobile = false,
+  onChainLengthChange,
 }: CustomizerPanelProps) {
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [applyInserts, setApplyInserts] = useState(false);
@@ -579,8 +581,8 @@ export function CustomizerPanel({
                 Chain Length: {chainConfig.chainLength} links
               </Label>
               <Slider
-                value={[chainConfig.chainLength]}
-                onValueChange={([v]) => handleChainLengthChange(v)}
+                value={[modelUrls.length]}
+                onValueChange={([v]) => onChainLengthChange?.(v)}
                 min={1}
                 max={20}
                 step={1}

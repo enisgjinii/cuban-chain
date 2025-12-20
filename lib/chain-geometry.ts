@@ -96,45 +96,79 @@ export const DEFAULT_ADDITIONAL_LINK_OFFSET: AdditionalLinkOffset = {
 // ============================================================================
 // SURFACE MESH MAPPING
 // Maps mesh names to their corresponding surface types (top1, top2, side1, side2)
+// Based on diagnostic analysis of all GLB models (Dec 2024)
 // ============================================================================
 
 // Pattern to identify mesh types by name
+// Discovered patterns from model analysis:
+// - Cuban-Link.glb: Diamond_Octagon001-071, fill/fill001, loc_diamond_side_1, loc_fill_side1
+// - part5.glb: file2001-2007 (Diamond.001 material), Cube019-042
+// - part7.glb/enamel.glb: fill/fill001
+// - Other parts: B5-24-古巴链-OK-版-倒铜_XXXX (Chinese naming)
 export const MESH_SURFACE_PATTERNS = {
-  // Top surfaces - typically the main visible faces
-  top1: ["_top1", "_Top1", "top_1", "Top_1", "_t1", "top1"],
-  top2: ["_top2", "_Top2", "top_2", "Top_2", "_t2", "top2"],
-  // Side surfaces
-  side1: ["_side1", "_Side1", "side_1", "Side_1", "_s1", "side1", "loc_diamond_side_1"],
-  side2: ["_side2", "_Side2", "side_2", "Side_2", "_s2", "side2"],
-  // Diamond/gemstone meshes - comprehensive patterns
-  diamond: ["Diamond", "diamond", "gem", "Gem", "stone", "Stone", "Diamond_Octagon", "loc_diamonds"],
-  // Enamel surfaces
-  enamel: ["enamel", "Enamel", "fill", "Fill"],
-  // Base link body (for material application) - matches most mesh names
-  body: ["Cube", "Part", "Link", "body", "Body", "古巴链", "cubanLink", "Cuban"],
+  // Top surfaces - typically the main visible faces (general diamonds are on top)
+  top1: ["_top1", "_Top1", "top_1", "Top_1", "_t1", "top1", "loc_diamonds"],
+  top2: ["_top2", "_Top2", "top_2", "Top_2", "_t2", "top2", "loc_diamonds001"],
+  // Side surfaces - specific side zone patterns from Cuban-Link.glb
+  side1: ["_side1", "_Side1", "side_1", "Side_1", "_s1", "side1", "loc_diamond_side_1", "loc_fill_side1"],
+  side2: ["_side2", "_Side2", "side_2", "Side_2", "_s2", "side2", "loc_diamond_side_1001", "loc_fill_side1001"],
+  // Diamond/gemstone meshes - comprehensive patterns from all models
+  diamond: [
+    "Diamond", "diamond", "gem", "Gem", "stone", "Stone",
+    "Diamond_Octagon", // Cuban-Link.glb pattern
+    "loc_diamonds",    // General location node
+    "file2",           // part5.glb pattern (uses Diamond.001 material)
+  ],
+  // Enamel surfaces - fill patterns from enamel.glb, part7.glb, Cuban-Link.glb
+  enamel: ["enamel", "Enamel", "fill", "Fill", "loc_fill"],
+  // Base link body (for material application)
+  body: [
+    "Cube",            // Generic Three.js cube pattern (part5.glb, part6.glb)
+    "Part", "Link",    // General link structure
+    "body", "Body",
+    "古巴链",           // Chinese "Cuban chain"
+    "cubanLink", "Cuban",
+    "sm_cubanLink",    // part6.glb pattern
+    "Prongs",          // Most models use Prongs material
+    "倒铜",             // Part of Chinese naming pattern
+  ],
 };
 
-// Gemstone mesh patterns for each surface
+// Gemstone mesh patterns for each surface zone
+// Updated based on Cuban-Link.glb structure which has the most detailed naming
 export const GEMSTONE_MESH_PATTERNS = {
   top1: {
-    stone1: ["Diamond_Octagon001", "top1_stone1", "t1_gem1"],
-    stone2: ["Diamond_Octagon002", "top1_stone2", "t1_gem2"],
-    stone3: ["Diamond_Octagon003", "top1_stone3", "t1_gem3"],
+    // General top diamonds (first half of Diamond_Octagon series)
+    stone1: ["Diamond_Octagon001", "Diamond_Octagon002", "Diamond_Octagon003", "file2001"],
+    stone2: ["Diamond_Octagon004", "Diamond_Octagon005", "Diamond_Octagon006", "file2003"],
+    stone3: ["Diamond_Octagon007", "Diamond_Octagon008", "Diamond_Octagon009", "file2006"],
   },
   top2: {
-    stone1: ["Diamond_Octagon004", "top2_stone1", "t2_gem1"],
-    stone2: ["Diamond_Octagon005", "top2_stone2", "t2_gem2"],
-    stone3: ["Diamond_Octagon006", "top2_stone3", "t2_gem3"],
+    // Second set of top diamonds
+    stone1: ["Diamond_Octagon010", "Diamond_Octagon011", "Diamond_Octagon012"],
+    stone2: ["Diamond_Octagon013", "Diamond_Octagon014", "Diamond_Octagon015"],
+    stone3: ["Diamond_Octagon016", "Diamond_Octagon017", "Diamond_Octagon018", "file2007"],
   },
   side1: {
-    stone1: ["Diamond_Octagon007", "side1_stone1", "s1_gem1", "loc_diamond_side_1"],
-    stone2: ["Diamond_Octagon008", "side1_stone2", "s1_gem2", "loc_diamond_side_1001"],
+    // Left side diamonds (identified by loc_diamond_side_1 node)
+    stone1: ["loc_diamond_side_1", "Diamond_Octagon019", "Diamond_Octagon020"],
+    stone2: ["loc_diamond_side_1001", "Diamond_Octagon021", "Diamond_Octagon022"],
   },
   side2: {
-    stone1: ["Diamond_Octagon009", "side2_stone1", "s2_gem1"],
-    stone2: ["Diamond_Octagon010", "side2_stone2", "s2_gem2"],
+    // Right side diamonds
+    stone1: ["Diamond_Octagon023", "Diamond_Octagon024", "Diamond_Octagon025"],
+    stone2: ["Diamond_Octagon026", "Diamond_Octagon027", "Diamond_Octagon028"],
   },
 };
+
+// Enamel mesh patterns for each surface zone
+export const ENAMEL_MESH_PATTERNS = {
+  top1: ["fill", "loc_fill"],
+  top2: ["fill001", "loc_fill001"],
+  side1: ["loc_fill_side1"],
+  side2: ["loc_fill_side1001"],
+};
+
 
 // ============================================================================
 // MATERIAL CREATION FUNCTIONS
@@ -148,7 +182,7 @@ export function createBaseMaterial(materialType: Material): THREE.MeshStandardMa
     black: { color: 0x1a1a1a, metalness: 0.5, roughness: 0.5 },
     white: { color: 0xf5f5f5, metalness: 0.3, roughness: 0.2 },
   };
-  
+
   const config = materialConfigs[materialType] || materialConfigs.silver;
   return new THREE.MeshStandardMaterial({
     color: config.color,
@@ -221,7 +255,7 @@ export function isBodyMesh(meshName: string): boolean {
 export function getGemstoneIndex(meshName: string, surfaceId: SurfaceId): number | null {
   const patterns = GEMSTONE_MESH_PATTERNS[surfaceId];
   if (!patterns) return null;
-  
+
   for (const [key, meshPatterns] of Object.entries(patterns)) {
     if (meshPatterns.some(pattern => meshName.includes(pattern))) {
       return parseInt(key.replace("stone", "")) - 1;
@@ -240,22 +274,35 @@ export function applyLinkConfigToMesh(
   surfaceId?: SurfaceId
 ): void {
   const meshName = mesh.name;
-  
+
   // Handle diamond meshes - apply gemstone colors based on surface config
   if (isDiamondMesh(meshName)) {
-    // Try to determine which surface this diamond belongs to
+    // Determine which surface zone this diamond belongs to
     let targetSurface: SurfaceId = "top1"; // default
+
+    // First check for explicit side indicators in mesh name
     if (meshName.includes("side") || meshName.includes("Side")) {
-      targetSurface = meshName.includes("2") ? "side2" : "side1";
+      targetSurface = meshName.includes("1001") || meshName.includes("side_2") || meshName.includes("Side2") ? "side2" : "side1";
     } else {
-      // For top diamonds, try to determine from mesh name
+      // For Diamond_Octagon meshes, use numeric ranges based on our mapping
+      // Cuban-Link.glb has Diamond_Octagon001 through Diamond_Octagon071
       const match = meshName.match(/(\d+)/);
       if (match) {
         const num = parseInt(match[1]);
-        targetSurface = num <= 3 ? "top1" : "top2";
+        // Based on GEMSTONE_MESH_PATTERNS structure:
+        // top1: 1-9, top2: 10-18, side1: 19-22, side2: 23-28+
+        if (num >= 1 && num <= 9) {
+          targetSurface = "top1";
+        } else if (num >= 10 && num <= 18) {
+          targetSurface = "top2";
+        } else if (num >= 19 && num <= 22) {
+          targetSurface = "side1";
+        } else if (num >= 23) {
+          targetSurface = "side2";
+        }
       }
     }
-    
+
     const surfaceConfig = linkConfig.surfaces[targetSurface];
     if (surfaceConfig.type === "gemstones" || surfaceConfig.type === "moissanites") {
       mesh.visible = true;
@@ -275,26 +322,43 @@ export function applyLinkConfigToMesh(
     }
     return;
   }
-  
-  // Handle enamel meshes
+
+
+  // Handle enamel meshes - now with zone-specific detection
   if (isEnamelMesh(meshName)) {
-    // Check if any surface has enamel type
-    let hasEnamel = false;
-    for (const sid of ["top1", "top2", "side1", "side2"] as SurfaceId[]) {
-      const config = linkConfig.surfaces[sid];
-      if (config.type === "enamel") {
-        hasEnamel = true;
-        mesh.visible = true;
-        mesh.material = createEnamelMaterial(config.enamelColor || "#ffffff");
+    // Determine which zone this enamel mesh belongs to
+    let targetSurface: SurfaceId | null = null;
+
+    // Check against ENAMEL_MESH_PATTERNS for zone-specific matching
+    for (const [zone, patterns] of Object.entries(ENAMEL_MESH_PATTERNS)) {
+      if (patterns.some(pattern => meshName.includes(pattern))) {
+        targetSurface = zone as SurfaceId;
         break;
       }
     }
-    if (!hasEnamel) {
+
+    // If no specific zone found, default to top1 for generic fill meshes
+    if (!targetSurface) {
+      if (meshName.includes("side") || meshName.includes("Side")) {
+        targetSurface = meshName.includes("1001") || meshName.includes("2") ? "side2" : "side1";
+      } else if (meshName.includes("001")) {
+        targetSurface = "top2";
+      } else {
+        targetSurface = "top1";
+      }
+    }
+
+    const config = linkConfig.surfaces[targetSurface];
+    if (config.type === "enamel") {
+      mesh.visible = true;
+      mesh.material = createEnamelMaterial(config.enamelColor || "#ffffff");
+    } else {
       mesh.visible = false;
     }
     return;
   }
-  
+
+
   // Apply base material to body meshes (everything else)
   mesh.material = createBaseMaterial(linkConfig.material);
 }
@@ -305,7 +369,7 @@ export function applySurfaceConfigToMesh(
   surfaceId: SurfaceId
 ): void {
   const meshName = mesh.name;
-  
+
   switch (surfaceConfig.type) {
     case "empty":
       // Hide gemstones/enamel, show base material
@@ -313,7 +377,7 @@ export function applySurfaceConfigToMesh(
         mesh.visible = false;
       }
       break;
-      
+
     case "gemstones":
     case "moissanites":
       if (isDiamondMesh(meshName)) {
@@ -329,7 +393,7 @@ export function applySurfaceConfigToMesh(
         mesh.visible = false;
       }
       break;
-      
+
     case "enamel":
       if (isEnamelMesh(meshName)) {
         mesh.visible = true;
@@ -339,7 +403,7 @@ export function applySurfaceConfigToMesh(
         mesh.visible = false;
       }
       break;
-      
+
     case "engraving":
       if (isDiamondMesh(meshName) || isEnamelMesh(meshName)) {
         mesh.visible = false;
@@ -357,14 +421,14 @@ export function applyChainConfigToScene(
   chainConfig: ChainConfig
 ): void {
   // Get all link containers (direct children of scene)
-  const linkContainers = scene.children.filter(child => 
+  const linkContainers = scene.children.filter(child =>
     child.userData.linkIndex !== undefined
   );
-  
+
   linkContainers.forEach((container, index) => {
     const linkConfig = chainConfig.links[index];
     if (!linkConfig) return;
-    
+
     container.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         applyLinkConfigToMesh(child, linkConfig);
