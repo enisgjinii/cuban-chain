@@ -50,7 +50,7 @@ export default function Home() {
     const checkMobile = () => {
       setIsMobile(
         window.innerWidth < 768 ||
-          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       );
     };
     checkMobile();
@@ -88,14 +88,35 @@ export default function Home() {
     }
   };
 
+  const handleCaptureImage = useCallback(() => {
+    // We can't easily access 'gl' from here without a ref to the canvas or a child event
+    // So we'll use a custom event that ModelViewer will listen to
+    window.dispatchEvent(new CustomEvent("captureImage"));
+  }, []);
+
+  const handleToggleRecording = useCallback(() => {
+    if (isRecording) {
+      setIsRecording(false);
+      setShowRecordingIndicator(false);
+    } else {
+      setIsRecording(true);
+      setShowRecordingIndicator(true);
+      setAutoRotate(true);
+    }
+  }, [isRecording]);
+
   const handleRecordingComplete = useCallback((videoBlob: Blob) => {
     setIsRecording(false);
     setShowRecordingIndicator(false);
     setAutoRotate(false);
+
+    // Determine file extension based on mime type
+    const extension = videoBlob.type.includes("mp4") ? "mp4" : "webm";
+
     const url = URL.createObjectURL(videoBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `chain-recording-${Date.now()}.webm`;
+    a.download = `chain-recording-${Date.now()}.${extension}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -139,12 +160,13 @@ export default function Home() {
               showDebug={showDebug}
               cameraPosition={{ x: 0.51, y: 1.25, z: 0.74 }}
               modelPosition={{ x: 0, y: 0, z: 0 }}
-              setCameraPosition={() => {}}
-              setModelPosition={() => {}}
+              setCameraPosition={() => { }}
+              setModelPosition={() => { }}
               onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
               onSelectMesh={setSelectedMesh}
               onHoverMesh={setHoveredMesh}
               isRecording={isRecording}
+              onRecordingComplete={handleRecordingComplete}
               isMobile={isMobile}
               autoZoom={autoZoom}
               setAutoZoom={setAutoZoom}
@@ -153,6 +175,7 @@ export default function Home() {
             <Canvas
               camera={{ position: [0.51, 1.25, 0.74], fov: 35 }}
               className="w-full h-full"
+              gl={{ preserveDrawingBuffer: true }}
             >
               <Suspense fallback={null}>
                 <Environment preset="city" />
@@ -196,9 +219,8 @@ export default function Home() {
         </div>
 
         <div
-          className={`z-20 ${
-            isMobile ? "w-full p-3 bg-gray-100 pb-12" : "absolute top-20 right-6"
-          }`}
+          className={`z-20 ${isMobile ? "w-full p-3 bg-gray-100 pb-12" : "absolute top-20 right-6"
+            }`}
         >
           <CustomizerPanel
             chainConfig={chainConfig}
@@ -221,6 +243,9 @@ export default function Home() {
             modelUrls={modelUrls}
             setModelUrls={setModelUrls}
             isMobile={isMobile}
+            onCaptureImage={handleCaptureImage}
+            onStartRecording={handleToggleRecording}
+            isRecording={isRecording}
           />
         </div>
       </div>

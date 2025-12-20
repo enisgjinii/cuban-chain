@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Link, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Link, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Camera, Video, Share2, Square } from "lucide-react";
+import { ZoneSelector } from "@/components/zone-selector";
 import type {
   ChainConfig,
   SurfaceId,
@@ -125,9 +126,13 @@ export function CustomizerPanel({
   chainConfig,
   setChainConfig,
   selectedSurface,
+  setSelectedSurface,
   onSaveConfiguration,
   onLoadConfiguration,
   onUndo,
+  onCaptureImage,
+  onStartRecording,
+  isRecording = false,
   modelUrls = [],
   setModelUrls,
   isMobile = false,
@@ -306,6 +311,30 @@ export function CustomizerPanel({
     [setModelUrls]
   );
 
+  const handleShare = async () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "My Custom Cuban Chain",
+          text: "Check out this Cuban chain I designed!",
+          url: window.location.href,
+        });
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          console.error("Error sharing:", err);
+        }
+      }
+    } else {
+      // Fallback - copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Link copied to clipboard!");
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+    }
+  };
+
   const colorOptions = getColorOptions();
   const showColorDropdown = applyInserts && currentSurfaceConfig?.type && currentSurfaceConfig.type !== "empty";
 
@@ -316,9 +345,8 @@ export function CustomizerPanel({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-lg overflow-y-auto ${
-        isMobile ? "w-full max-h-[70vh] p-4" : "w-80 max-h-[85vh] p-5"
-      }`}
+      className={`bg-white rounded-lg shadow-lg overflow-y-auto ${isMobile ? "w-full max-h-[70vh] p-4" : "w-80 max-h-[85vh] p-5"
+        }`}
     >
       <h2 className={`font-semibold text-gray-700 mb-4 ${isMobile ? "text-base" : "text-lg"}`}>
         Customizer
@@ -379,11 +407,10 @@ export function CustomizerPanel({
                   <button
                     key={index}
                     onClick={() => setSelectedLinkIndex(index)}
-                    className={`flex-shrink-0 w-8 h-8 rounded-md border-2 transition-all ${
-                      selectedLinkIndex === index
-                        ? "border-blue-500 ring-2 ring-blue-200"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
+                    className={`flex-shrink-0 w-8 h-8 rounded-md border-2 transition-all ${selectedLinkIndex === index
+                      ? "border-blue-500 ring-2 ring-blue-200"
+                      : "border-gray-300 hover:border-gray-400"
+                      }`}
                     style={{ backgroundColor: getMaterialColor(material) }}
                     title={`Link ${index + 1} - ${material}`}
                   >
@@ -397,6 +424,13 @@ export function CustomizerPanel({
           </>
         )}
       </div>
+
+      {/* Zone Selector - Visual 4-Zone Diagram */}
+      <ZoneSelector
+        selectedZone={selectedSurface}
+        onZoneSelect={setSelectedSurface}
+        currentConfig={currentLink?.surfaces}
+      />
 
       {/* Material Selection */}
       <div className="mb-3">
@@ -429,14 +463,19 @@ export function CustomizerPanel({
       <Separator className="my-3" />
 
       {/* Apply Inserts Checkbox */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-2">
         <Checkbox
           id="apply-inserts"
           checked={applyInserts}
           onCheckedChange={(checked) => setApplyInserts(!!checked)}
         />
         <Label htmlFor="apply-inserts" className="text-sm text-gray-600 cursor-pointer">
-          Apply inserts
+          Apply inserts to{" "}
+          <span className="font-semibold text-blue-600">
+            {selectedSurface === "side1" ? "Left Side" :
+              selectedSurface === "side2" ? "Right Side" :
+                selectedSurface === "top1" ? "Top Face 1" : "Top Face 2"}
+          </span>
         </Label>
       </div>
 
@@ -448,9 +487,8 @@ export function CustomizerPanel({
           disabled={!applyInserts}
         >
           <SelectTrigger
-            className={`w-full border-2 rounded-md h-10 ${
-              applyInserts ? "border-green-500" : "border-gray-300 opacity-60"
-            }`}
+            className={`w-full border-2 rounded-md h-10 ${applyInserts ? "border-green-500" : "border-gray-300 opacity-60"
+              }`}
           >
             <SelectValue placeholder="Diamonds" />
           </SelectTrigger>
@@ -629,6 +667,45 @@ export function CustomizerPanel({
 
       <Separator className="my-4" />
 
+      {/* Export Options */}
+      <div className="mb-4">
+        <Label className="text-xs text-gray-500 mb-2 block">Export & Share</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCaptureImage}
+            className="flex items-center justify-center gap-2 h-9 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+          >
+            <Camera className="w-4 h-4" />
+            <span className="text-xs">Image</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onStartRecording}
+            className={`flex items-center justify-center gap-2 h-9 ${isRecording
+              ? "border-red-400 bg-red-50 text-red-700 hover:bg-red-100 animate-pulse"
+              : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
+              }`}
+          >
+            {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Video className="w-4 h-4" />}
+            <span className="text-xs">{isRecording ? "Stop" : "Video"}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            className="flex items-center justify-center gap-2 h-9 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 col-span-2"
+          >
+            <Share2 className="w-4 h-4" />
+            <span className="text-xs">Share Design</span>
+          </Button>
+        </div>
+      </div>
+
+      <Separator className="my-4" />
+
       {/* Save/Load Configuration */}
       <div className="flex gap-2">
         <Button
@@ -637,7 +714,7 @@ export function CustomizerPanel({
           onClick={onSaveConfiguration}
           className="flex-1 h-9 text-gray-600 text-xs"
         >
-          Save configuration
+          Save config
         </Button>
         <label className="flex-1">
           <Button variant="outline" size="sm" className="w-full h-9 text-gray-600 text-xs" asChild>

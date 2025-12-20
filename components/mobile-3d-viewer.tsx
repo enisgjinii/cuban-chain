@@ -65,7 +65,7 @@ export function Mobile3DViewer({
   setAutoZoom,
   onRecordingComplete,
   showRecordingIndicator,
-  
+
 }: Mobile3DViewerProps) {
   const cameraRef = useRef<any>(null);
   const [modelScale, setModelScale] = useState(1);
@@ -179,15 +179,15 @@ export function Mobile3DViewer({
 
   return (
     <div
-      className={`relative w-full h-full rounded-xl overflow-hidden transition-all duration-300 ${
-        isRecording
+      className={`relative w-full h-full rounded-xl overflow-hidden transition-all duration-300 ${isRecording
           ? "border-4 border-red-500 animate-pulse shadow-red-500/50 shadow-lg"
           : ""
-      }`}
+        }`}
     >
       <Canvas
         camera={{ position: [0.51, 1.25, 0.74], fov: isMobile ? 40 : 35 }}
         className="w-full h-full"
+        gl={{ preserveDrawingBuffer: true }}
       >
         <Suspense fallback={null}>
           <Environment preset="city" />
@@ -209,7 +209,7 @@ export function Mobile3DViewer({
               isRecording={isRecording}
               onRecordingComplete={onRecordingComplete}
               showRecordingIndicator={showRecordingIndicator}
-              
+
             />
           </Stage>
 

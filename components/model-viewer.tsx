@@ -135,7 +135,7 @@ export function ModelViewer({
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [internalChainAssembly, setInternalChainAssembly] = useState<ChainAssembly | null>(null);
-  
+
   // Use external chain assembly if provided, otherwise use internal
   const chainAssembly = externalChainAssembly || internalChainAssembly;
   const setChainAssembly = useCallback((assembly: ChainAssembly) => {
@@ -159,7 +159,7 @@ export function ModelViewer({
 
   // Load all GLTFs - this is safe because urls array length determines hook count
   const gltfs = urls.map(url => useGLTF(url));
-  
+
   // Create a stable reference for scenes
   const scenes = useMemo(() => {
     return gltfs.map(gltf => gltf.scene);
@@ -179,56 +179,56 @@ export function ModelViewer({
   // Create the main scene with properly connected chain links
   const mainScene = useMemo(() => {
     const scene = new THREE.Scene();
-    
+
     // Calculate the link width for consistent spacing (use first model as reference)
     let referenceWidth = 0.05; // Default fallback
     if (scenes[0]) {
       const firstBounds = getCenteredBounds(urls[0], scenes[0]);
       referenceWidth = firstBounds.size.x;
     }
-    
+
     // First pass: create and position all links
     const containers: THREE.Group[] = [];
-    
+
     urls.forEach((url, index) => {
       const modelScene = scenes[index];
       if (modelScene) {
         const clonedScene = modelScene.clone(true);
         const { center, size, bounds } = getCenteredBounds(url, modelScene);
         const config = getModelConfig(url);
-        
+
         // Create a container group to handle positioning
         const container = new THREE.Group();
-        
+
         // Center the model within its container
         clonedScene.position.set(-center.x, -center.y, -center.z);
-        
+
         // Apply model-specific scale
         if (config.scale !== 1) {
           clonedScene.scale.setScalar(config.scale);
         }
-        
+
         container.add(clonedScene);
-        
+
         // Calculate position along the chain (X-axis only for horizontal line)
         // Use a consistent step size based on reference width and spacing
         // Spacing set to 0.55
         const stepSize = referenceWidth * 0.55;
         const xPos = index * stepSize;
-        
+
         // Position only on X axis - keep Y and Z at 0 for straight horizontal line
         container.position.set(
           xPos + config.connectionOffsetX,
           0, // Will be adjusted in second pass to align to ground
           0  // Keep all links in the same Z plane for straight line
         );
-        
+
         // Apply alternating rotation for chain link interlocking effect
         if (config.alternateRotation && index % 2 === 1) {
           // Slight rotation for alternating links to simulate interlocking
           container.rotation.z = Math.PI * 0.02;
         }
-        
+
         container.userData.linkIndex = index;
         container.userData.url = url;
         container.userData.originalBounds = bounds;
@@ -236,7 +236,7 @@ export function ModelViewer({
         scene.add(container);
       }
     });
-    
+
     // Second pass: align all links to the same ground level
     // Find the lowest point across all links
     let lowestY = 0;
@@ -246,14 +246,14 @@ export function ModelViewer({
         lowestY = bounds.min.y;
       }
     });
-    
+
     // Adjust all containers so their lowest point is at Y=0
     containers.forEach(container => {
       const bounds = new THREE.Box3().setFromObject(container);
       const adjustment = -bounds.min.y;
       container.position.y += adjustment;
     });
-    
+
     // Third pass: center the entire chain horizontally and in Z
     if (scene.children.length > 0) {
       const chainBounds = new THREE.Box3().setFromObject(scene);
@@ -264,7 +264,7 @@ export function ModelViewer({
         // Don't adjust Y - we want them on the ground
       });
     }
-    
+
     return scene;
   }, [urlsKey, scenes, chainSpacing, getCenteredBounds]);
 
@@ -278,7 +278,7 @@ export function ModelViewer({
   // Apply chainConfig to the scene whenever it changes
   useEffect(() => {
     if (!mainScene) return;
-    
+
     // Apply the chain configuration to all links
     applyChainConfigToScene(mainScene, chainConfig);
   }, [mainScene, chainConfig]);
@@ -373,10 +373,10 @@ export function ModelViewer({
   useEffect(() => {
     const handleMaterialApplication = (event: CustomEvent) => {
       const { material, targetModel, targetIndex } = event.detail;
-      
+
       mainScene.children.forEach((child, index) => {
         let shouldApply = false;
-        
+
         if (targetModel === "all") {
           shouldApply = true;
         } else if (targetIndex >= 0) {
@@ -384,7 +384,7 @@ export function ModelViewer({
         } else {
           shouldApply = child.userData.url === targetModel;
         }
-        
+
         if (shouldApply) {
           child.traverse((mesh) => {
             if (mesh instanceof THREE.Mesh) {
@@ -401,7 +401,7 @@ export function ModelViewer({
     // Handle surface customization events
     const handleSurfaceApplication = (event: CustomEvent) => {
       const { linkIndex, surfaceId, surfaceConfig } = event.detail;
-      
+
       if (linkIndex >= 0 && linkIndex < mainScene.children.length) {
         const container = mainScene.children[linkIndex];
         const linkConfig = chainConfig.links[linkIndex];
@@ -417,16 +417,32 @@ export function ModelViewer({
       toggleDiamondsVisibility(mainScene, visible);
     };
 
+    const handleCaptureImage = () => {
+      try {
+        const dataUrl = gl.domElement.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `chain-design-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (err) {
+        console.error("Failed to capture image:", err);
+      }
+    };
+
     window.addEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
     window.addEventListener("applySurfaceConfig", handleSurfaceApplication as EventListener);
     window.addEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
+    window.addEventListener("captureImage", handleCaptureImage as EventListener);
 
     return () => {
       window.removeEventListener("applyMaterialToModel", handleMaterialApplication as EventListener);
       window.removeEventListener("applySurfaceConfig", handleSurfaceApplication as EventListener);
       window.removeEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
+      window.removeEventListener("captureImage", handleCaptureImage as EventListener);
     };
-  }, [mainScene, chainConfig]);
+  }, [mainScene, chainConfig, gl]);
 
 
 
@@ -440,8 +456,19 @@ export function ModelViewer({
 
       const canvas = gl.domElement;
       const stream = canvas.captureStream(30);
+
+      // Determine the best supported mime type, prioritizing MP4
+      const mimeTypes = [
+        "video/mp4",
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
+      ];
+
+      const supportedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp8",
+        mimeType: supportedType,
       });
 
       recordedChunksRef.current = [];
@@ -464,7 +491,8 @@ export function ModelViewer({
 
         if (recordedChunksRef.current.length > 0 && !blobCreatedRef.current) {
           blobCreatedRef.current = true;
-          const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+          // Use the actual mime type used by the recorder for the blob
+          const blob = new Blob(recordedChunksRef.current, { type: mediaRecorder.mimeType });
           onRecordingComplete?.(blob);
         }
 
@@ -506,15 +534,7 @@ export function ModelViewer({
     }
   }, [isRecording, gl, threeScene, onRecordingComplete]);
 
-  // Auto-stop recording after 5 seconds
-  useFrame(() => {
-    if (isRecording && mediaRecorderRef.current && recordingStartTimeRef.current) {
-      const elapsed = Date.now() - recordingStartTimeRef.current;
-      if (elapsed >= 5000) {
-        mediaRecorderRef.current.stop();
-      }
-    }
-  });
+  // No auto-stop recording logic needed anymore as it's controlled by props
 
   return <primitive object={mainScene} />;
 }
