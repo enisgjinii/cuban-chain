@@ -159,6 +159,12 @@ export default function Home() {
     setAnimationKey((k) => k + 1);
   }, []);
 
+  const handleZoneClick = useCallback((linkIndex: number, surfaceId: SurfaceId) => {
+    // When user clicks on a zone in 3D, update the selected surface in the UI
+    console.log(`Zone clicked: Link ${linkIndex}, Surface ${surfaceId}`);
+    setSelectedSurface(surfaceId);
+  }, []);
+
   return (
     <div className="relative min-h-screen w-full bg-gray-100">
       <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6">
@@ -226,6 +232,7 @@ export default function Home() {
                     onRecordingComplete={handleRecordingComplete}
                     showRecordingIndicator={showRecordingIndicator}
                     sceneRef={sceneRef}
+                    onZoneClick={handleZoneClick}
                   />
                 </Stage>
                 <OrbitControls

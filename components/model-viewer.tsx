@@ -20,6 +20,10 @@ import {
   isEnamelMesh,
   isBodyMesh,
 } from "@/lib/chain-geometry";
+import {
+  detectZoneFromIntersection,
+  findLinkContainer,
+} from "@/lib/zone-detection";
 
 interface ModelViewerProps {
   urls: string[];
@@ -44,6 +48,8 @@ interface ModelViewerProps {
   // Animation props
   playEntranceAnimation?: boolean;
   onEntranceAnimationComplete?: () => void;
+  // Zone click detection
+  onZoneClick?: (linkIndex: number, surfaceId: import("@/lib/chain-config-types").SurfaceId) => void;
 }
 
 // Entrance animation configuration
@@ -164,6 +170,7 @@ export function ModelViewer({
   onChainAssemblyChange,
   playEntranceAnimation = true,
   onEntranceAnimationComplete,
+  onZoneClick,
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [internalChainAssembly, setInternalChainAssembly] = useState<ChainAssembly | null>(null);
@@ -660,6 +667,31 @@ export function ModelViewer({
   }, [isRecording, gl, threeScene, onRecordingComplete]);
 
   // No auto-stop recording logic needed anymore as it's controlled by props
+  // Handle click on link to detect zone
+  const handlePointerDown = useCallback((event: any) => {
+    if (!onZoneClick || !event.intersections?.length) return;
 
-  return <primitive object={mainScene} />;
+    // Get the first intersection
+    const intersection = event.intersections[0];
+    if (!intersection.object) return;
+
+    // Find the link container (parent with linkIndex userData)
+    const linkContainer = findLinkContainer(intersection.object);
+    if (!linkContainer) return;
+
+    // Detect the zone from the intersection
+    const result = detectZoneFromIntersection(intersection, linkContainer);
+    if (result) {
+      onZoneClick(result.linkIndex, result.surfaceId);
+    }
+
+    // Stop propagation to prevent orbit controls interference
+    event.stopPropagation();
+  }, [onZoneClick]);
+
+  return (
+    <group onPointerDown={handlePointerDown}>
+      <primitive object={mainScene} />
+    </group>
+  );
 }
