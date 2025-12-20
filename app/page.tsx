@@ -8,7 +8,7 @@ import { ModelViewer } from "@/components/model-viewer";
 import { CustomizerPanel } from "@/components/customizer-panel";
 import { Mobile3DViewer } from "@/components/mobile-3d-viewer";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
-import { createDefaultConfig } from "@/lib/chain-helpers";
+import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
 
 // Default model URLs for initial chain
 const DEFAULT_MODEL_URLS = [
@@ -36,6 +36,7 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showRecordingIndicator, setShowRecordingIndicator] = useState<boolean>(false);
+  const [animationKey, setAnimationKey] = useState<number>(0);
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
 
@@ -153,6 +154,11 @@ export default function Home() {
     }
   };
 
+  const handleReplayAnimation = useCallback(() => {
+    // Increment animation key to force re-render and replay animation
+    setAnimationKey((k) => k + 1);
+  }, []);
+
   return (
     <div className="relative min-h-screen w-full bg-gray-100">
       <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6">
@@ -204,6 +210,7 @@ export default function Home() {
                 <directionalLight position={[10, 10, 5]} intensity={1} />
                 <Stage environment="city" intensity={0.6} adjustCamera={autoZoom}>
                   <ModelViewer
+                    key={animationKey}
                     urls={modelUrls}
                     chainConfig={chainConfig}
                     onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
@@ -267,6 +274,8 @@ export default function Home() {
             onCaptureImage={handleCaptureImage}
             onStartRecording={handleToggleRecording}
             isRecording={isRecording}
+            onChainLengthChange={handleChainLengthChange}
+            onReplayAnimation={handleReplayAnimation}
           />
         </div>
       </div>

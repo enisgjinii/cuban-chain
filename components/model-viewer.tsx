@@ -41,6 +41,36 @@ interface ModelViewerProps {
   // New props for advanced chain management
   chainAssembly?: ChainAssembly;
   onChainAssemblyChange?: (assembly: ChainAssembly) => void;
+  // Animation props
+  playEntranceAnimation?: boolean;
+  onEntranceAnimationComplete?: () => void;
+}
+
+// Entrance animation configuration
+const ANIMATION_CONFIG = {
+  startY: 3,              // Start position above scene
+  staggerDelay: 0.08,     // Delay between each link (seconds)
+  springStiffness: 180,   // Spring stiffness (higher = faster)
+  springDamping: 12,      // Spring damping (lower = more bouncy)
+  mass: 1,                // Mass of each link
+};
+
+// Simple spring physics helper
+function springValue(
+  current: number,
+  target: number,
+  velocity: number,
+  stiffness: number,
+  damping: number,
+  mass: number,
+  dt: number
+): { value: number; velocity: number } {
+  const springForce = -stiffness * (current - target);
+  const dampingForce = -damping * velocity;
+  const acceleration = (springForce + dampingForce) / mass;
+  const newVelocity = velocity + acceleration * dt;
+  const newValue = current + newVelocity * dt;
+  return { value: newValue, velocity: newVelocity };
 }
 
 // Cache for loaded model bounds
@@ -132,9 +162,18 @@ export function ModelViewer({
   sceneRef,
   chainAssembly: externalChainAssembly,
   onChainAssemblyChange,
+  playEntranceAnimation = true,
+  onEntranceAnimationComplete,
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [internalChainAssembly, setInternalChainAssembly] = useState<ChainAssembly | null>(null);
+
+  // Animation state
+  const [animationPlayed, setAnimationPlayed] = useState(false);
+  const animationStateRef = useRef<{
+    startTime: number;
+    linkStates: Array<{ y: number; velocity: number; targetY: number; settled: boolean }>;
+  } | null>(null);
 
   // Use external chain assembly if provided, otherwise use internal
   const chainAssembly = externalChainAssembly || internalChainAssembly;
@@ -267,6 +306,92 @@ export function ModelViewer({
 
     return scene;
   }, [urlsKey, scenes, chainSpacing, getCenteredBounds]);
+
+  // Initialize entrance animation when mainScene is ready
+  useEffect(() => {
+    if (!mainScene || animationPlayed || !playEntranceAnimation) return;
+
+    const containers = mainScene.children.filter(child =>
+      child.userData.linkIndex !== undefined
+    );
+
+    if (containers.length === 0) return;
+
+    // Store target Y positions and set initial positions above screen
+    const linkStates = containers.map((container) => {
+      const targetY = container.position.y;
+      container.position.y = targetY + ANIMATION_CONFIG.startY;
+      return {
+        y: container.position.y,
+        velocity: 0,
+        targetY,
+        settled: false,
+      };
+    });
+
+    animationStateRef.current = {
+      startTime: performance.now(),
+      linkStates,
+    };
+  }, [mainScene, animationPlayed, playEntranceAnimation]);
+
+  // Animate entrance with spring physics
+  useFrame((state, delta) => {
+    if (!animationStateRef.current || !mainScene) return;
+
+    const containers = mainScene.children.filter(child =>
+      child.userData.linkIndex !== undefined
+    ).sort((a, b) => a.userData.linkIndex - b.userData.linkIndex);
+
+    const { linkStates, startTime } = animationStateRef.current;
+    const elapsed = (performance.now() - startTime) / 1000;
+
+    let allSettled = true;
+
+    containers.forEach((container, index) => {
+      const linkState = linkStates[index];
+      if (!linkState || linkState.settled) return;
+
+      // Staggered start: each link waits before dropping
+      const linkStartTime = index * ANIMATION_CONFIG.staggerDelay;
+      if (elapsed < linkStartTime) {
+        allSettled = false;
+        return;
+      }
+
+      // Apply spring physics
+      const result = springValue(
+        linkState.y,
+        linkState.targetY,
+        linkState.velocity,
+        ANIMATION_CONFIG.springStiffness,
+        ANIMATION_CONFIG.springDamping,
+        ANIMATION_CONFIG.mass,
+        delta
+      );
+
+      linkState.y = result.value;
+      linkState.velocity = result.velocity;
+      container.position.y = result.value;
+
+      // Check if settled (close enough to target with low velocity)
+      const distanceToTarget = Math.abs(result.value - linkState.targetY);
+      const speed = Math.abs(result.velocity);
+
+      if (distanceToTarget < 0.001 && speed < 0.01) {
+        container.position.y = linkState.targetY;
+        linkState.settled = true;
+      } else {
+        allSettled = false;
+      }
+    });
+
+    if (allSettled) {
+      animationStateRef.current = null;
+      setAnimationPlayed(true);
+      onEntranceAnimationComplete?.();
+    }
+  });
 
   // Update sceneRef
   useEffect(() => {

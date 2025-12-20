@@ -60,6 +60,7 @@ interface CustomizerPanelProps {
   setModelUrls?: (urls: string[]) => void;
   isMobile?: boolean;
   onChainLengthChange?: (length: number) => void;
+  onReplayAnimation?: () => void;
 }
 
 // Material options with colors for visual display
@@ -138,6 +139,7 @@ export function CustomizerPanel({
   setModelUrls,
   isMobile = false,
   onChainLengthChange,
+  onReplayAnimation,
 }: CustomizerPanelProps) {
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [applyInserts, setApplyInserts] = useState(false);
@@ -546,7 +548,7 @@ export function CustomizerPanel({
         </Label>
       </div>
 
-      {/* Undo button */}
+      {/* Undo and Replay buttons */}
       <div className="flex gap-3 mb-4">
         <Button
           variant="outline"
@@ -555,6 +557,14 @@ export function CustomizerPanel({
           className="flex-1 h-9 border-gray-300 text-gray-600 hover:bg-gray-50"
         >
           Undo
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReplayAnimation}
+          className="flex-1 h-9 border-purple-300 text-purple-600 hover:bg-purple-50"
+        >
+          ✨ Replay
         </Button>
       </div>
 
