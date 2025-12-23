@@ -79,7 +79,7 @@ export function ViewerControls({
                                 <ZoomIn className={iconSize} />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left">Zoom In</TooltipContent>
+                        <TooltipContent side="right">Zoom In</TooltipContent>
                     </Tooltip>
 
                     <Tooltip>
@@ -93,7 +93,7 @@ export function ViewerControls({
                                 <ZoomOut className={iconSize} />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left">Zoom Out</TooltipContent>
+                        <TooltipContent side="right">Zoom Out</TooltipContent>
                     </Tooltip>
                 </div>
 
@@ -113,11 +113,11 @@ export function ViewerControls({
                                 <Eye className={iconSize} />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left">View Angles</TooltipContent>
+                        <TooltipContent side="right">View Angles</TooltipContent>
                     </Tooltip>
 
                     {showViewPresets && (
-                        <div className="absolute right-full mr-2 top-0 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 flex gap-1">
+                        <div className="absolute left-full ml-2 top-0 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1 flex gap-1">
                             {VIEW_PRESETS.map((preset) => (
                                 <Tooltip key={preset.id}>
                                     <TooltipTrigger asChild>
@@ -150,8 +150,8 @@ export function ViewerControls({
                             size="sm"
                             onClick={() => setAutoRotate(!autoRotate)}
                             className={`${buttonSize} p-0 ${autoRotate
-                                    ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
-                                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                                ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-800"
                                 }`}
                         >
                             {autoRotate ? (
@@ -161,7 +161,7 @@ export function ViewerControls({
                             )}
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="left">
+                    <TooltipContent side="right">
                         {autoRotate ? "Stop Rotation" : "Auto Rotate"}
                     </TooltipContent>
                 </Tooltip>
@@ -178,7 +178,7 @@ export function ViewerControls({
                             <RotateCcw className={iconSize} />
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="left">Reset View</TooltipContent>
+                    <TooltipContent side="right">Reset View</TooltipContent>
                 </Tooltip>
 
                 {/* Fullscreen */}
@@ -194,7 +194,7 @@ export function ViewerControls({
                                 <Maximize2 className={iconSize} />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="left">Fullscreen</TooltipContent>
+                        <TooltipContent side="right">Fullscreen</TooltipContent>
                     </Tooltip>
                 )}
             </div>
