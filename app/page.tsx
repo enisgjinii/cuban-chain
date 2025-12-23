@@ -208,18 +208,7 @@ export default function Home() {
   const handleZoomIn = useCallback(() => {
     if (orbitControlsRef.current) {
       const controls = orbitControlsRef.current;
-      const camera = controls.object;
-      const target = controls.target;
-      const position = camera.position;
-
-      // Calculate current direction and distance
-      const direction = new THREE.Vector3().subVectors(position, target).normalize();
-      const distance = position.distanceTo(target);
-      const newDistance = Math.max(distance * 0.8, 0.5);
-
-      // Update camera position
-      const newPosition = new THREE.Vector3().copy(target).add(direction.multiplyScalar(newDistance));
-      camera.position.copy(newPosition);
+      controls.dollyIn(1.2);
       controls.update();
     }
     setCameraZoom(prev => Math.min(prev * 1.2, 3));
@@ -228,18 +217,7 @@ export default function Home() {
   const handleZoomOut = useCallback(() => {
     if (orbitControlsRef.current) {
       const controls = orbitControlsRef.current;
-      const camera = controls.object;
-      const target = controls.target;
-      const position = camera.position;
-
-      // Calculate current direction and distance
-      const direction = new THREE.Vector3().subVectors(position, target).normalize();
-      const distance = position.distanceTo(target);
-      const newDistance = Math.min(distance * 1.2, 10);
-
-      // Update camera position
-      const newPosition = new THREE.Vector3().copy(target).add(direction.multiplyScalar(newDistance));
-      camera.position.copy(newPosition);
+      controls.dollyOut(1.2);
       controls.update();
     }
     setCameraZoom(prev => Math.max(prev * 0.8, 0.3));
@@ -253,7 +231,39 @@ export default function Home() {
   }, []);
 
   const handleViewPreset = useCallback((preset: ViewPreset) => {
-    // View presets can be used with OrbitControls
+    if (orbitControlsRef.current) {
+      const controls = orbitControlsRef.current;
+      const camera = controls.object;
+      const presetData = VIEW_PRESET_POSITIONS[preset];
+
+      if (presetData) {
+        const startPosition = camera.position.clone();
+        const startTarget = controls.target.clone();
+        const endPosition = new THREE.Vector3(...presetData.position);
+        const endTarget = new THREE.Vector3(...presetData.target);
+
+        const duration = 500; // ms
+        const startTime = performance.now();
+
+        const animate = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          // Ease out cubic for smooth deceleration
+          const eased = 1 - Math.pow(1 - progress, 3);
+
+          camera.position.lerpVectors(startPosition, endPosition, eased);
+          controls.target.lerpVectors(startTarget, endTarget, eased);
+          controls.update();
+
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          }
+        };
+
+        requestAnimationFrame(animate);
+      }
+    }
     toast.info(`Switched to ${preset} view`);
   }, []);
 
