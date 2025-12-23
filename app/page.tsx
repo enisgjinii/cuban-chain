@@ -8,6 +8,7 @@ import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { ModelViewer } from "@/components/model-viewer";
 import { CustomizerPanel } from "@/components/customizer-panel";
 import { Mobile3DViewer } from "@/components/mobile-3d-viewer";
+import { MobileCustomizerDrawer } from "@/components/mobile-customizer-drawer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ViewerControls, type ViewPreset } from "@/components/viewer-controls";
 import { FavoritesPanel } from "@/components/favorites-panel";
@@ -60,6 +61,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showScreenshotModal, setShowScreenshotModal] = useState<boolean>(false);
   const [cameraZoom, setCameraZoom] = useState<number>(1);
+  const [background, setBackground] = useState<any>("city");
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
   const orbitControlsRef = useRef<any>(null);
@@ -321,7 +323,7 @@ export default function Home() {
       </div>
 
       <div className={`flex h-screen ${isMobile ? "flex-col" : "flex-row"}`}>
-        <div className={`relative ${isMobile ? "flex-1 min-h-[45vh]" : "flex-1"}`}>
+        <div className={`relative ${isMobile ? "w-full h-full" : "flex-1"}`}>
           {isMobile ? (
             <Mobile3DViewer
               modelUrls={modelUrls}
@@ -360,10 +362,10 @@ export default function Home() {
               gl={{ preserveDrawingBuffer: true }}
             >
               <Suspense fallback={null}>
-                <Environment preset="city" />
+                <Environment preset={background} />
                 <ambientLight intensity={0.5} />
                 <directionalLight position={[10, 10, 5]} intensity={1} />
-                <Stage environment="city" intensity={0.6} adjustCamera={autoZoom}>
+                <Stage environment={background} intensity={0.6} adjustCamera={autoZoom}>
                   <ModelViewer
                     key={animationKey}
                     urls={modelUrls}
@@ -417,12 +419,8 @@ export default function Home() {
           )}
         </div>
 
-        <div
-          className={`z-20 ${isMobile ? "w-full p-3 bg-gray-100 dark:bg-gray-950 pb-12" : "absolute top-20 right-6"
-            }`}
-        >
-          <div className="space-y-4">
-
+        {isMobile ? (
+          <MobileCustomizerDrawer>
             <CustomizerPanel
               chainConfig={chainConfig}
               setChainConfig={setChainConfig}
@@ -449,19 +447,48 @@ export default function Home() {
               isRecording={isRecording}
               onChainLengthChange={handleChainLengthChange}
               onReplayAnimation={handleReplayAnimation}
+              background={background}
+              setBackground={setBackground}
             />
-
-
-
+          </MobileCustomizerDrawer>
+        ) : (
+          <div className="absolute top-20 right-6 z-20">
+            <div className="space-y-4">
+              <CustomizerPanel
+                chainConfig={chainConfig}
+                setChainConfig={setChainConfig}
+                selectedSurface={selectedSurface}
+                setSelectedSurface={setSelectedSurface}
+                onSaveConfiguration={handleSaveConfiguration}
+                onLoadConfiguration={handleLoadConfiguration}
+                meshes={meshes}
+                nodes={nodes}
+                onSelectMesh={setSelectedMesh}
+                onHoverMesh={setHoveredMesh}
+                chainSpacing={chainSpacing}
+                setChainSpacing={setChainSpacing}
+                onUndo={handleUndo}
+                autoRotate={autoRotate}
+                setAutoRotate={setAutoRotate}
+                showDebug={showDebug}
+                setShowDebug={setShowDebug}
+                modelUrls={modelUrls}
+                setModelUrls={setModelUrls}
+                isMobile={isMobile}
+                onCaptureImage={handleCaptureImage}
+                onStartRecording={handleToggleRecording}
+                isRecording={isRecording}
+                onChainLengthChange={handleChainLengthChange}
+                onReplayAnimation={handleReplayAnimation}
+                background={background}
+                setBackground={setBackground}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {isMobile && (
-        <div className="fixed bottom-2 left-0 right-0 text-center text-xs text-orange-500 dark:text-orange-400 px-4 bg-gray-100 dark:bg-gray-950 py-1">
-          After configuration, click &quot;Apply to&quot;, then click on the links
-        </div>
-      )}
+
     </div>
   );
 }

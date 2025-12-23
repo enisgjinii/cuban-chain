@@ -18,6 +18,7 @@ import { Plus, Trash2, Link, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, 
 import { ZoneSelector } from "@/components/zone-selector";
 import { FavoritesPanel } from "@/components/favorites-panel";
 import { StoneColorPicker } from "./stone-color-picker";
+import { PriceCalculator } from "./price-calculator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
@@ -68,6 +69,8 @@ interface CustomizerPanelProps {
   onReplayAnimation?: () => void;
   setShowScreenshotModal?: (show: boolean) => void;
   onLoadFavorite?: (config: ChainConfig, urls: string[]) => void;
+  background?: string;
+  setBackground?: (bg: string) => void;
 }
 
 // Material options with colors for visual display
@@ -153,6 +156,8 @@ export function CustomizerPanel({
   setAutoRotate,
   showDebug,
   setShowDebug,
+  background = "city",
+  setBackground,
 }: CustomizerPanelProps) {
   const [activeTab, setActiveTab] = useState("design");
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
@@ -371,6 +376,11 @@ export function CustomizerPanel({
             <TabsTrigger value="saved" className="text-xs">Saved</TabsTrigger>
             <TabsTrigger value="settings" className="text-xs">Settings</TabsTrigger>
           </TabsList>
+        </div>
+
+        {/* Price Calculator Header */}
+        <div className="px-4 pb-2 bg-white dark:bg-gray-900 z-10">
+          <PriceCalculator chainConfig={chainConfig} chainLength={linkCount} />
         </div>
 
         <ScrollArea className="flex-1">
@@ -650,12 +660,8 @@ export function CustomizerPanel({
                 chainConfig={chainConfig}
                 modelUrls={modelUrls}
                 onLoadFavorite={(config, urls) => {
-                  // Pass to parent handler if available, or handle locally
-                  // We need to pass both config and urls
-                  if (onLoadConfiguration) {
-                    // This is tricky because the prop expects an event
-                    // Ideally we update the prop signature or create a new prop
-                    // For now we'll assume the parent handles this via a new prop we'll add
+                  if (onLoadFavorite) {
+                    onLoadFavorite(config, urls);
                   }
                 }}
                 className="border-0 shadow-none bg-transparent p-0"
@@ -726,6 +732,29 @@ export function CustomizerPanel({
                     Replay Entrance Animation
                   </Button>
                 )}
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium">Environment</Label>
+                  <Select value={background} onValueChange={setBackground}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Environment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="city">City (Default)</SelectItem>
+                      <SelectItem value="studio">Studio</SelectItem>
+                      <SelectItem value="sunset">Sunset</SelectItem>
+                      <SelectItem value="dawn">Dawn</SelectItem>
+                      <SelectItem value="night">Night</SelectItem>
+                      <SelectItem value="warehouse">Warehouse</SelectItem>
+                      <SelectItem value="forest">Forest</SelectItem>
+                      <SelectItem value="apartment">Apartment</SelectItem>
+                      <SelectItem value="park">Park</SelectItem>
+                      <SelectItem value="lobby">Lobby</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </TabsContent>
           </div>
