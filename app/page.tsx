@@ -3,13 +3,13 @@
 import type React from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment, Stage } from "@react-three/drei";
+import * as THREE from "three";
 import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { ModelViewer } from "@/components/model-viewer";
 import { CustomizerPanel } from "@/components/customizer-panel";
 import { Mobile3DViewer } from "@/components/mobile-3d-viewer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ViewerControls, type ViewPreset } from "@/components/viewer-controls";
-import { PriceEstimator } from "@/components/price-estimator";
 import { FavoritesPanel } from "@/components/favorites-panel";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { OnboardingTour } from "@/components/onboarding-tour";
@@ -208,8 +208,19 @@ export default function Home() {
   const handleZoomIn = useCallback(() => {
     if (orbitControlsRef.current) {
       const controls = orbitControlsRef.current;
-      const newDistance = Math.max(controls.getDistance() * 0.8, 0.5);
-      controls.dollyTo(newDistance, true);
+      const camera = controls.object;
+      const target = controls.target;
+      const position = camera.position;
+
+      // Calculate current direction and distance
+      const direction = new THREE.Vector3().subVectors(position, target).normalize();
+      const distance = position.distanceTo(target);
+      const newDistance = Math.max(distance * 0.8, 0.5);
+
+      // Update camera position
+      const newPosition = new THREE.Vector3().copy(target).add(direction.multiplyScalar(newDistance));
+      camera.position.copy(newPosition);
+      controls.update();
     }
     setCameraZoom(prev => Math.min(prev * 1.2, 3));
   }, []);
@@ -217,8 +228,19 @@ export default function Home() {
   const handleZoomOut = useCallback(() => {
     if (orbitControlsRef.current) {
       const controls = orbitControlsRef.current;
-      const newDistance = Math.min(controls.getDistance() * 1.2, 10);
-      controls.dollyTo(newDistance, true);
+      const camera = controls.object;
+      const target = controls.target;
+      const position = camera.position;
+
+      // Calculate current direction and distance
+      const direction = new THREE.Vector3().subVectors(position, target).normalize();
+      const distance = position.distanceTo(target);
+      const newDistance = Math.min(distance * 1.2, 10);
+
+      // Update camera position
+      const newPosition = new THREE.Vector3().copy(target).add(direction.multiplyScalar(newDistance));
+      camera.position.copy(newPosition);
+      controls.update();
     }
     setCameraZoom(prev => Math.max(prev * 0.8, 0.3));
   }, []);
@@ -390,10 +412,6 @@ export default function Home() {
             }`}
         >
           <div className="space-y-4">
-            {/* Price Estimator - Desktop only above panel */}
-            {!isMobile && (
-              <PriceEstimator chainConfig={chainConfig} className="w-80" />
-            )}
 
             <CustomizerPanel
               chainConfig={chainConfig}
@@ -425,10 +443,6 @@ export default function Home() {
 
 
 
-            {/* Price Estimator - Mobile at bottom */}
-            {isMobile && (
-              <PriceEstimator chainConfig={chainConfig} />
-            )}
           </div>
         </div>
       </div>
