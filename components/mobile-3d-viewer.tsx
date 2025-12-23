@@ -35,6 +35,8 @@ interface Mobile3DViewerProps {
   isRecording: boolean;
   onRecordingComplete?: (videoBlob: Blob) => void;
   showRecordingIndicator?: boolean;
+  selectedLinkIndex?: number | null;
+  onZoneClick?: (linkIndex: number, surfaceId: import("@/lib/chain-config-types").SurfaceId) => void;
 }
 
 export function Mobile3DViewer({
@@ -65,7 +67,8 @@ export function Mobile3DViewer({
   setAutoZoom,
   onRecordingComplete,
   showRecordingIndicator,
-
+  selectedLinkIndex,
+  onZoneClick,
 }: Mobile3DViewerProps) {
   const cameraRef = useRef<any>(null);
   const [modelScale, setModelScale] = useState(1);
@@ -180,8 +183,8 @@ export function Mobile3DViewer({
   return (
     <div
       className={`relative w-full h-full rounded-xl overflow-hidden transition-all duration-300 ${isRecording
-          ? "border-4 border-red-500 animate-pulse shadow-red-500/50 shadow-lg"
-          : ""
+        ? "border-4 border-red-500 animate-pulse shadow-red-500/50 shadow-lg"
+        : ""
         }`}
     >
       <Canvas
@@ -209,7 +212,8 @@ export function Mobile3DViewer({
               isRecording={isRecording}
               onRecordingComplete={onRecordingComplete}
               showRecordingIndicator={showRecordingIndicator}
-
+              selectedLinkIndex={selectedLinkIndex}
+              onZoneClick={onZoneClick}
             />
           </Stage>
 

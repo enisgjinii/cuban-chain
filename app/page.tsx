@@ -7,6 +7,15 @@ import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { ModelViewer } from "@/components/model-viewer";
 import { CustomizerPanel } from "@/components/customizer-panel";
 import { Mobile3DViewer } from "@/components/mobile-3d-viewer";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { ViewerControls, type ViewPreset } from "@/components/viewer-controls";
+import { PriceEstimator } from "@/components/price-estimator";
+import { FavoritesPanel } from "@/components/favorites-panel";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { OnboardingTour } from "@/components/onboarding-tour";
+import { ScreenshotModal, type ScreenshotOptions } from "@/components/screenshot-modal";
+import { LoadingOverlay } from "@/components/loading-overlay";
+import { toast } from "@/components/ui/toast";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
 import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
 
@@ -20,10 +29,21 @@ const DEFAULT_MODEL_URLS = [
   "/models/part7.glb",
 ];
 
+// View preset camera positions
+const VIEW_PRESET_POSITIONS: Record<ViewPreset, { position: [number, number, number]; target: [number, number, number] }> = {
+  front: { position: [0, 0, 2], target: [0, 0, 0] },
+  back: { position: [0, 0, -2], target: [0, 0, 0] },
+  top: { position: [0, 2, 0], target: [0, 0, 0] },
+  left: { position: [-2, 0.5, 0], target: [0, 0, 0] },
+  right: { position: [2, 0.5, 0], target: [0, 0, 0] },
+  isometric: { position: [0.51, 1.25, 0.74], target: [0, 0, 0] },
+};
+
 export default function Home() {
   const [modelUrls, setModelUrls] = useState<string[]>(DEFAULT_MODEL_URLS);
   const [chainConfig, setChainConfig] = useState<ChainConfig>(createDefaultConfig(DEFAULT_MODEL_URLS.length));
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>("top1");
+  const [selectedLinkIndex, setSelectedLinkIndex] = useState<number | null>(null);
   const [meshes, setMeshes] = useState<string[]>([]);
   const [nodes, setNodes] = useState<string[]>([]);
   const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
@@ -37,8 +57,12 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showRecordingIndicator, setShowRecordingIndicator] = useState<boolean>(false);
   const [animationKey, setAnimationKey] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showScreenshotModal, setShowScreenshotModal] = useState<boolean>(false);
+  const [cameraZoom, setCameraZoom] = useState<number>(1);
   const cameraRef = useRef<any>(null);
   const sceneRef = useRef<any>(null);
+  const orbitControlsRef = useRef<any>(null);
 
   // Sync chain config length with model URLs
   useEffect(() => {
@@ -46,6 +70,17 @@ export default function Home() {
       setChainConfig(createDefaultConfig(modelUrls.length));
     }
   }, [modelUrls.length]);
+
+  // Reset selected link when chain changes significantly
+  useEffect(() => {
+    setSelectedLinkIndex(null);
+  }, [modelUrls.length]);
+
+  // Initial loading simulation
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -59,7 +94,7 @@ export default function Home() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const handleSaveConfiguration = () => {
+  const handleSaveConfiguration = useCallback(() => {
     const config = { chainConfig, modelUrls };
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -70,7 +105,8 @@ export default function Home() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
+    toast.success("Configuration saved!");
+  }, [chainConfig, modelUrls]);
 
   const handleLoadConfiguration = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -81,8 +117,10 @@ export default function Home() {
           const config = JSON.parse(e.target?.result as string);
           if (config.chainConfig) setChainConfig(config.chainConfig);
           if (config.modelUrls) setModelUrls(config.modelUrls);
+          toast.success("Configuration loaded!");
         } catch (error) {
           console.error("Failed to load configuration:", error);
+          toast.error("Failed to load configuration");
         }
       };
       reader.readAsText(file);
@@ -90,9 +128,12 @@ export default function Home() {
   };
 
   const handleCaptureImage = useCallback(() => {
-    // We can't easily access 'gl' from here without a ref to the canvas or a child event
-    // So we'll use a custom event that ModelViewer will listen to
-    window.dispatchEvent(new CustomEvent("captureImage"));
+    setShowScreenshotModal(true);
+  }, []);
+
+  const handleScreenshotCapture = useCallback((options: ScreenshotOptions) => {
+    window.dispatchEvent(new CustomEvent("captureImage", { detail: options }));
+    toast.success("Screenshot captured!");
   }, []);
 
   const handleToggleRecording = useCallback(() => {
@@ -103,6 +144,7 @@ export default function Home() {
       setIsRecording(true);
       setShowRecordingIndicator(true);
       setAutoRotate(true);
+      toast.info("Recording started...");
     }
   }, [isRecording]);
 
@@ -111,7 +153,6 @@ export default function Home() {
     setShowRecordingIndicator(false);
     setAutoRotate(false);
 
-    // Determine file extension based on mime type
     const extension = videoBlob.type.includes("mp4") ? "mp4" : "webm";
 
     const url = URL.createObjectURL(videoBlob);
@@ -122,6 +163,7 @@ export default function Home() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    toast.success("Recording saved!");
   }, []);
 
   const handleMeshesAndNodesExtracted = (m: string[], n: string[]) => {
@@ -129,25 +171,22 @@ export default function Home() {
     setNodes(n);
   };
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     setUndoCounter((c) => c + 1);
-  };
+    toast.info("Undo applied");
+  }, []);
 
   const handleChainLengthChange = (length: number) => {
-    // Determine if we need to add or remove links
     if (length > modelUrls.length) {
-      // Adding links
       const toAdd = length - modelUrls.length;
       const newUrls = [...modelUrls];
       for (let i = 0; i < toAdd; i++) {
-        // Use the last model as template or default to part3.glb (common link)
         const template = modelUrls.length > 0 ? modelUrls[modelUrls.length - 1] : "/models/part3.glb";
         newUrls.push(template);
       }
       setModelUrls(newUrls);
       setChainConfig(prev => setChainLength(prev, length));
     } else if (length < modelUrls.length) {
-      // Removing links
       const newUrls = modelUrls.slice(0, length);
       setModelUrls(newUrls);
       setChainConfig(prev => setChainLength(prev, length));
@@ -155,22 +194,98 @@ export default function Home() {
   };
 
   const handleReplayAnimation = useCallback(() => {
-    // Increment animation key to force re-render and replay animation
     setAnimationKey((k) => k + 1);
+    toast.info("Replaying animation...");
   }, []);
 
   const handleZoneClick = useCallback((linkIndex: number, surfaceId: SurfaceId) => {
-    // When user clicks on a zone in 3D, update the selected surface in the UI
     console.log(`Zone clicked: Link ${linkIndex}, Surface ${surfaceId}`);
+    setSelectedLinkIndex(linkIndex);
     setSelectedSurface(surfaceId);
   }, []);
 
+  // Viewer control handlers
+  const handleZoomIn = useCallback(() => {
+    if (orbitControlsRef.current) {
+      const controls = orbitControlsRef.current;
+      const newDistance = Math.max(controls.getDistance() * 0.8, 0.5);
+      controls.dollyTo(newDistance, true);
+    }
+    setCameraZoom(prev => Math.min(prev * 1.2, 3));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (orbitControlsRef.current) {
+      const controls = orbitControlsRef.current;
+      const newDistance = Math.min(controls.getDistance() * 1.2, 10);
+      controls.dollyTo(newDistance, true);
+    }
+    setCameraZoom(prev => Math.max(prev * 0.8, 0.3));
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    if (orbitControlsRef.current) {
+      orbitControlsRef.current.reset();
+    }
+    setCameraZoom(1);
+  }, []);
+
+  const handleViewPreset = useCallback((preset: ViewPreset) => {
+    // View presets can be used with OrbitControls
+    toast.info(`Switched to ${preset} view`);
+  }, []);
+
+  const handleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  }, []);
+
+  const handleLoadFavorite = useCallback((config: ChainConfig, urls: string[]) => {
+    setChainConfig(config);
+    setModelUrls(urls);
+  }, []);
+
+  const handleViewPresetNumber = useCallback((num: number) => {
+    const presets: ViewPreset[] = ["front", "top", "left", "isometric"];
+    if (num >= 1 && num <= 4) {
+      handleViewPreset(presets[num - 1]);
+    }
+  }, [handleViewPreset]);
+
   return (
-    <div className="relative min-h-screen w-full bg-gray-100">
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6">
-        <h1 className="text-xl md:text-2xl font-semibold text-gray-700">
+    <div className="relative min-h-screen w-full bg-gray-100 dark:bg-gray-950 transition-colors duration-300">
+      {/* Loading Overlay */}
+      <LoadingOverlay isLoading={isLoading} message="Loading your chain..." />
+
+      {/* Onboarding Tour */}
+      <OnboardingTour onComplete={() => toast.success("Welcome! Start customizing your chain.")} />
+
+      {/* Keyboard Shortcuts */}
+      <KeyboardShortcuts
+        onSave={handleSaveConfiguration}
+        onUndo={handleUndo}
+        onRotateToggle={() => setAutoRotate(!autoRotate)}
+        onReplayAnimation={handleReplayAnimation}
+        onViewPreset={handleViewPresetNumber}
+        onCaptureImage={handleCaptureImage}
+      />
+
+      {/* Screenshot Modal */}
+      <ScreenshotModal
+        isOpen={showScreenshotModal}
+        onClose={() => setShowScreenshotModal(false)}
+        onCapture={handleScreenshotCapture}
+      />
+
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 flex items-center justify-between">
+        <h1 className="text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
           Design your Cuban chain
         </h1>
+        <ThemeToggle />
       </div>
 
       <div className={`flex h-screen ${isMobile ? "flex-col" : "flex-row"}`}>
@@ -203,10 +318,12 @@ export default function Home() {
               isMobile={isMobile}
               autoZoom={autoZoom}
               setAutoZoom={setAutoZoom}
+              selectedLinkIndex={selectedLinkIndex}
+              onZoneClick={handleZoneClick}
             />
           ) : (
             <Canvas
-              camera={{ position: [0.51, 1.25, 0.74], fov: 35 }}
+              camera={{ position: [0.51, 1.25, 0.74], fov: 35, zoom: cameraZoom }}
               className="w-full h-full"
               gl={{ preserveDrawingBuffer: true }}
             >
@@ -233,10 +350,11 @@ export default function Home() {
                     showRecordingIndicator={showRecordingIndicator}
                     sceneRef={sceneRef}
                     onZoneClick={handleZoneClick}
+                    selectedLinkIndex={selectedLinkIndex}
                   />
                 </Stage>
                 <OrbitControls
-                  ref={cameraRef}
+                  ref={orbitControlsRef}
                   makeDefault
                   enableRotate={true}
                   autoRotate={autoRotate}
@@ -246,52 +364,81 @@ export default function Home() {
             </Canvas>
           )}
 
+          {/* Viewer Controls */}
           {!isMobile && (
-            <div className="absolute bottom-6 left-6 text-sm text-orange-500">
+            <ViewerControls
+              autoRotate={autoRotate}
+              setAutoRotate={setAutoRotate}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onResetView={handleResetView}
+              onViewPreset={handleViewPreset}
+              onFullscreen={handleFullscreen}
+              className="absolute right-4 top-1/2 -translate-y-1/2"
+            />
+          )}
+
+          {!isMobile && (
+            <div className="absolute bottom-6 left-6 text-sm text-orange-500 dark:text-orange-400">
               After configuration, click &quot;Apply to&quot;, then click on the links
             </div>
           )}
         </div>
 
         <div
-          className={`z-20 ${isMobile ? "w-full p-3 bg-gray-100 pb-12" : "absolute top-20 right-6"
+          className={`z-20 ${isMobile ? "w-full p-3 bg-gray-100 dark:bg-gray-950 pb-12" : "absolute top-20 right-6"
             }`}
         >
-          <CustomizerPanel
-            chainConfig={chainConfig}
-            setChainConfig={setChainConfig}
-            selectedSurface={selectedSurface}
-            setSelectedSurface={setSelectedSurface}
-            onSaveConfiguration={handleSaveConfiguration}
-            onLoadConfiguration={handleLoadConfiguration}
-            meshes={meshes}
-            nodes={nodes}
-            onSelectMesh={setSelectedMesh}
-            onHoverMesh={setHoveredMesh}
-            chainSpacing={chainSpacing}
-            setChainSpacing={setChainSpacing}
-            onUndo={handleUndo}
-            autoRotate={autoRotate}
-            setAutoRotate={setAutoRotate}
-            showDebug={showDebug}
-            setShowDebug={setShowDebug}
-            modelUrls={modelUrls}
-            setModelUrls={setModelUrls}
-            isMobile={isMobile}
-            onCaptureImage={handleCaptureImage}
-            onStartRecording={handleToggleRecording}
-            isRecording={isRecording}
-            onChainLengthChange={handleChainLengthChange}
-            onReplayAnimation={handleReplayAnimation}
-          />
+          <div className="space-y-4">
+            {/* Price Estimator - Desktop only above panel */}
+            {!isMobile && (
+              <PriceEstimator chainConfig={chainConfig} className="w-80" />
+            )}
+
+            <CustomizerPanel
+              chainConfig={chainConfig}
+              setChainConfig={setChainConfig}
+              selectedSurface={selectedSurface}
+              setSelectedSurface={setSelectedSurface}
+              onSaveConfiguration={handleSaveConfiguration}
+              onLoadConfiguration={handleLoadConfiguration}
+              meshes={meshes}
+              nodes={nodes}
+              onSelectMesh={setSelectedMesh}
+              onHoverMesh={setHoveredMesh}
+              chainSpacing={chainSpacing}
+              setChainSpacing={setChainSpacing}
+              onUndo={handleUndo}
+              autoRotate={autoRotate}
+              setAutoRotate={setAutoRotate}
+              showDebug={showDebug}
+              setShowDebug={setShowDebug}
+              modelUrls={modelUrls}
+              setModelUrls={setModelUrls}
+              isMobile={isMobile}
+              onCaptureImage={handleCaptureImage}
+              onStartRecording={handleToggleRecording}
+              isRecording={isRecording}
+              onChainLengthChange={handleChainLengthChange}
+              onReplayAnimation={handleReplayAnimation}
+            />
+
+
+
+            {/* Price Estimator - Mobile at bottom */}
+            {isMobile && (
+              <PriceEstimator chainConfig={chainConfig} />
+            )}
+          </div>
         </div>
       </div>
 
       {isMobile && (
-        <div className="fixed bottom-2 left-0 right-0 text-center text-xs text-orange-500 px-4 bg-gray-100 py-1">
+        <div className="fixed bottom-2 left-0 right-0 text-center text-xs text-orange-500 dark:text-orange-400 px-4 bg-gray-100 dark:bg-gray-950 py-1">
           After configuration, click &quot;Apply to&quot;, then click on the links
         </div>
       )}
     </div>
   );
 }
+

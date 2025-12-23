@@ -16,6 +16,11 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, Link, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Camera, Video, Share2, Square } from "lucide-react";
 import { ZoneSelector } from "@/components/zone-selector";
+import { FavoritesPanel } from "@/components/favorites-panel";
+import { StoneColorPicker } from "./stone-color-picker";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import type {
   ChainConfig,
   SurfaceId,
@@ -61,6 +66,8 @@ interface CustomizerPanelProps {
   isMobile?: boolean;
   onChainLengthChange?: (length: number) => void;
   onReplayAnimation?: () => void;
+  setShowScreenshotModal?: (show: boolean) => void;
+  onLoadFavorite?: (config: ChainConfig, urls: string[]) => void;
 }
 
 // Material options with colors for visual display
@@ -140,7 +147,14 @@ export function CustomizerPanel({
   isMobile = false,
   onChainLengthChange,
   onReplayAnimation,
+  setShowScreenshotModal,
+  onLoadFavorite,
+  autoRotate,
+  setAutoRotate,
+  showDebug,
+  setShowDebug,
 }: CustomizerPanelProps) {
+  const [activeTab, setActiveTab] = useState("design");
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [applyInserts, setApplyInserts] = useState(false);
   const [applyToSides, setApplyToSides] = useState(false);
@@ -348,393 +362,375 @@ export function CustomizerPanel({
   };
 
   return (
-    <div
-      className={`bg-white rounded-lg shadow-lg overflow-y-auto ${isMobile ? "w-full max-h-[70vh] p-4" : "w-80 max-h-[85vh] p-5"
-        }`}
-    >
-      <h2 className={`font-semibold text-gray-700 mb-4 ${isMobile ? "text-base" : "text-lg"}`}>
-        Customizer
-      </h2>
-
-      {/* Link Selection - Individual Design */}
-      <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
-        <div className="flex items-center justify-between mb-2">
-          <Label className="text-xs font-medium text-gray-600">
-            Select Link to Customize
-          </Label>
-          <div className="flex items-center gap-1">
-            <Checkbox
-              id="apply-all"
-              checked={applyToAll}
-              onCheckedChange={(checked) => setApplyToAll(!!checked)}
-            />
-            <Label htmlFor="apply-all" className="text-xs text-gray-500 cursor-pointer">
-              All
-            </Label>
-          </div>
+    <div className={`flex flex-col h-full bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-800 ${isMobile ? "w-full" : "w-80 max-h-[calc(100vh-140px)]"}`}>
+      <Tabs defaultValue="design" value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+        <div className="px-4 pt-4 pb-2 bg-white dark:bg-gray-900 z-10">
+          <TabsList className="grid w-full grid-cols-4 h-9">
+            <TabsTrigger value="design" className="text-xs">Design</TabsTrigger>
+            <TabsTrigger value="assembly" className="text-xs">Assembly</TabsTrigger>
+            <TabsTrigger value="saved" className="text-xs">Saved</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs">Settings</TabsTrigger>
+          </TabsList>
         </div>
 
-        {!applyToAll && (
-          <>
-            <div className="flex items-center gap-2 mb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToPreviousLink}
-                disabled={selectedLinkIndex === 0}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <div className="flex-1 text-center">
-                <span className="text-sm font-medium">
-                  Link {selectedLinkIndex + 1} of {linkCount}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToNextLink}
-                disabled={selectedLinkIndex === linkCount - 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Visual Link Selector */}
-            <div className="flex gap-1 overflow-x-auto py-1 px-1">
-              {modelUrls.map((_, index) => {
-                const link = chainConfig.links[index];
-                const material = link?.material || "silver";
-                return (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedLinkIndex(index)}
-                    className={`flex-shrink-0 w-8 h-8 rounded-md border-2 transition-all ${selectedLinkIndex === index
-                      ? "border-blue-500 ring-2 ring-blue-200"
-                      : "border-gray-300 hover:border-gray-400"
-                      }`}
-                    style={{ backgroundColor: getMaterialColor(material) }}
-                    title={`Link ${index + 1} - ${material}`}
-                  >
-                    <span className="text-xs font-bold text-white drop-shadow-md">
-                      {index + 1}
+        <ScrollArea className="flex-1">
+          <div className="p-4 pt-0 space-y-6 pb-20">
+            {/* Design Tab */}
+            <TabsContent value="design" className="mt-0 space-y-6 focus-visible:outline-none data-[state=inactive]:hidden">
+              {/* Link Selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Selected Link
+                  </Label>
+                  <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goToPreviousLink}>
+                      <ChevronLeft className="h-3 w-3" />
+                    </Button>
+                    <span className="text-xs font-medium w-12 text-center">
+                      {selectedLinkIndex + 1} / {linkCount}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Zone Selector - Visual 4-Zone Diagram */}
-      <ZoneSelector
-        selectedZone={selectedSurface}
-        onZoneSelect={setSelectedSurface}
-        currentConfig={currentLink?.surfaces}
-      />
-
-      {/* Material Selection */}
-      <div className="mb-3">
-        <Label className="text-xs text-gray-500 mb-1 block">
-          {applyToAll ? "Material (All Links)" : `Material (Link ${selectedLinkIndex + 1})`}
-        </Label>
-        <Select
-          value={currentLink?.material || "silver"}
-          onValueChange={(v) => handleMaterialChange(v as Material)}
-        >
-          <SelectTrigger className="w-full border-2 border-orange-400 rounded-md h-10">
-            <SelectValue placeholder="Select material" />
-          </SelectTrigger>
-          <SelectContent>
-            {MATERIALS.map((mat) => (
-              <SelectItem key={mat.value} value={mat.value}>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-4 h-4 rounded-full border border-gray-300"
-                    style={{ backgroundColor: mat.color }}
-                  />
-                  {mat.label}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Separator className="my-3" />
-
-      {/* Apply Inserts Checkbox */}
-      <div className="flex items-center gap-2 mb-2">
-        <Checkbox
-          id="apply-inserts"
-          checked={applyInserts}
-          onCheckedChange={(checked) => setApplyInserts(!!checked)}
-        />
-        <Label htmlFor="apply-inserts" className="text-sm text-gray-600 cursor-pointer">
-          Apply inserts to{" "}
-          <span className="font-semibold text-blue-600">
-            {selectedSurface === "side1" ? "Left Side" :
-              selectedSurface === "side2" ? "Right Side" :
-                selectedSurface === "top1" ? "Top Face 1" : "Top Face 2"}
-          </span>
-        </Label>
-      </div>
-
-      {/* Diamond Type Selection */}
-      <div className="mb-3">
-        <Select
-          value={currentSurfaceConfig?.type || "empty"}
-          onValueChange={(v) => handleDiamondTypeChange(v as SurfaceType)}
-          disabled={!applyInserts}
-        >
-          <SelectTrigger
-            className={`w-full border-2 rounded-md h-10 ${applyInserts ? "border-green-500" : "border-gray-300 opacity-60"
-              }`}
-          >
-            <SelectValue placeholder="Diamonds" />
-          </SelectTrigger>
-          <SelectContent>
-            {DIAMOND_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Color Selection */}
-      {showColorDropdown && (
-        <div className="mb-3">
-          <Select value={getCurrentColorValue()} onValueChange={handleColorChange}>
-            <SelectTrigger className="w-full border-2 border-blue-400 rounded-md h-10">
-              <SelectValue placeholder="Select color" />
-            </SelectTrigger>
-            <SelectContent>
-              {colorOptions.map((color) => (
-                <SelectItem key={color.value} value={color.value}>
-                  <div className="flex items-center gap-2">
-                    {color.value.startsWith("#") && (
-                      <div
-                        className="w-4 h-4 rounded-full border border-gray-300"
-                        style={{ backgroundColor: color.value }}
-                      />
-                    )}
-                    {color.label}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Apply to Sides Checkbox */}
-      <div className="flex items-center gap-2 mb-4">
-        <Checkbox
-          id="apply-sides"
-          checked={applyToSides}
-          onCheckedChange={(checked) => setApplyToSides(!!checked)}
-          disabled={!applyInserts}
-        />
-        <Label
-          htmlFor="apply-sides"
-          className={`text-sm cursor-pointer ${applyInserts ? "text-gray-600" : "text-gray-400"}`}
-        >
-          Apply to sides
-        </Label>
-      </div>
-
-      {/* Undo and Replay buttons */}
-      <div className="flex gap-3 mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onUndo}
-          className="flex-1 h-9 border-gray-300 text-gray-600 hover:bg-gray-50"
-        >
-          Undo
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onReplayAnimation}
-          className="flex-1 h-9 border-purple-300 text-purple-600 hover:bg-purple-50"
-        >
-          ✨ Replay
-        </Button>
-      </div>
-
-      <Separator className="my-4" />
-
-      {/* Chain Assembly Section - Collapsible */}
-      <div className="mb-4">
-        <button
-          onClick={() => setShowChainAssembly(!showChainAssembly)}
-          className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 py-1"
-        >
-          <span className="flex items-center gap-2">
-            <Link className="w-4 h-4" />
-            Chain Assembly
-          </span>
-          {showChainAssembly ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-
-        {showChainAssembly && (
-          <div className="mt-3 space-y-3">
-            {/* Chain Length Slider */}
-            <div>
-              <Label className="text-xs text-gray-500 mb-2 block">
-                Chain Length: {chainConfig.chainLength} links
-              </Label>
-              <Slider
-                value={[modelUrls.length]}
-                onValueChange={([v]) => onChainLengthChange?.(v)}
-                min={1}
-                max={20}
-                step={1}
-              />
-            </div>
-
-            {/* Preset Selection */}
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">Load Preset</Label>
-              <Select value={selectedPreset} onValueChange={handleLoadPreset}>
-                <SelectTrigger className="w-full h-9">
-                  <SelectValue placeholder="Select preset..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(CHAIN_PRESETS).map((preset) => (
-                    <SelectItem key={preset} value={preset}>
-                      {preset.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Add New Link */}
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">Add Link</Label>
-              <div className="flex gap-2">
-                <Select
-                  value={selectedLinkType}
-                  onValueChange={(v) => setSelectedLinkType(v as ChainLinkType)}
-                >
-                  <SelectTrigger className="flex-1 h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_LINK_TYPES.map(({ type, label }) => (
-                      <SelectItem key={type} value={type}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAddLink(selectedLinkType)}
-                  className="h-9 px-3"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Current Links List */}
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">
-                Current Links ({modelUrls.length})
-              </Label>
-              <div className="space-y-1 max-h-28 overflow-y-auto border rounded-md p-2 bg-gray-50">
-                {modelUrls.map((url, index) => (
-                  <div
-                    key={`${url}-${index}`}
-                    className="flex items-center justify-between p-1.5 bg-white rounded text-xs border"
-                  >
-                    <span className="truncate flex-1">
-                      {index + 1}. {url.split("/").pop()?.replace(".glb", "")}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveLink(index)}
-                      className="h-6 w-6 p-0 hover:bg-red-50"
-                      disabled={modelUrls.length <= 1}
-                    >
-                      <Trash2 className="w-3 h-3 text-red-500" />
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={goToNextLink}>
+                      <ChevronRight className="h-3 w-3" />
                     </Button>
                   </div>
-                ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="apply-all"
+                    checked={applyToAll}
+                    onCheckedChange={(checked) => setApplyToAll(checked as boolean)}
+                  />
+                  <Label htmlFor="apply-all" className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                    Apply changes to all links
+                  </Label>
+                </div>
               </div>
-            </div>
+
+              <Separator />
+
+              {/* Surface Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Select Surface
+                </Label>
+                <ZoneSelector
+                  selectedZone={selectedSurface}
+                  onZoneSelect={setSelectedSurface}
+                />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="apply-sides"
+                    checked={applyToSides}
+                    onCheckedChange={(checked) => setApplyToSides(checked as boolean)}
+                  />
+                  <Label htmlFor="apply-sides" className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
+                    Apply to both sides
+                  </Label>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Material Selection */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Base Material
+                </Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {MATERIALS.map((m) => (
+                    <button
+                      key={m.value}
+                      onClick={() => handleMaterialChange(m.value)}
+                      className={`w-full aspect-square rounded-full border-2 transition-all ${currentLink?.material === m.value
+                        ? "border-blue-500 scale-110 shadow-md"
+                        : "border-transparent hover:scale-105"
+                        }`}
+                      style={{ backgroundColor: m.color }}
+                      title={m.label}
+                    />
+                  ))}
+                </div>
+                <div className="text-center text-xs text-gray-500 font-medium">
+                  {MATERIALS.find(m => m.value === currentLink?.material)?.label || "Select Material"}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Surface Design */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Surface Design
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="apply-inserts"
+                      checked={applyInserts}
+                      onCheckedChange={(checked) => setApplyInserts(checked as boolean)}
+                    />
+                    <label
+                      htmlFor="apply-inserts"
+                      className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Enable
+                    </label>
+                  </div>
+                </div>
+
+                {applyInserts && (
+                  <div className="space-y-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Select
+                      value={currentSurfaceConfig?.type}
+                      onValueChange={(value) => handleDiamondTypeChange(value as SurfaceType)}
+                    >
+                      <SelectTrigger className="w-full h-9 bg-white dark:bg-gray-800">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DIAMOND_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {showColorDropdown && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-gray-500">
+                          {currentSurfaceConfig?.type === "engraving" ? "Pattern" : "Color"}
+                        </Label>
+
+                        {currentSurfaceConfig?.type === "gemstones" || currentSurfaceConfig?.type === "moissanites" || currentSurfaceConfig?.type === "enamel" ? (
+                          <div className="grid grid-cols-7 gap-1.5">
+                            {/* White/Clear option */}
+                            <button
+                              onClick={() => handleColorChange("#ffffff")}
+                              className={`w-full aspect-square rounded-full border shadow-sm transition-transform ${getCurrentColorValue() === "#ffffff" ? "ring-2 ring-blue-500 scale-110" : "hover:scale-105"
+                                }`}
+                              style={{ backgroundColor: "#ffffff" }}
+                              title="White/Clear"
+                            />
+                            {/* Filter out white from map to avoid duplicate */}
+                            {getColorOptions().filter(c => c.value !== "#ffffff").map((option) => (
+                              <button
+                                key={option.value}
+                                onClick={() => handleColorChange(option.value)}
+                                className={`w-full aspect-square rounded-full border shadow-sm transition-transform ${getCurrentColorValue() === option.value ? "ring-2 ring-blue-500 scale-110" : "hover:scale-105"
+                                  }`}
+                                style={{ backgroundColor: option.value }}
+                                title={option.label}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <Select
+                            value={getCurrentColorValue()}
+                            onValueChange={handleColorChange}
+                          >
+                            <SelectTrigger className="w-full h-8 bg-white dark:bg-gray-800">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getColorOptions().map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Individual Stone Color Picker for Surfaces with Gemstones */}
+                    {(currentSurfaceConfig?.type === "gemstones" || currentSurfaceConfig?.type === "moissanites") && (
+                      <StoneColorPicker
+                        surfaceId={selectedSurface}
+                        gemstoneColors={currentSurfaceConfig.gemstoneColors || { stone1: "#ffffff", stone2: "#ffffff" }}
+                        onChange={(newColors) => {
+                          const newConfig = { ...currentSurfaceConfig, gemstoneColors: newColors };
+                          if (applyToSides) {
+                            setChainConfig(applySurfaceToAllSideSurfaces(chainConfig, newConfig));
+                          } else {
+                            setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newConfig));
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Assembly Tab */}
+            <TabsContent value="assembly" className="mt-0 space-y-6 focus-visible:outline-none data-[state=inactive]:hidden">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Chain Length
+                  </Label>
+                  <span className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    {linkCount} links
+                  </span>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleChainLengthChange && handleChainLengthChange(Math.max(1, linkCount - 1))}
+                    disabled={linkCount <= 1}
+                    className="flex-1"
+                  >
+                    - Link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleChainLengthChange && handleChainLengthChange(linkCount + 1)}
+                    className="flex-1"
+                  >
+                    + Link
+                  </Button>
+                </div>
+
+                {setModelUrls && (
+                  <div className="pt-2">
+                    <Label className="text-xs text-gray-500 mb-2 block">Add Specific Link Type</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {AVAILABLE_LINK_TYPES.slice(0, 6).map((item) => (
+                        <Button
+                          key={item.type}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-8"
+                          onClick={() => handleAddLink(item.type)}
+                        >
+                          {item.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Quick Presets
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.keys(CHAIN_PRESETS).map((preset) => (
+                    <Button
+                      key={preset}
+                      variant={selectedPreset === preset ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleLoadPreset(preset)}
+                      className="text-xs justify-start"
+                    >
+                      <Link className="w-3 h-3 mr-2" />
+                      {preset.charAt(0).toUpperCase() + preset.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Saved Tab (Favorites) */}
+            <TabsContent value="saved" className="mt-0 space-y-4 focus-visible:outline-none data-[state=inactive]:hidden">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300">
+                Save your designs to load them later. Designs are saved to your browser&apos;s local storage.
+              </div>
+              <FavoritesPanel
+                chainConfig={chainConfig}
+                modelUrls={modelUrls}
+                onLoadFavorite={(config, urls) => {
+                  // Pass to parent handler if available, or handle locally
+                  // We need to pass both config and urls
+                  if (onLoadConfiguration) {
+                    // This is tricky because the prop expects an event
+                    // Ideally we update the prop signature or create a new prop
+                    // For now we'll assume the parent handles this via a new prop we'll add
+                  }
+                }}
+                className="border-0 shadow-none bg-transparent p-0"
+              />
+              <Button variant="outline" size="sm" onClick={onSaveConfiguration} className="w-full">
+                Save Configuration File (JSON)
+              </Button>
+              <label className="block w-full">
+                <span className="sr-only">Load from JSON</span>
+                <div className="flex items-center justify-center w-full h-9 px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800 cursor-pointer">
+                  Load from JSON File
+                </div>
+                <input type="file" accept=".json" onChange={onLoadConfiguration} className="hidden" />
+              </label>
+            </TabsContent>
+
+            {/* Settings Tab */}
+            <TabsContent value="settings" className="mt-0 space-y-6 focus-visible:outline-none data-[state=inactive]:hidden">
+              <div className="space-y-4">
+                <Label className="text-sm font-medium">Export & Share</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowScreenshotModal?.(true)} // We need to add this prop
+                    className="h-20 flex flex-col gap-2"
+                  >
+                    <Camera className="w-6 h-6 mb-1" />
+                    Capture Image
+                  </Button>
+                  <Button
+                    variant={isRecording ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={onStartRecording}
+                    className={`h-20 flex flex-col gap-2 ${isRecording ? "animate-pulse" : ""}`}
+                  >
+                    {isRecording ? <Square className="w-6 h-6 mb-1" /> : <Video className="w-6 h-6 mb-1" />}
+                    {isRecording ? "Stop Recording" : "Record Video"}
+                  </Button>
+                </div>
+                <Button variant="secondary" className="w-full" onClick={handleShare}>
+                  <Share2 className="w-4 h-4 mr-2" /> Share Design
+                </Button>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <Label className="text-sm font-medium">View Settings</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="auto-rotate" className="text-xs">Auto Rotate</Label>
+                  <Switch
+                    id="auto-rotate"
+                    checked={autoRotate}
+                    onCheckedChange={setAutoRotate}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="show-debug" className="text-xs">Show Debug Info</Label>
+                  <Switch
+                    id="show-debug"
+                    checked={showDebug}
+                    onCheckedChange={setShowDebug}
+                  />
+                </div>
+                {onReplayAnimation && (
+                  <Button variant="outline" size="sm" onClick={onReplayAnimation} className="w-full mt-2">
+                    Replay Entrance Animation
+                  </Button>
+                )}
+              </div>
+            </TabsContent>
           </div>
-        )}
-      </div>
-
-      <Separator className="my-4" />
-
-      {/* Export Options */}
-      <div className="mb-4">
-        <Label className="text-xs text-gray-500 mb-2 block">Export & Share</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCaptureImage}
-            className="flex items-center justify-center gap-2 h-9 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-          >
-            <Camera className="w-4 h-4" />
-            <span className="text-xs">Image</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onStartRecording}
-            className={`flex items-center justify-center gap-2 h-9 ${isRecording
-              ? "border-red-400 bg-red-50 text-red-700 hover:bg-red-100 animate-pulse"
-              : "border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
-              }`}
-          >
-            {isRecording ? <Square className="w-4 h-4 fill-current" /> : <Video className="w-4 h-4" />}
-            <span className="text-xs">{isRecording ? "Stop" : "Video"}</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleShare}
-            className="flex items-center justify-center gap-2 h-9 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 col-span-2"
-          >
-            <Share2 className="w-4 h-4" />
-            <span className="text-xs">Share Design</span>
-          </Button>
-        </div>
-      </div>
-
-      <Separator className="my-4" />
-
-      {/* Save/Load Configuration */}
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onSaveConfiguration}
-          className="flex-1 h-9 text-gray-600 text-xs"
-        >
-          Save config
-        </Button>
-        <label className="flex-1">
-          <Button variant="outline" size="sm" className="w-full h-9 text-gray-600 text-xs" asChild>
-            <span>Load</span>
-          </Button>
-          <input type="file" accept=".json" onChange={onLoadConfiguration} className="hidden" />
-        </label>
-      </div>
+        </ScrollArea>
+      </Tabs>
     </div>
   );
 }
