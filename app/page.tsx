@@ -58,7 +58,7 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [showRecordingIndicator, setShowRecordingIndicator] = useState<boolean>(false);
   const [animationKey, setAnimationKey] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showScreenshotModal, setShowScreenshotModal] = useState<boolean>(false);
   const [cameraZoom, setCameraZoom] = useState<number>(1);
   const [background, setBackground] = useState<any>("city");
@@ -78,11 +78,7 @@ export default function Home() {
     setSelectedLinkIndex(null);
   }, [modelUrls.length]);
 
-  // Initial loading simulation
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
+  // Loading is now instant - no artificial delay
 
   useEffect(() => {
     const checkMobile = () => {
