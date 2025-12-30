@@ -175,6 +175,9 @@ export default function Home() {
   }, []);
 
   const handleChainLengthChange = (length: number) => {
+    // Prevent invalid lengths
+    if (length < 1) return;
+
     if (length > modelUrls.length) {
       const toAdd = length - modelUrls.length;
       const newUrls = [...modelUrls];
@@ -311,10 +314,20 @@ export default function Home() {
       />
 
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 flex items-center justify-between">
-        <h1 className="text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200">
-          Design your Cuban chain
-        </h1>
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 md:p-6 flex items-center justify-between bg-gradient-to-b from-white/80 via-white/40 to-transparent dark:from-gray-950/80 dark:via-gray-950/40 dark:to-transparent backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
+              Cuban Chain Studio
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400 hidden md:block">Design your perfect chain</p>
+          </div>
+        </div>
         <ThemeToggle />
       </div>
 
@@ -353,9 +366,9 @@ export default function Home() {
             />
           ) : (
             <Canvas
+              gl={{ preserveDrawingBuffer: true }}
               camera={{ position: [0.51, 1.25, 0.74], fov: 35, zoom: cameraZoom }}
               className="w-full h-full"
-              gl={{ preserveDrawingBuffer: true }}
             >
               <Suspense fallback={null}>
                 <Environment preset={background} />
@@ -409,8 +422,11 @@ export default function Home() {
           )}
 
           {!isMobile && (
-            <div className="absolute bottom-6 left-6 text-sm text-orange-500 dark:text-orange-400">
-              After configuration, click &quot;Apply to&quot;, then click on the links
+            <div className="absolute bottom-6 left-6 px-4 py-2.5 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200/50 dark:border-gray-700/50 flex items-center gap-2 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                💡 Tip: Select a surface, then customize it in the panel
+              </span>
             </div>
           )}
         </div>

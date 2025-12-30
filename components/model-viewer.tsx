@@ -227,6 +227,11 @@ export function ModelViewer({
 
   // Create the main scene with properly connected chain links
   const mainScene = useMemo(() => {
+    // Safety check: if no URLs or scenes aren't ready, return null
+    if (!urls || urls.length === 0 || scenes.length !== urls.length) {
+      return null;
+    }
+
     const scene = new THREE.Scene();
 
     // Calculate the link width for consistent spacing (use first model as reference)
@@ -241,6 +246,9 @@ export function ModelViewer({
 
     urls.forEach((url, index) => {
       const modelScene = scenes[index];
+      // Skip if model scene isn't ready
+      if (!modelScene) return;
+
       if (modelScene) {
         const clonedScene = modelScene.clone(true);
         const { center, size, bounds } = getCenteredBounds(url, modelScene);
@@ -489,6 +497,8 @@ export function ModelViewer({
     const meshes: string[] = [];
     const nodes: string[] = [];
 
+    if (!mainScene) return;
+
     mainScene.traverse((child) => {
       if (child.name) {
         if ((child as THREE.Mesh).isMesh) {
@@ -508,6 +518,8 @@ export function ModelViewer({
   useEffect(() => {
     const handleMaterialApplication = (event: CustomEvent) => {
       const { material, targetModel, targetIndex } = event.detail;
+
+      if (!mainScene) return;
 
       mainScene.children.forEach((child, index) => {
         let shouldApply = false;
@@ -537,6 +549,8 @@ export function ModelViewer({
     const handleSurfaceApplication = (event: CustomEvent) => {
       const { linkIndex, surfaceId, surfaceConfig } = event.detail;
 
+      if (!mainScene) return;
+
       if (linkIndex >= 0 && linkIndex < mainScene.children.length) {
         const container = mainScene.children[linkIndex];
         const linkConfig = chainConfig.links[linkIndex];
@@ -549,15 +563,57 @@ export function ModelViewer({
     // Handle toggle diamonds visibility
     const handleToggleDiamonds = (event: CustomEvent) => {
       const { visible } = event.detail;
+      if (!mainScene) return;
       toggleDiamondsVisibility(mainScene, visible);
     };
 
-    const handleCaptureImage = () => {
+    const handleCaptureImage = (event: CustomEvent) => {
       try {
-        const dataUrl = gl.domElement.toDataURL("image/png");
+        const options = event.detail || {};
+        const { backgroundColor, addWatermark, watermarkText, resolution, format } = options;
+
+        // Force a render to ensure the buffer is fresh
+        gl.render(threeScene, camera);
+
+        // Get the canvas content
+        const canvas = gl.domElement;
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Create a temporary canvas for composition
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const ctx = tempCanvas.getContext("2d");
+
+        if (!ctx) throw new Error("Could not get 2D context");
+
+        // 1. Draw Background
+        if (backgroundColor && backgroundColor !== "transparent") {
+          ctx.fillStyle = backgroundColor;
+          ctx.fillRect(0, 0, width, height);
+        }
+
+        // 2. Draw 3D Scale (flip Y if needed, but usually toDataURL is correct)
+        ctx.drawImage(canvas, 0, 0);
+
+        // 3. Add Watermark
+        if (addWatermark && watermarkText) {
+          const fontSize = Math.max(16, Math.floor(width * 0.03));
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.fillStyle = "rgba(128, 128, 128, 0.5)"; // Semi-transparent gray
+          ctx.textAlign = "right";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(watermarkText, width - 20, height - 20);
+        }
+
+        // 4. Download
+        const mimeType = format === "jpg" ? "image/jpeg" : "image/png";
+        const dataUrl = tempCanvas.toDataURL(mimeType, 0.95); // High quality for JPG
+
         const a = document.createElement("a");
         a.href = dataUrl;
-        a.download = `chain-design-${Date.now()}.png`;
+        a.download = `cuban-chain-design-${Date.now()}.${format || "png"}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -719,6 +775,8 @@ export function ModelViewer({
       </Fragment>
     ));
   }, [selectedLinkIndex, mainScene]);
+
+  if (!mainScene) return null;
 
   return (
     <group onPointerDown={handlePointerDown}>

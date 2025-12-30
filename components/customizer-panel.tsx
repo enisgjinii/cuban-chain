@@ -617,10 +617,20 @@ export function CustomizerPanel({
                           key={item.type}
                           variant="outline"
                           size="sm"
-                          className="text-xs h-8"
+                          className="h-20 flex flex-col gap-2 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all"
                           onClick={() => handleAddLink(item.type)}
                         >
-                          {item.label}
+                          {/* Visual representation based on type */}
+                          <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            {item.type.includes('part') ? (
+                              <div className="w-4 h-4 rounded-sm border-2 border-gray-400" />
+                            ) : item.type === 'enamel' ? (
+                              <div className="w-4 h-4 rounded-full bg-blue-400" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-sm border border-dashed border-gray-400" />
+                            )}
+                          </div>
+                          <span className="text-xs font-medium">{item.label}</span>
                         </Button>
                       ))}
                     </div>
