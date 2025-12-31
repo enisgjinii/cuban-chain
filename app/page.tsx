@@ -374,26 +374,28 @@ export default function Home() {
                 <Environment preset={background} />
                 <ambientLight intensity={0.5} />
                 <directionalLight position={[10, 10, 5]} intensity={1} />
-                <ModelViewer
-                  key={animationKey}
-                  urls={modelUrls}
-                  chainConfig={chainConfig}
-                  onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
-                  selectedMesh={selectedMesh}
-                  hoveredMesh={hoveredMesh}
-                  chainSpacing={chainSpacing}
-                  applyMode={false}
-                  undoCounter={undoCounter}
-                  autoFitModel={autoZoom}
-                  showBoundingBox={false}
-                  autoRotate={autoRotate}
-                  isRecording={isRecording}
-                  onRecordingComplete={handleRecordingComplete}
-                  showRecordingIndicator={showRecordingIndicator}
-                  sceneRef={sceneRef}
-                  onZoneClick={handleZoneClick}
-                  selectedLinkIndex={selectedLinkIndex}
-                />
+                <Stage environment={background} intensity={0.6} adjustCamera={autoZoom}>
+                  <ModelViewer
+                    key={animationKey}
+                    urls={modelUrls}
+                    chainConfig={chainConfig}
+                    onMeshesAndNodesExtracted={handleMeshesAndNodesExtracted}
+                    selectedMesh={selectedMesh}
+                    hoveredMesh={hoveredMesh}
+                    chainSpacing={chainSpacing}
+                    applyMode={false}
+                    undoCounter={undoCounter}
+                    autoFitModel={false} // Stage handles camera adjustment
+                    showBoundingBox={false}
+                    autoRotate={autoRotate}
+                    isRecording={isRecording}
+                    onRecordingComplete={handleRecordingComplete}
+                    showRecordingIndicator={showRecordingIndicator}
+                    sceneRef={sceneRef}
+                    onZoneClick={handleZoneClick}
+                    selectedLinkIndex={selectedLinkIndex}
+                  />
+                </Stage>
                 <OrbitControls
                   ref={orbitControlsRef}
                   makeDefault

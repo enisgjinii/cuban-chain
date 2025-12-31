@@ -71,6 +71,7 @@ export function Mobile3DViewer({
   onZoneClick,
 }: Mobile3DViewerProps) {
   const cameraRef = useRef<any>(null);
+  const orbitControlsRef = useRef<any>(null);
   const [modelScale, setModelScale] = useState(1);
 
   // Auto-adjust model scale based on screen size
@@ -180,6 +181,8 @@ export function Mobile3DViewer({
     }
   };
 
+  // ... (keeping existing useEffects)
+
   return (
     <div
       className={`relative w-full h-full rounded-xl overflow-hidden transition-all duration-300 ${isRecording
@@ -197,25 +200,28 @@ export function Mobile3DViewer({
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1} />
 
-          <ModelViewer
-            urls={modelUrls}
-            chainConfig={chainConfig}
-            selectedMesh={selectedMesh}
-            hoveredMesh={hoveredMesh}
-            autoFitModel={autoZoom}
-            chainSpacing={chainSpacing}
-            applyMode={applyMode}
-            undoCounter={undoCounter}
-            autoRotate={autoRotate}
-            showBoundingBox={showBoundingBox}
-            isRecording={isRecording}
-            onRecordingComplete={onRecordingComplete}
-            showRecordingIndicator={showRecordingIndicator}
-            selectedLinkIndex={selectedLinkIndex}
-            onZoneClick={onZoneClick}
-          />
+          <Stage environment="city" intensity={0.6} adjustCamera={autoZoom}>
+            <ModelViewer
+              urls={modelUrls}
+              chainConfig={chainConfig}
+              selectedMesh={selectedMesh}
+              hoveredMesh={hoveredMesh}
+              autoFitModel={autoFitModel}
+              chainSpacing={chainSpacing}
+              applyMode={applyMode}
+              undoCounter={undoCounter}
+              autoRotate={autoRotate}
+              showBoundingBox={showBoundingBox}
+              isRecording={isRecording}
+              onRecordingComplete={onRecordingComplete}
+              showRecordingIndicator={showRecordingIndicator}
+              selectedLinkIndex={selectedLinkIndex}
+              onZoneClick={onZoneClick}
+            />
+          </Stage>
 
           <OrbitControls
+            ref={orbitControlsRef}
             enablePan={false}
             enableZoom={true}
             enableRotate={true}
