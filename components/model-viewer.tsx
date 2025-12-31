@@ -1,8 +1,8 @@
 "use client";
 
-import { useGLTF, Outlines } from "@react-three/drei";
-import { useEffect, useRef, useState, useMemo, useCallback, Fragment } from "react";
-import { useFrame, useThree, createPortal } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig, Material } from "@/lib/chain-config-types";
 import {
@@ -747,41 +747,14 @@ export function ModelViewer({
     event.stopPropagation();
   }, [onZoneClick]);
 
-  // Helper component for highlighting
-  const LinkHighlighter = useMemo(() => {
-    if (selectedLinkIndex === undefined || selectedLinkIndex === null || !mainScene) return null;
 
-    // Find the container for the selected link
-    const container = mainScene.children.find(
-      child => child.userData.linkIndex === selectedLinkIndex
-    );
-
-    if (!container) return null;
-
-    // Find body meshes to highlight
-    const bodyMeshes: THREE.Mesh[] = [];
-    container.traverse((child) => {
-      if (child instanceof THREE.Mesh && isBodyMesh(child.name) && !isDiamondMesh(child.name) && !isEnamelMesh(child.name)) {
-        bodyMeshes.push(child);
-      }
-    });
-
-    return bodyMeshes.map((mesh) => (
-      <Fragment key={mesh.uuid}>
-        {createPortal(
-          <Outlines thickness={0.03} color="#f59e0b" screenspace={false} opacity={1} transparent={false} angle={0} />,
-          mesh
-        )}
-      </Fragment>
-    ));
-  }, [selectedLinkIndex, mainScene]);
 
   if (!mainScene) return null;
 
   return (
     <group onPointerDown={handlePointerDown}>
       <primitive object={mainScene} />
-      {LinkHighlighter}
+
     </group>
   );
 }

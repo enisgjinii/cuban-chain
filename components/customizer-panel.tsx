@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, Link, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Camera, Video, Share2, Square } from "lucide-react";
-import { ZoneSelector } from "@/components/zone-selector";
+
 import { FavoritesPanel } from "@/components/favorites-panel";
 import { StoneColorPicker } from "./stone-color-picker";
 import { PriceCalculator } from "./price-calculator";
@@ -34,7 +34,7 @@ import {
   updateSurface,
   createDefaultGemstoneColors,
   applyMaterialToAllLinks,
-  applySurfaceToAllSideSurfaces,
+
   setChainLength,
 } from "@/lib/chain-helpers";
 import { type ChainLinkType, LINK_TYPE_TO_URL, CHAIN_PRESETS } from "@/lib/chain-manager";
@@ -162,7 +162,7 @@ export function CustomizerPanel({
   const [activeTab, setActiveTab] = useState("design");
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [applyInserts, setApplyInserts] = useState(false);
-  const [applyToSides, setApplyToSides] = useState(false);
+
   const [applyToAll, setApplyToAll] = useState(true);
   const [showChainAssembly, setShowChainAssembly] = useState(false);
   const [selectedLinkType, setSelectedLinkType] = useState<ChainLinkType>("part1");
@@ -250,11 +250,7 @@ export function CustomizerPanel({
       newSurfaceConfig = { type, engravingDesign: "pattern1" };
     }
 
-    if (applyToSides) {
-      setChainConfig(applySurfaceToAllSideSurfaces(chainConfig, newSurfaceConfig));
-    } else {
-      setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
-    }
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
   };
 
   // Handle color change
@@ -278,11 +274,7 @@ export function CustomizerPanel({
       return;
     }
 
-    if (applyToSides) {
-      setChainConfig(applySurfaceToAllSideSurfaces(chainConfig, newSurfaceConfig));
-    } else {
-      setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
-    }
+    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
   };
 
   // Handle chain length change
@@ -421,27 +413,7 @@ export function CustomizerPanel({
               <Separator />
 
               {/* Surface Selection */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Select Surface
-                </Label>
-                <ZoneSelector
-                  selectedZone={selectedSurface}
-                  onZoneSelect={setSelectedSurface}
-                />
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="apply-sides"
-                    checked={applyToSides}
-                    onCheckedChange={(checked) => setApplyToSides(checked as boolean)}
-                  />
-                  <Label htmlFor="apply-sides" className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer">
-                    Apply to both sides
-                  </Label>
-                </div>
-              </div>
 
-              <Separator />
 
               {/* Material Selection */}
               <div className="space-y-3">
@@ -588,11 +560,7 @@ export function CustomizerPanel({
                         gemstoneColors={currentSurfaceConfig.gemstoneColors || { stone1: "#ffffff", stone2: "#ffffff" }}
                         onChange={(newColors) => {
                           const newConfig = { ...currentSurfaceConfig, gemstoneColors: newColors };
-                          if (applyToSides) {
-                            setChainConfig(applySurfaceToAllSideSurfaces(chainConfig, newConfig));
-                          } else {
-                            setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newConfig));
-                          }
+                          setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newConfig));
                         }}
                       />
                     )}
