@@ -61,70 +61,68 @@ export function ZoneSelector({
                 Select Zone to Customize
             </label>
 
-            {/* Visual Link Diagram */}
-            <div className="flex items-center justify-center gap-1 mb-3">
-                {/* Left Side */}
-                <button
-                    onClick={() => onZoneSelect("side1")}
-                    className={`relative h-16 w-8 rounded-l-lg transition-all duration-200 border-2 ${selectedZone === "side1"
-                            ? "border-blue-500 ring-2 ring-blue-300 scale-105"
-                            : "border-gray-300 hover:border-gray-400"
-                        }`}
-                    style={{ backgroundColor: getZoneColor(currentConfig?.side1) }}
-                    title={`Left Side: ${SURFACE_TYPE_LABELS[currentConfig?.side1?.type || "empty"]}`}
-                >
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 drop-shadow-sm">
-                        L
-                    </span>
-                </button>
-
-                {/* Center - Top Faces */}
-                <div className="flex flex-col gap-1">
-                    {/* Top Face 1 */}
+            <div className="flex items-center justify-center mb-4 scale-110 p-2">
+                {/* Visual Chain Link Representation */}
+                <div className="flex bg-white dark:bg-gray-800 rounded-full shadow-sm p-1 border border-gray-100 dark:border-gray-700">
+                    {/* Left Side (Curved) */}
                     <button
-                        onClick={() => onZoneSelect("top1")}
-                        className={`relative h-7 w-20 rounded-t-md transition-all duration-200 border-2 ${selectedZone === "top1"
-                                ? "border-blue-500 ring-2 ring-blue-300 scale-105"
-                                : "border-gray-300 hover:border-gray-400"
+                        onClick={() => onZoneSelect("side1")}
+                        className={`relative h-20 w-12 rounded-l-3xl border-y-2 border-l-2 border-r transition-all duration-200 ${selectedZone === "side1"
+                            ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 z-10"
+                            : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                             }`}
-                        style={{ backgroundColor: getZoneColor(currentConfig?.top1) }}
-                        title={`Top Face 1: ${SURFACE_TYPE_LABELS[currentConfig?.top1?.type || "empty"]}`}
+                        style={{ borderRightColor: "transparent" }} // Seamless connection
+                        title={`Left Side: ${SURFACE_TYPE_LABELS[currentConfig?.side1?.type || "empty"]}`}
                     >
-                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 drop-shadow-sm">
-                            T1
-                        </span>
+                        <div className="absolute inset-2 rounded-l-2xl opacity-30" style={{ backgroundColor: getZoneColor(currentConfig?.side1) }} />
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-400">L</span>
                     </button>
 
-                    {/* Top Face 2 */}
+                    {/* Center (Top Faces) */}
+                    <div className="flex flex-col h-20 w-24">
+                        {/* Top 1 */}
+                        <button
+                            onClick={() => onZoneSelect("top1")}
+                            className={`flex-1 border-2 transition-all duration-200 ${selectedZone === "top1"
+                                ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 z-10"
+                                : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                }`}
+                            style={{ borderBottomWidth: "1px" }}
+                            title={`Top Face 1: ${SURFACE_TYPE_LABELS[currentConfig?.top1?.type || "empty"]}`}
+                        >
+                            <div className="w-full h-full opacity-30" style={{ backgroundColor: getZoneColor(currentConfig?.top1) }} />
+                            <span className="absolute inset-0 flex items-center justify-center -translate-y-4 text-[10px] font-bold text-gray-400 pointer-events-none">T1</span>
+                        </button>
+
+                        {/* Top 2 */}
+                        <button
+                            onClick={() => onZoneSelect("top2")}
+                            className={`flex-1 border-2 transition-all duration-200 ${selectedZone === "top2"
+                                ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 z-10"
+                                : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                }`}
+                            style={{ borderTopWidth: "1px" }}
+                            title={`Top Face 2: ${SURFACE_TYPE_LABELS[currentConfig?.top2?.type || "empty"]}`}
+                        >
+                            <div className="w-full h-full opacity-30" style={{ backgroundColor: getZoneColor(currentConfig?.top2) }} />
+                            <span className="absolute inset-0 flex items-center justify-center translate-y-4 text-[10px] font-bold text-gray-400 pointer-events-none">T2</span>
+                        </button>
+                    </div>
+
+                    {/* Right Side (Curved) */}
                     <button
-                        onClick={() => onZoneSelect("top2")}
-                        className={`relative h-7 w-20 rounded-b-md transition-all duration-200 border-2 ${selectedZone === "top2"
-                                ? "border-blue-500 ring-2 ring-blue-300 scale-105"
-                                : "border-gray-300 hover:border-gray-400"
+                        onClick={() => onZoneSelect("side2")}
+                        className={`relative h-20 w-12 rounded-r-3xl border-y-2 border-r-2 border-l transition-all duration-200 ${selectedZone === "side2"
+                            ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 z-10"
+                            : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                             }`}
-                        style={{ backgroundColor: getZoneColor(currentConfig?.top2) }}
-                        title={`Top Face 2: ${SURFACE_TYPE_LABELS[currentConfig?.top2?.type || "empty"]}`}
+                        style={{ borderLeftColor: "transparent" }} // Seamless connection
+                        title={`Right Side: ${SURFACE_TYPE_LABELS[currentConfig?.side2?.type || "empty"]}`}
                     >
-                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 drop-shadow-sm">
-                            T2
-                        </span>
+                        <div className="absolute inset-2 rounded-r-2xl opacity-30" style={{ backgroundColor: getZoneColor(currentConfig?.side2) }} />
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-400">R</span>
                     </button>
                 </div>
-
-                {/* Right Side */}
-                <button
-                    onClick={() => onZoneSelect("side2")}
-                    className={`relative h-16 w-8 rounded-r-lg transition-all duration-200 border-2 ${selectedZone === "side2"
-                            ? "border-blue-500 ring-2 ring-blue-300 scale-105"
-                            : "border-gray-300 hover:border-gray-400"
-                        }`}
-                    style={{ backgroundColor: getZoneColor(currentConfig?.side2) }}
-                    title={`Right Side: ${SURFACE_TYPE_LABELS[currentConfig?.side2?.type || "empty"]}`}
-                >
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 drop-shadow-sm">
-                        R
-                    </span>
-                </button>
             </div>
 
             {/* Zone Pills */}
@@ -134,8 +132,8 @@ export function ZoneSelector({
                         key={zone}
                         onClick={() => onZoneSelect(zone)}
                         className={`px-2 py-1 text-xs rounded-full transition-all ${selectedZone === zone
-                                ? "bg-blue-500 text-white font-medium"
-                                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                            ? "bg-blue-500 text-white font-medium"
+                            : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
                             }`}
                     >
                         {ZONE_LABELS[zone]}

@@ -492,21 +492,46 @@ export function CustomizerPanel({
 
                 {applyInserts && (
                   <div className="space-y-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <Select
-                      value={currentSurfaceConfig?.type}
-                      onValueChange={(value) => handleDiamondTypeChange(value as SurfaceType)}
-                    >
-                      <SelectTrigger className="w-full h-9 bg-white dark:bg-gray-800">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DIAMOND_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-3 gap-2">
+                      {DIAMOND_TYPES.map((type) => {
+                        const isSelected = currentSurfaceConfig?.type === type.value;
+                        return (
+                          <button
+                            key={type.value}
+                            onClick={() => handleDiamondTypeChange(type.value)}
+                            className={`
+                              flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all duration-200
+                              ${isSelected
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-sm scale-[1.02]"
+                                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                              }
+                            `}
+                          >
+                            {/* Icon based on type */}
+                            <div className={`p-2 rounded-full ${isSelected ? "bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300" : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"}`}>
+                              {type.value === "gemstones" && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z" /><path d="M11 3 8 9l4 13 4-13-3-6" /></svg>
+                              )}
+                              {type.value === "moissanites" && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z" /></svg>
+                              )}
+                              {type.value === "enamel" && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                              )}
+                              {type.value === "engraving" && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19 7-7 3 3-7 7-3-3z" /><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="m2 2 7.586 7.586" /><circle cx="11" cy="11" r="2" /></svg>
+                              )}
+                              {type.value === "empty" && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="m4.9 4.9 14.2 14.2" /></svg>
+                              )}
+                            </div>
+                            <span className={`text-[10px] font-medium ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-gray-600 dark:text-gray-400"}`}>
+                              {type.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
                     {showColorDropdown && (
                       <div className="space-y-2">
