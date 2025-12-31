@@ -197,25 +197,23 @@ export function Mobile3DViewer({
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 5]} intensity={1} />
 
-          <Stage environment="city" intensity={0.6} adjustCamera={autoZoom}>
-            <ModelViewer
-              urls={modelUrls}
-              chainConfig={chainConfig}
-              selectedMesh={selectedMesh}
-              hoveredMesh={hoveredMesh}
-              autoFitModel={autoFitModel}
-              chainSpacing={chainSpacing}
-              applyMode={applyMode}
-              undoCounter={undoCounter}
-              autoRotate={autoRotate}
-              showBoundingBox={showBoundingBox}
-              isRecording={isRecording}
-              onRecordingComplete={onRecordingComplete}
-              showRecordingIndicator={showRecordingIndicator}
-              selectedLinkIndex={selectedLinkIndex}
-              onZoneClick={onZoneClick}
-            />
-          </Stage>
+          <ModelViewer
+            urls={modelUrls}
+            chainConfig={chainConfig}
+            selectedMesh={selectedMesh}
+            hoveredMesh={hoveredMesh}
+            autoFitModel={autoZoom}
+            chainSpacing={chainSpacing}
+            applyMode={applyMode}
+            undoCounter={undoCounter}
+            autoRotate={autoRotate}
+            showBoundingBox={showBoundingBox}
+            isRecording={isRecording}
+            onRecordingComplete={onRecordingComplete}
+            showRecordingIndicator={showRecordingIndicator}
+            selectedLinkIndex={selectedLinkIndex}
+            onZoneClick={onZoneClick}
+          />
 
           <OrbitControls
             enablePan={false}

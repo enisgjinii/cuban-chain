@@ -311,16 +311,7 @@ export function ModelViewer({
       container.position.y += adjustment;
     });
 
-    // Third pass: center the entire chain horizontally and in Z
-    if (scene.children.length > 0) {
-      const chainBounds = new THREE.Box3().setFromObject(scene);
-      const chainCenter = chainBounds.getCenter(new THREE.Vector3());
-      scene.children.forEach(child => {
-        child.position.x -= chainCenter.x;
-        child.position.z -= chainCenter.z;
-        // Don't adjust Y - we want them on the ground
-      });
-    }
+
 
     return scene;
   }, [urlsKey, scenes, chainSpacing, getCenteredBounds]);
