@@ -33,10 +33,12 @@ import {
   AutoAwesome,
   Star,
   Palette,
-  Texture,
   Block,
   Edit,
+  DarkMode,
+  LightMode,
 } from "@mui/icons-material";
+import { useThemeMode } from "@/components/mui-theme-registry";
 
 import { FavoritesPanel } from "@/components/favorites-panel";
 import { StoneColorPicker } from "./stone-color-picker";
@@ -161,6 +163,20 @@ const ENVIRONMENTS = [
   { label: "Park", value: "park" },
   { label: "Lobby", value: "lobby" },
 ];
+
+// Small sub-component for the theme toggle row
+function ThemeToggleRow() {
+  const { mode, toggleTheme } = useThemeMode();
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        {mode === "dark" ? <DarkMode sx={{ fontSize: 18, color: "primary.main" }} /> : <LightMode sx={{ fontSize: 18, color: "primary.main" }} />}
+        <Typography variant="body2">{mode === "dark" ? "Dark Mode" : "Light Mode"}</Typography>
+      </Box>
+      <Switch size="small" checked={mode === "dark"} onChange={toggleTheme} />
+    </Box>
+  );
+}
 
 // ─── Component ─────────────────────────────────────────
 export function CustomizerPanel({
@@ -613,6 +629,7 @@ export function CustomizerPanel({
 
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>View Settings</Typography>
+              <ThemeToggleRow />
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
                 <Typography variant="body2">Auto Rotate</Typography>
                 <Switch size="small" checked={!!autoRotate} onChange={(e) => setAutoRotate?.(e.target.checked)} />

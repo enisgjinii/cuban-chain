@@ -102,6 +102,7 @@ export default function Home() {
     if (chainConfig.chainLength !== modelUrls.length) {
       setChainConfig(createDefaultConfig(modelUrls.length));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelUrls.length]);
 
   useEffect(() => {
