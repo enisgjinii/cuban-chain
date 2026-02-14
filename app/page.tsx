@@ -170,12 +170,14 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }, []);
 
-  const handleMeshesAndNodesExtracted = (m: string[], n: string[]) => {
+  const handleMeshesAndNodesExtracted = useCallback((m: string[], n: string[]) => {
     setMeshes(m);
     setNodes(n);
-  };
+  }, []);
 
   const handleUndo = useCallback(() => setUndoCounter((c) => c + 1), []);
+  const handleEntranceComplete = useCallback(() => console.log("Animation complete"), []);
+  const handleSetApplyMode = useCallback(() => {}, []);
 
   const handleChainLengthChange = (length: number) => {
     if (length < 1) return;

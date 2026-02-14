@@ -1,7 +1,7 @@
 "use client";
 
 import { useGLTF } from "@react-three/drei";
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig, Material } from "@/lib/chain-config-types";
@@ -152,7 +152,7 @@ const getModelConfig = (url: string): ModelConnectionConfig => {
   };
 };
 
-export function ModelViewer({
+function ModelViewerComponent({
   urls,
   chainConfig,
   onMeshesAndNodesExtracted,
@@ -495,6 +495,8 @@ export function ModelViewer({
     }
   }, [autoFitModel, mainScene, camera]);
 
+  const prevExtractedRef = useRef({ meshStr: '', nodeStr: '' });
+
   // Extract meshes and nodes
   useEffect(() => {
     const meshes: string[] = [];
@@ -512,8 +514,15 @@ export function ModelViewer({
       }
     });
 
-    if (onMeshesAndNodesExtracted) {
-      onMeshesAndNodesExtracted(meshes, nodes);
+    // Only update if content actually changed to avoid loop
+    const meshStr = meshes.sort().join(',');
+    const nodeStr = nodes.sort().join(',');
+    
+    if (prevExtractedRef.current.meshStr !== meshStr || prevExtractedRef.current.nodeStr !== nodeStr) {
+        if (onMeshesAndNodesExtracted) {
+            onMeshesAndNodesExtracted(meshes, nodes);
+        }
+        prevExtractedRef.current = { meshStr, nodeStr };
     }
   }, [mainScene, onMeshesAndNodesExtracted]);
 
@@ -761,3 +770,5 @@ export function ModelViewer({
     </group>
   );
 }
+
+export const ModelViewer = memo(ModelViewerComponent);
