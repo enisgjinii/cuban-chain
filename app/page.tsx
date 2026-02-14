@@ -25,7 +25,11 @@ import {
   ArrowUpward,
   ArrowBack,
   ArrowForward,
+  DarkMode,
+  LightMode,
 } from "@mui/icons-material";
+
+import { useThemeMode } from "@/components/mui-theme-registry";
 
 import { ModelViewer } from "@/components/model-viewer";
 import { CustomizerPanel } from "@/components/customizer-panel";
@@ -93,6 +97,7 @@ export default function Home() {
   const [cameraZoom, setCameraZoom] = useState<number>(1);
   const [background, setBackground] = useState<any>("city");
   const [showViewPresets, setShowViewPresets] = useState(false);
+  const { mode, toggleTheme } = useThemeMode();
 
   const sceneRef = useRef<any>(null);
   const orbitControlsRef = useRef<any>(null);
@@ -322,9 +327,10 @@ export default function Home() {
             gap: 0.5,
             p: 0.75,
             borderRadius: 3,
-            bgcolor: "rgba(20,20,20,0.85)",
+            bgcolor: (theme) => theme.palette.mode === 'dark' ? "rgba(20,20,20,0.85)" : "rgba(255,255,255,0.85)",
             backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.06)",
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Tooltip title="Zoom In" arrow>
@@ -348,7 +354,7 @@ export default function Home() {
                 onClick={() => setShowViewPresets(!showViewPresets)}
                 sx={{
                   color: showViewPresets ? "primary.main" : "text.secondary",
-                  bgcolor: showViewPresets ? "rgba(212,160,23,0.1)" : "transparent",
+                  bgcolor: showViewPresets ? "action.hover" : "transparent",
                 }}
               >
                 <Visibility fontSize="small" />
@@ -366,8 +372,9 @@ export default function Home() {
                   gap: 0.5,
                   p: 0.5,
                   borderRadius: 2,
-                  bgcolor: "rgba(20,20,20,0.95)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  bgcolor: (theme) => theme.palette.mode === 'dark' ? "rgba(20,20,20,0.95)" : "rgba(255,255,255,0.95)",
+                  border: "1px solid",
+                  borderColor: "divider",
                 }}
               >
                 {VIEW_PRESETS.map((p) => (
@@ -393,7 +400,7 @@ export default function Home() {
               onClick={() => setAutoRotate(!autoRotate)}
               sx={{
                 color: autoRotate ? "primary.main" : "text.secondary",
-                bgcolor: autoRotate ? "rgba(212,160,23,0.1)" : "transparent",
+                bgcolor: autoRotate ? "action.hover" : "transparent",
               }}
             >
               {autoRotate ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
@@ -409,6 +416,18 @@ export default function Home() {
           <Tooltip title="Fullscreen" arrow>
             <IconButton size="small" onClick={handleFullscreen} sx={{ color: "text.secondary" }}>
               <Fullscreen fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+           <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.5 }} />
+
+           <Tooltip title={mode === "dark" ? "Light Mode" : "Dark Mode"} arrow>
+            <IconButton 
+              size="small" 
+              onClick={toggleTheme} 
+              sx={{ color: "text.secondary" }}
+            >
+              {mode === "dark" ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
             </IconButton>
           </Tooltip>
         </Paper>
