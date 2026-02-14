@@ -9,7 +9,12 @@
     "start": "next start"
   },
   "dependencies": {
+    "@emotion/react": "^11.13.5",
+    "@emotion/styled": "^11.13.5",
+    "@fontsource/roboto": "^5.1.1",
     "@hookform/resolvers": "^5.2.2",
+    "@mui/icons-material": "^6.4.5",
+    "@mui/material": "^6.4.5",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",

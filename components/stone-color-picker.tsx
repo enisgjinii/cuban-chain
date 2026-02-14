@@ -1,144 +1,149 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
-import { Label } from "@/components/ui/label";
+import { Box, Typography, Button } from "@mui/material";
+import { AutoAwesome } from "@mui/icons-material";
 import type { SurfaceId, GemstoneColors } from "@/lib/chain-config-types";
 
 interface StoneColorPickerProps {
-    surfaceId: SurfaceId;
-    gemstoneColors: GemstoneColors;
-    onChange: (colors: GemstoneColors) => void;
-    disabled?: boolean;
+  surfaceId: SurfaceId;
+  gemstoneColors: GemstoneColors;
+  onChange: (colors: GemstoneColors) => void;
+  disabled?: boolean;
 }
 
 const COLOR_PRESETS = [
-    { label: "Colourless", value: "#ffffff" },
-    { label: "Black", value: "#000000" },
-    { label: "Red", value: "#dc2626" },
-    { label: "Blue", value: "#2563eb" },
-    { label: "Green", value: "#16a34a" },
-    { label: "Yellow", value: "#eab308" },
-    { label: "Orange", value: "#ea580c" },
-    { label: "Pink", value: "#ec4899" },
-    { label: "Purple", value: "#9333ea" },
+  { label: "Colourless", value: "#ffffff" },
+  { label: "Black", value: "#000000" },
+  { label: "Red", value: "#dc2626" },
+  { label: "Blue", value: "#2563eb" },
+  { label: "Green", value: "#16a34a" },
+  { label: "Yellow", value: "#eab308" },
+  { label: "Orange", value: "#ea580c" },
+  { label: "Pink", value: "#ec4899" },
+  { label: "Purple", value: "#9333ea" },
 ];
 
-export function StoneColorPicker({
-    surfaceId,
-    gemstoneColors,
-    onChange,
-    disabled = false,
-}: StoneColorPickerProps) {
-    const [selectedStone, setSelectedStone] = useState<"stone1" | "stone2" | "stone3">("stone1");
+export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled = false }: StoneColorPickerProps) {
+  const [selectedStone, setSelectedStone] = useState<"stone1" | "stone2" | "stone3">("stone1");
 
-    const isTopSurface = surfaceId === "top1" || surfaceId === "top2";
-    const stoneCount = isTopSurface ? 3 : 2;
+  const isTopSurface = surfaceId === "top1" || surfaceId === "top2";
+  const stoneCount = isTopSurface ? 3 : 2;
 
-    const handleColorChange = (color: string) => {
-        const newColors: GemstoneColors = {
-            ...gemstoneColors,
-            [selectedStone]: color,
-        };
-        onChange(newColors);
-    };
+  const handleColorChange = (color: string) => {
+    onChange({ ...gemstoneColors, [selectedStone]: color });
+  };
 
-    const handleApplyToAll = (color: string) => {
-        const newColors: GemstoneColors = {
-            stone1: color,
-            stone2: color,
-            ...(isTopSurface && { stone3: color }),
-        };
-        onChange(newColors);
-    };
+  const handleApplyToAll = (color: string) => {
+    onChange({ stone1: color, stone2: color, ...(isTopSurface && { stone3: color }) });
+  };
 
-    return (
-        <div className={`space-y-3 ${disabled ? "opacity-50 pointer-events-none" : ""}`}>
-            <Label className="text-xs flex items-center gap-2">
-                <Sparkles className="w-3 h-3" />
-                Individual Stone Colors
-            </Label>
+  return (
+    <Box sx={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5 }}>
+        <AutoAwesome sx={{ fontSize: 14, color: "primary.main" }} />
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>Individual Stone Colors</Typography>
+      </Box>
 
-            {/* Stone Selection */}
-            <div className="flex gap-2">
-                {Array.from({ length: stoneCount }).map((_, index) => {
-                    const stoneKey = `stone${index + 1}` as "stone1" | "stone2" | "stone3";
-                    const color = gemstoneColors[stoneKey] || "#ffffff";
+      {/* Stone Selection */}
+      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+        {Array.from({ length: stoneCount }).map((_, index) => {
+          const stoneKey = `stone${index + 1}` as "stone1" | "stone2" | "stone3";
+          const color = gemstoneColors[stoneKey] || "#ffffff";
+          const isActive = selectedStone === stoneKey;
 
-                    return (
-                        <button
-                            key={stoneKey}
-                            onClick={() => setSelectedStone(stoneKey)}
-                            className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${selectedStone === stoneKey
-                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                                }`}
-                        >
-                            <div
-                                className="w-8 h-8 rounded-full border-2 border-white shadow-md"
-                                style={{
-                                    backgroundColor: color,
-                                    boxShadow: color === "#ffffff"
-                                        ? "inset 0 0 0 1px #e5e7eb, 0 1px 3px rgba(0,0,0,0.1)"
-                                        : "0 2px 8px rgba(0,0,0,0.15)",
-                                }}
-                            />
-                            <span className="text-xs text-gray-600 dark:text-gray-400">
-                                Stone {index + 1}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
+          return (
+            <Box
+              key={stoneKey}
+              onClick={() => setSelectedStone(stoneKey)}
+              sx={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 0.5,
+                p: 1,
+                borderRadius: 2,
+                border: "2px solid",
+                borderColor: isActive ? "primary.main" : "divider",
+                bgcolor: isActive ? "rgba(212,160,23,0.08)" : "transparent",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  bgcolor: color,
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  boxShadow: color === "#ffffff" ? "inset 0 0 0 1px #555" : "0 2px 6px rgba(0,0,0,0.3)",
+                }}
+              />
+              <Typography variant="caption" sx={{ fontSize: "0.65rem", color: "text.secondary" }}>
+                Stone {index + 1}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Box>
 
-            {/* Color Presets */}
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Color Presets</span>
-                    <button
-                        onClick={() => handleApplyToAll(gemstoneColors[selectedStone] || "#ffffff")}
-                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                    >
-                        Apply to all
-                    </button>
-                </div>
-                <div className="grid grid-cols-5 gap-2">
-                    {COLOR_PRESETS.map((preset) => (
-                        <button
-                            key={preset.value}
-                            onClick={() => handleColorChange(preset.value)}
-                            className={`w-full aspect-square rounded-lg border-2 transition-all ${gemstoneColors[selectedStone] === preset.value
-                                    ? "border-blue-500 ring-2 ring-blue-200"
-                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                                }`}
-                            style={{
-                                backgroundColor: preset.value,
-                                boxShadow: preset.value === "#ffffff"
-                                    ? "inset 0 0 0 1px #e5e7eb"
-                                    : undefined,
-                            }}
-                            title={preset.label}
-                        />
-                    ))}
-                </div>
-            </div>
+      {/* Color Presets */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>Color Presets</Typography>
+        <Button
+          size="small"
+          onClick={() => handleApplyToAll(gemstoneColors[selectedStone] || "#ffffff")}
+          sx={{ fontSize: "0.65rem", minWidth: 0, p: 0.5, color: "primary.light" }}
+        >
+          Apply to all
+        </Button>
+      </Box>
 
-            {/* Custom Color Input */}
-            <div className="flex gap-2">
-                <input
-                    type="color"
-                    value={gemstoneColors[selectedStone] || "#ffffff"}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="w-10 h-10 rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
-                />
-                <input
-                    type="text"
-                    value={gemstoneColors[selectedStone] || "#ffffff"}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 uppercase"
-                    placeholder="#ffffff"
-                />
-            </div>
-        </div>
-    );
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, mb: 2 }}>
+        {COLOR_PRESETS.map((preset) => (
+          <Box
+            key={preset.value}
+            className={`swatch-btn ${gemstoneColors[selectedStone] === preset.value ? "active" : ""}`}
+            onClick={() => handleColorChange(preset.value)}
+            sx={{
+              width: "100%",
+              aspectRatio: "1",
+              borderRadius: 1.5,
+              bgcolor: preset.value,
+              border: preset.value === "#ffffff" ? "2px solid #444" : undefined,
+            }}
+            title={preset.label}
+          />
+        ))}
+      </Box>
+
+      {/* Custom input */}
+      <Box sx={{ display: "flex", gap: 1 }}>
+        <input
+          type="color"
+          value={gemstoneColors[selectedStone] || "#ffffff"}
+          onChange={(e) => handleColorChange(e.target.value)}
+          style={{ width: 36, height: 36, borderRadius: 8, border: "1px solid #444", cursor: "pointer", background: "none" }}
+        />
+        <input
+          type="text"
+          value={gemstoneColors[selectedStone] || "#ffffff"}
+          onChange={(e) => handleColorChange(e.target.value)}
+          placeholder="#ffffff"
+          style={{
+            flex: 1,
+            padding: "6px 10px",
+            fontSize: "0.8rem",
+            borderRadius: 8,
+            border: "1px solid #444",
+            background: "#1a1a1a",
+            color: "#fff",
+            textTransform: "uppercase",
+          }}
+        />
+      </Box>
+    </Box>
+  );
 }

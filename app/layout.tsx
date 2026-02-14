@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toast";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import "@fontsource/roboto/300.css";
+import "@fontsource/roboto/400.css";
+import "@fontsource/roboto/500.css";
+import "@fontsource/roboto/700.css";
 import "./globals.css";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+import MuiThemeRegistry from "@/components/mui-theme-registry";
 
 export const metadata: Metadata = {
   title: "Cuban Link Customizer",
@@ -15,20 +14,9 @@ export const metadata: Metadata = {
   generator: "Cuban Chain Customizer",
   icons: {
     icon: [
-      {
-        url: "/placeholder-logo.png",
-        type: "image/png",
-        sizes: "32x32",
-      },
-      {
-        url: "/placeholder-logo.png",
-        type: "image/png",
-        sizes: "16x16",
-      },
-      {
-        url: "/placeholder-logo.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/placeholder-logo.png", type: "image/png", sizes: "32x32" },
+      { url: "/placeholder-logo.png", type: "image/png", sizes: "16x16" },
+      { url: "/placeholder-logo.svg", type: "image/svg+xml" },
     ],
     apple: "/placeholder-logo.png",
   },
@@ -40,22 +28,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`} suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TooltipProvider delayDuration={300}>
-            {children}
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
+    <html lang="en">
+      <body>
+        <MuiThemeRegistry>
+          {children}
+        </MuiThemeRegistry>
         <Analytics />
       </body>
     </html>
   );
 }
-
