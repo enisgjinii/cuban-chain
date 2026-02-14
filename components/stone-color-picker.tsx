@@ -121,26 +121,42 @@ export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled
 
       {/* Custom input */}
       <Box sx={{ display: "flex", gap: 1 }}>
-        <input
+        <Box
+          component="input"
           type="color"
           value={gemstoneColors[selectedStone] || "#ffffff"}
-          onChange={(e) => handleColorChange(e.target.value)}
-          style={{ width: 36, height: 36, borderRadius: 8, border: "1px solid #444", cursor: "pointer", background: "none" }}
+          onChange={(e: any) => handleColorChange(e.target.value)}
+          sx={{
+            width: 36,
+            height: 36,
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+            cursor: "pointer",
+            background: "none",
+            "&::-webkit-color-swatch-wrapper": { padding: 0 },
+            "&::-webkit-color-swatch": { borderRadius: 4, border: "none" },
+          }}
         />
-        <input
+        <Box
+          component="input"
           type="text"
           value={gemstoneColors[selectedStone] || "#ffffff"}
-          onChange={(e) => handleColorChange(e.target.value)}
+          onChange={(e: any) => handleColorChange(e.target.value)}
           placeholder="#ffffff"
-          style={{
+          sx={{
             flex: 1,
-            padding: "6px 10px",
+            px: 1.25,
+            py: 0.75,
             fontSize: "0.8rem",
-            borderRadius: 8,
-            border: "1px solid #444",
-            background: "#1a1a1a",
-            color: "#fff",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "action.hover",
+            color: "text.primary",
             textTransform: "uppercase",
+            outline: "none",
+            "&:focus": { borderColor: "primary.main" },
           }}
         />
       </Box>

@@ -1,178 +1,248 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, ChevronRight, ChevronLeft, Sparkles, Palette, Link, Camera, Star } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  Button,
+  Typography,
+  Box,
+  IconButton,
+  MobileStepper,
+  LinearProgress,
+} from "@mui/material";
+import {
+  Close,
+  ChevronRight,
+  ChevronLeft,
+  AutoAwesome,
+  Palette,
+  Link as LinkIcon,
+  CameraAlt,
+  Star,
+} from "@mui/icons-material";
 
 interface OnboardingTourProps {
-    onComplete: () => void;
+  onComplete: () => void;
 }
 
 const TOUR_STEPS = [
-    {
-        id: 1,
-        title: "Welcome to Chain Customizer! 💎",
-        description:
-            "Create your perfect Cuban chain with our interactive 3D customizer. Let's take a quick tour!",
-        icon: <Sparkles className="w-8 h-8 text-yellow-500" />,
-        highlight: null,
-    },
-    {
-        id: 2,
-        title: "Choose Your Material",
-        description:
-            "Select from premium materials like Gold, Silver, or Black. Your choice affects the entire chain or individual links.",
-        icon: <Palette className="w-8 h-8 text-amber-500" />,
-        highlight: "material-selector",
-    },
-    {
-        id: 3,
-        title: "Customize Link Zones",
-        description:
-            "Each link has 4 customizable zones. Add diamonds, moissanites, enamel, or engravings to any zone.",
-        icon: <Link className="w-8 h-8 text-blue-500" />,
-        highlight: "zone-selector",
-    },
-    {
-        id: 4,
-        title: "Save & Share",
-        description:
-            "Capture stunning images, record videos, and share your designs. Save favorites for later!",
-        icon: <Camera className="w-8 h-8 text-purple-500" />,
-        highlight: "export-section",
-    },
-    {
-        id: 5,
-        title: "You're Ready! 🎉",
-        description:
-            "Start designing your dream chain. Use keyboard shortcut '?' anytime to see all shortcuts.",
-        icon: <Star className="w-8 h-8 text-green-500" />,
-        highlight: null,
-    },
+  {
+    id: 1,
+    title: "Welcome to Chain Customizer! 💎",
+    description:
+      "Create your perfect Cuban chain with our interactive 3D customizer. Let's take a quick tour!",
+    icon: <AutoAwesome sx={{ fontSize: 32, color: "#eab308" }} />,
+  },
+  {
+    id: 2,
+    title: "Choose Your Material",
+    description:
+      "Select from premium materials like Gold, Silver, or Black. Your choice affects the entire chain or individual links.",
+    icon: <Palette sx={{ fontSize: 32, color: "#d97706" }} />,
+  },
+  {
+    id: 3,
+    title: "Customize Link Zones",
+    description:
+      "Each link has 4 customizable zones. Add diamonds, moissanites, enamel, or engravings to any zone.",
+    icon: <LinkIcon sx={{ fontSize: 32, color: "#3b82f6" }} />,
+  },
+  {
+    id: 4,
+    title: "Save & Share",
+    description:
+      "Capture stunning images, record videos, and share your designs. Save favorites for later!",
+    icon: <CameraAlt sx={{ fontSize: 32, color: "#a855f7" }} />,
+  },
+  {
+    id: 5,
+    title: "You're Ready! 🎉",
+    description:
+      "Start designing your dream chain. Use keyboard shortcut '?' anytime to see all shortcuts.",
+    icon: <Star sx={{ fontSize: 32, color: "#22c55e" }} />,
+  },
 ];
 
 const STORAGE_KEY = "cuban-chain-onboarding-complete";
 
 export function OnboardingTour({ onComplete }: OnboardingTourProps) {
-    const [isVisible, setIsVisible] = useState(false);
-    const [currentStep, setCurrentStep] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
-    useEffect(() => {
-        // Check if user has already completed the tour
-        const hasCompleted = localStorage.getItem(STORAGE_KEY);
-        if (!hasCompleted) {
-            // Delay showing to let the page load
-            const timer = setTimeout(() => setIsVisible(true), 1000);
-            return () => clearTimeout(timer);
-        }
-    }, []);
+  useEffect(() => {
+    const hasCompleted = localStorage.getItem(STORAGE_KEY);
+    if (!hasCompleted) {
+      const timer = setTimeout(() => setIsVisible(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
-    const handleComplete = () => {
-        localStorage.setItem(STORAGE_KEY, "true");
-        setIsVisible(false);
-        onComplete();
-    };
+  const handleComplete = () => {
+    localStorage.setItem(STORAGE_KEY, "true");
+    setIsVisible(false);
+    onComplete();
+  };
 
-    const handleNext = () => {
-        if (currentStep < TOUR_STEPS.length - 1) {
-            setCurrentStep(currentStep + 1);
-        } else {
-            handleComplete();
-        }
-    };
+  const handleNext = () => {
+    if (currentStep < TOUR_STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleComplete();
+    }
+  };
 
-    const handlePrevious = () => {
-        if (currentStep > 0) {
-            setCurrentStep(currentStep - 1);
-        }
-    };
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
-    const handleSkip = () => {
-        handleComplete();
-    };
+  const handleSkip = () => {
+    handleComplete();
+  };
 
-    if (!isVisible) return null;
+  if (!isVisible) return null;
 
-    const step = TOUR_STEPS[currentStep];
-    const isLastStep = currentStep === TOUR_STEPS.length - 1;
-    const isFirstStep = currentStep === 0;
+  const step = TOUR_STEPS[currentStep];
+  const isLastStep = currentStep === TOUR_STEPS.length - 1;
+  const isFirstStep = currentStep === 0;
+  const progress = ((currentStep + 1) / TOUR_STEPS.length) * 100;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            {/* Tour Card */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden transform animate-in zoom-in-95 duration-300">
-                {/* Progress Bar */}
-                <div className="h-1 bg-gray-100 dark:bg-gray-800">
-                    <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                        style={{ width: `${((currentStep + 1) / TOUR_STEPS.length) * 100}%` }}
-                    />
-                </div>
+  return (
+    <Dialog
+      open={isVisible}
+      onClose={handleSkip}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          bgcolor: "background.paper",
+          overflow: "hidden",
+        },
+      }}
+      slotProps={{
+        backdrop: {
+          sx: { bgcolor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" },
+        },
+      }}
+    >
+      {/* Progress Bar */}
+      <LinearProgress
+        variant="determinate"
+        value={progress}
+        sx={{
+          height: 4,
+          "& .MuiLinearProgress-bar": {
+            background: "linear-gradient(90deg, #3b82f6, #a855f7)",
+          },
+        }}
+      />
 
-                {/* Content */}
-                <div className="p-6 text-center">
-                    {/* Icon */}
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-2xl flex items-center justify-center shadow-inner">
-                        {step.icon}
-                    </div>
+      <DialogContent sx={{ p: 0 }}>
+        {/* Content */}
+        <Box sx={{ p: 4, textAlign: "center" }}>
+          {/* Icon */}
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              mx: "auto",
+              mb: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "action.hover",
+              borderRadius: 3,
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            {step.icon}
+          </Box>
 
-                    {/* Title */}
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                        {step.title}
-                    </h2>
+          {/* Title */}
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+            {step.title}
+          </Typography>
 
-                    {/* Description */}
-                    <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-                        {step.description}
-                    </p>
+          {/* Description */}
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", mb: 3, lineHeight: 1.6 }}
+          >
+            {step.description}
+          </Typography>
 
-                    {/* Step Indicators */}
-                    <div className="flex justify-center gap-2 mb-6">
-                        {TOUR_STEPS.map((_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => setCurrentStep(index)}
-                                className={`w-2 h-2 rounded-full transition-all ${index === currentStep
-                                        ? "w-6 bg-blue-500"
-                                        : index < currentStep
-                                            ? "bg-blue-300"
-                                            : "bg-gray-200 dark:bg-gray-700"
-                                    }`}
-                            />
-                        ))}
-                    </div>
-                </div>
+          {/* Step Indicators */}
+          <Box sx={{ display: "flex", justifyContent: "center", gap: 0.75, mb: 1 }}>
+            {TOUR_STEPS.map((_, index) => (
+              <Box
+                key={index}
+                onClick={() => setCurrentStep(index)}
+                sx={{
+                  width: index === currentStep ? 24 : 8,
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor:
+                    index === currentStep
+                      ? "primary.main"
+                      : index < currentStep
+                      ? "primary.light"
+                      : "divider",
+                  cursor: "pointer",
+                  transition: "all 0.3s",
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800">
-                    {!isFirstStep ? (
-                        <Button variant="ghost" onClick={handlePrevious} className="gap-1">
-                            <ChevronLeft className="w-4 h-4" />
-                            Back
-                        </Button>
-                    ) : (
-                        <Button variant="ghost" onClick={handleSkip} className="text-gray-500">
-                            Skip Tour
-                        </Button>
-                    )}
+        {/* Actions */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            p: 2,
+            bgcolor: "action.hover",
+            borderTop: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          {!isFirstStep ? (
+            <Button
+              onClick={handlePrevious}
+              startIcon={<ChevronLeft />}
+              sx={{ color: "text.secondary" }}
+            >
+              Back
+            </Button>
+          ) : (
+            <Button onClick={handleSkip} sx={{ color: "text.secondary" }}>
+              Skip Tour
+            </Button>
+          )}
 
-                    <Button onClick={handleNext} className="gap-1">
-                        {isLastStep ? (
-                            "Get Started"
-                        ) : (
-                            <>
-                                Next
-                                <ChevronRight className="w-4 h-4" />
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
+          <Button
+            variant="contained"
+            onClick={handleNext}
+            endIcon={!isLastStep ? <ChevronRight /> : undefined}
+            sx={{
+              background: "linear-gradient(135deg, #d4a017, #ffd700)",
+              color: "#000",
+              fontWeight: 600,
+              "&:hover": { background: "linear-gradient(135deg, #b8860b, #d4a017)" },
+            }}
+          >
+            {isLastStep ? "Get Started" : "Next"}
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
-// Export function to reset tour for testing
 export function resetOnboardingTour() {
-    localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY);
 }
