@@ -21,6 +21,10 @@ import {
   useTheme,
   Slider,
   Badge,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import {
   ZoomIn,
@@ -63,6 +67,7 @@ import {
   SwapHoriz,
   Info,
   Scale,
+  MoreVert,
 } from "@mui/icons-material";
 
 import { useThemeMode } from "@/components/mui-theme-registry";
@@ -592,7 +597,10 @@ export default function Home() {
     handleFullscreen,
   ]);
 
-  // ─── Toolbar Button Helper ────────────────────────────────────
+  // ─── More-menu state ─────────────────────────────────────────
+  const [moreAnchor, setMoreAnchor] = useState<null | HTMLElement>(null);
+
+  // ─── Toolbar Button Helper (compact 18px icons) ──────────────
   const ToolbarBtn = useCallback(
     ({
       title,
@@ -602,16 +610,17 @@ export default function Home() {
       color,
     }: {
       title: string;
-      onClick: () => void;
+      onClick: (e?: any) => void;
       icon: React.ReactNode;
       active?: boolean;
       color?: string;
     }) => (
-      <Tooltip title={title} arrow placement={isMobile ? "top" : "top"}>
+      <Tooltip title={title} arrow placement="top">
         <IconButton
           size="small"
           onClick={onClick}
           sx={{
+            p: 0.5,
             color: active ? "primary.main" : color || "text.secondary",
             bgcolor: active ? "action.hover" : "transparent",
             "&:hover": { bgcolor: "action.hover" },
@@ -668,7 +677,16 @@ export default function Home() {
       </Snackbar>
 
       {/* ─── Full Canvas Area ──────────────────────────────── */}
-      <Box sx={{ flex: 1, position: "relative", overflow: "hidden" }}>
+      <Box
+        sx={{
+          flex: 1,
+          position: "relative",
+          overflow: "hidden",
+          /* Shift content so the 3D model centres in the visible gap */
+          pr: !isMobile && sidebarOpen ? `${sidebarWidth}px` : 0,
+          transition: "padding-right 0.3s ease",
+        }}
+      >
         <Box className="canvas-wrapper" sx={{ width: "100%", height: "100%", position: "relative" }}>
           <Canvas
             gl={{ preserveDrawingBuffer: true }}
@@ -842,20 +860,19 @@ export default function Home() {
           </Box>
         )}
 
-        {/* ─── Floating Viewer Toolbar (bottom-left) ───────── */}
+        {/* ─── Floating Viewer Toolbar (compact, bottom-left) ── */}
         {!hideUI && (
           <Paper
             elevation={4}
             sx={{
               position: "absolute",
-              left: isMobile ? 8 : 16,
-              bottom: isMobile ? 72 : 16,
+              left: isMobile ? 8 : 12,
+              bottom: isMobile ? 72 : 12,
               display: "flex",
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 0.25,
-              p: 0.5,
-              borderRadius: 3,
+              alignItems: "center",
+              gap: 0.15,
+              p: 0.35,
+              borderRadius: 2,
               bgcolor: (t) =>
                 t.palette.mode === "dark" ? "rgba(20,20,20,0.88)" : "rgba(255,255,255,0.88)",
               backdropFilter: "blur(12px)",
@@ -866,18 +883,18 @@ export default function Home() {
             }}
           >
             {/* Zoom */}
-            <ToolbarBtn title="Zoom In" onClick={handleZoomIn} icon={<ZoomIn fontSize="small" />} />
-            <ToolbarBtn title="Zoom Out" onClick={handleZoomOut} icon={<ZoomOut fontSize="small" />} />
-            <ToolbarBtn title="Zoom to Fit" onClick={handleZoomToFit} icon={<FitScreen fontSize="small" />} />
+            <ToolbarBtn title="Zoom In" onClick={handleZoomIn} icon={<ZoomIn sx={{ fontSize: 18 }} />} />
+            <ToolbarBtn title="Zoom Out" onClick={handleZoomOut} icon={<ZoomOut sx={{ fontSize: 18 }} />} />
+            <ToolbarBtn title="Zoom to Fit" onClick={handleZoomToFit} icon={<FitScreen sx={{ fontSize: 18 }} />} />
 
-            <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.25 }} />
+            <Box sx={{ width: "1px", height: 18, bgcolor: "divider", mx: 0.15 }} />
 
             {/* View Presets */}
             <Box sx={{ position: "relative" }}>
               <ToolbarBtn
                 title="View Angles"
                 onClick={() => setShowViewPresets(!showViewPresets)}
-                icon={<Visibility fontSize="small" />}
+                icon={<Visibility sx={{ fontSize: 18 }} />}
                 active={showViewPresets}
               />
               {showViewPresets && (
@@ -887,11 +904,11 @@ export default function Home() {
                     position: "absolute",
                     bottom: "100%",
                     left: 0,
-                    mb: 1,
+                    mb: 0.75,
                     display: "flex",
-                    gap: 0.5,
-                    p: 0.5,
-                    borderRadius: 2,
+                    gap: 0.25,
+                    p: 0.4,
+                    borderRadius: 1.5,
                     bgcolor: (t) =>
                       t.palette.mode === "dark"
                         ? "rgba(20,20,20,0.95)"
@@ -908,7 +925,7 @@ export default function Home() {
                           handleViewPreset(p.id);
                           setShowViewPresets(false);
                         }}
-                        sx={{ color: "text.secondary" }}
+                        sx={{ p: 0.5, color: "text.secondary" }}
                       >
                         {p.icon}
                       </IconButton>
@@ -918,148 +935,114 @@ export default function Home() {
               )}
             </Box>
 
-            <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.25 }} />
+            {/* Rotate */}
+            <ToolbarBtn
+              title={autoRotate ? "Stop Rotation" : "Auto Rotate"}
+              onClick={() => setAutoRotate(!autoRotate)}
+              icon={autoRotate ? <Pause sx={{ fontSize: 18 }} /> : <PlayArrow sx={{ fontSize: 18 }} />}
+              active={autoRotate}
+            />
 
-            {/* Rotate + Speed */}
-            <Box sx={{ position: "relative" }}>
-              <ToolbarBtn
-                title={autoRotate ? "Stop Rotation" : "Auto Rotate"}
-                onClick={() => setAutoRotate(!autoRotate)}
-                icon={autoRotate ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
-                active={autoRotate}
-              />
-              {autoRotate && (
-                <Paper
-                  elevation={8}
-                  sx={{
-                    position: "absolute",
-                    bottom: "100%",
-                    left: -20,
-                    mb: 1,
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: (t) =>
-                      t.palette.mode === "dark"
-                        ? "rgba(20,20,20,0.95)"
-                        : "rgba(255,255,255,0.95)",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    width: 140,
-                    display: showSpeedSlider ? "block" : "none",
-                  }}
-                >
-                  <Typography variant="caption" sx={{ color: "text.secondary", mb: 0.5, display: "block" }}>
-                    Speed: {autoRotateSpeed.toFixed(1)}x
-                  </Typography>
-                  <Slider
-                    size="small"
-                    value={autoRotateSpeed}
-                    min={0.1}
-                    max={5}
-                    step={0.1}
-                    onChange={(_, v) => setAutoRotateSpeed(v as number)}
-                  />
-                </Paper>
-              )}
-            </Box>
-            {autoRotate && (
-              <ToolbarBtn
-                title="Rotation Speed"
-                onClick={() => setShowSpeedSlider(!showSpeedSlider)}
-                icon={<Speed fontSize="small" />}
-                active={showSpeedSlider}
-              />
-            )}
+            <ToolbarBtn title="Reset View" onClick={handleResetView} icon={<RestartAlt sx={{ fontSize: 18 }} />} />
 
-            <ToolbarBtn title="Reset View" onClick={handleResetView} icon={<RestartAlt fontSize="small" />} />
-            <ToolbarBtn title="Replay Animation" onClick={handleReplayAnimation} icon={<SwapHoriz fontSize="small" />} />
-
-            <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.25 }} />
+            <Box sx={{ width: "1px", height: 18, bgcolor: "divider", mx: 0.15 }} />
 
             {/* Toggle features */}
             <ToolbarBtn
               title={showGrid ? "Hide Grid" : "Show Grid"}
               onClick={() => setShowGrid(!showGrid)}
-              icon={showGrid ? <GridOff fontSize="small" /> : <GridOn fontSize="small" />}
+              icon={showGrid ? <GridOff sx={{ fontSize: 18 }} /> : <GridOn sx={{ fontSize: 18 }} />}
               active={showGrid}
-            />
-            <ToolbarBtn
-              title={showStats ? "Hide FPS" : "Show FPS"}
-              onClick={() => setShowStats(!showStats)}
-              icon={<Info fontSize="small" />}
-              active={showStats}
             />
             <ToolbarBtn
               title="Fullscreen"
               onClick={handleFullscreen}
-              icon={<Fullscreen fontSize="small" />}
+              icon={<Fullscreen sx={{ fontSize: 18 }} />}
             />
             <ToolbarBtn
               title={mode === "dark" ? "Light Mode" : "Dark Mode"}
               onClick={toggleTheme}
-              icon={mode === "dark" ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+              icon={mode === "dark" ? <LightMode sx={{ fontSize: 18 }} /> : <DarkMode sx={{ fontSize: 18 }} />}
             />
 
-            <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.25 }} />
+            <Box sx={{ width: "1px", height: 18, bgcolor: "divider", mx: 0.15 }} />
 
-            {/* Actions */}
+            {/* Primary actions */}
             <ToolbarBtn
               title="Screenshot"
               onClick={() => setShowScreenshotModal(true)}
-              icon={<CameraAlt fontSize="small" />}
+              icon={<CameraAlt sx={{ fontSize: 18 }} />}
             />
             <ToolbarBtn
               title={isRecording ? "Stop Recording" : "Record Video"}
               onClick={handleToggleRecording}
-              icon={
-                isRecording ? (
-                  <StopIcon fontSize="small" />
-                ) : (
-                  <Videocam fontSize="small" />
-                )
-              }
+              icon={isRecording ? <StopIcon sx={{ fontSize: 18 }} /> : <Videocam sx={{ fontSize: 18 }} />}
               active={isRecording}
               color={isRecording ? "error.main" : undefined}
             />
-            <ToolbarBtn title="Share" onClick={handleShare} icon={<Share fontSize="small" />} />
+            <ToolbarBtn title="Undo" onClick={handleUndo} icon={<Undo sx={{ fontSize: 18 }} />} />
+            <ToolbarBtn title="Redo" onClick={handleRedo} icon={<Redo sx={{ fontSize: 18 }} />} />
+            <ToolbarBtn title="Randomize 🎲" onClick={handleRandomize} icon={<Casino sx={{ fontSize: 18 }} />} />
 
-            <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.25 }} />
+            <Box sx={{ width: "1px", height: 18, bgcolor: "divider", mx: 0.15 }} />
 
-            {/* Edit actions */}
+            {/* More overflow menu */}
             <ToolbarBtn
-              title={`Undo (${undoStack.length})`}
-              onClick={handleUndo}
-              icon={<Undo fontSize="small" />}
+              title="More"
+              onClick={(e: any) => setMoreAnchor(e.currentTarget)}
+              icon={<MoreVert sx={{ fontSize: 18 }} />}
+              active={Boolean(moreAnchor)}
             />
-            <ToolbarBtn
-              title={`Redo (${redoStack.length})`}
-              onClick={handleRedo}
-              icon={<Redo fontSize="small" />}
-            />
-            <ToolbarBtn
-              title="Randomize Design 🎲"
-              onClick={handleRandomize}
-              icon={<Casino fontSize="small" />}
-            />
-            <ToolbarBtn title="Copy Link" onClick={handleCopyLink} icon={<ContentCopy fontSize="small" />} />
-            <ToolbarBtn
-              title="Paste Link"
-              onClick={handlePasteLink}
-              icon={
-                <Badge variant="dot" color="primary" invisible={!clipboardLink}>
-                  <ContentPaste fontSize="small" />
-                </Badge>
-              }
-            />
-            <ToolbarBtn title="Reset Link" onClick={handleResetLink} icon={<SettingsBackupRestore fontSize="small" />} />
-
-            <Box sx={{ width: "1px", bgcolor: "divider", mx: 0.25 }} />
-
-            <ToolbarBtn
-              title={hideUI ? "Show UI" : "Hide UI"}
-              onClick={() => setHideUI(!hideUI)}
-              icon={hideUI ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}
-            />
+            <Menu
+              anchorEl={moreAnchor}
+              open={Boolean(moreAnchor)}
+              onClose={() => setMoreAnchor(null)}
+              anchorOrigin={{ vertical: "top", horizontal: "left" }}
+              transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    bgcolor: (t: any) =>
+                      t.palette.mode === "dark" ? "rgba(30,30,30,0.95)" : "rgba(255,255,255,0.95)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    minWidth: 180,
+                  },
+                },
+              }}
+            >
+              <MenuItem onClick={() => { handleShare(); setMoreAnchor(null); }}>
+                <ListItemIcon><Share sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>Share</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => { handleCopyLink(); setMoreAnchor(null); }}>
+                <ListItemIcon><ContentCopy sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>Copy Link Design</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => { handlePasteLink(); setMoreAnchor(null); }}>
+                <ListItemIcon><ContentPaste sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>Paste Link Design</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => { handleResetLink(); setMoreAnchor(null); }}>
+                <ListItemIcon><SettingsBackupRestore sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>Reset Link</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => { handleReplayAnimation(); setMoreAnchor(null); }}>
+                <ListItemIcon><SwapHoriz sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>Replay Animation</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => { setShowStats(!showStats); setMoreAnchor(null); }}>
+                <ListItemIcon><Info sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>{showStats ? "Hide FPS" : "Show FPS"}</ListItemText>
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={() => { setHideUI(true); setMoreAnchor(null); }}>
+                <ListItemIcon><VisibilityOff sx={{ fontSize: 18 }} /></ListItemIcon>
+                <ListItemText>Hide UI</ListItemText>
+              </MenuItem>
+            </Menu>
           </Paper>
         )}
 
