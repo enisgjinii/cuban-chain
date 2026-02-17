@@ -97,49 +97,69 @@ interface ModelConnectionConfig {
 }
 
 const MODEL_CONNECTION_CONFIG: Record<string, ModelConnectionConfig> = {
-  "/models/part1.glb": {
+  "/models/Cuban_Main.glb": {
     connectionOffsetX: 0,
     alternateRotation: false,
     scale: 1,
   },
-  "/models/part3.glb": {
+  "/models/cuban_top_flat.glb": {
     connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/part4.glb": {
+  "/models/cuban_top_diamond.glb": {
     connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/part5.glb": {
+  "/models/cuban_top_engraving.glb": {
     connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/part6.glb": {
+  "/models/cuban_top_filling.glb": {
     connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/part7.glb": {
+  "/models/cuban_top_cavity.glb": {
     connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/enamel.glb": {
+  "/models/cuban_top_cavity_diamond.glb": {
     connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/Pattern 1.glb": {
-    connectionOffsetX: -0.02,
+  "/models/cuban_side_flat.glb": {
+    connectionOffsetX: -0.01,
     alternateRotation: true,
     scale: 1,
   },
-  "/models/Cuban-Link.glb": {
-    connectionOffsetX: 0,
-    alternateRotation: false,
+  "/models/cuban_side_diamond.glb": {
+    connectionOffsetX: -0.01,
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/cuban_side_engraving.glb": {
+    connectionOffsetX: -0.01,
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/cuban_side_filling.glb": {
+    connectionOffsetX: -0.01,
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/cuban_side_cavity.glb": {
+    connectionOffsetX: -0.01,
+    alternateRotation: true,
+    scale: 1,
+  },
+  "/models/cuban_side_cavity_diamond.glb": {
+    connectionOffsetX: -0.01,
+    alternateRotation: true,
     scale: 1,
   },
 };

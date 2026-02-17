@@ -1,28 +1,36 @@
 import * as THREE from "three";
 
 // Chain link types available
-export type ChainLinkType = 
-  | "part1" 
-  | "part3" 
-  | "part4" 
-  | "part5" 
-  | "part6" 
-  | "part7" 
-  | "enamel" 
-  | "pattern1"
-  | "cuban-link";
+export type ChainLinkType =
+  | "cuban-main"
+  | "cuban-top-flat"
+  | "cuban-top-diamond"
+  | "cuban-top-engraving"
+  | "cuban-top-filling"
+  | "cuban-top-cavity"
+  | "cuban-top-cavity-diamond"
+  | "cuban-side-flat"
+  | "cuban-side-diamond"
+  | "cuban-side-engraving"
+  | "cuban-side-filling"
+  | "cuban-side-cavity"
+  | "cuban-side-cavity-diamond";
 
 // Model URL mapping
 export const LINK_TYPE_TO_URL: Record<ChainLinkType, string> = {
-  "part1": "/models/part1.glb",
-  "part3": "/models/part3.glb",
-  "part4": "/models/part4.glb",
-  "part5": "/models/part5.glb",
-  "part6": "/models/part6.glb",
-  "part7": "/models/part7.glb",
-  "enamel": "/models/enamel.glb",
-  "pattern1": "/models/Pattern 1.glb",
-  "cuban-link": "/models/Cuban-Link.glb",
+  "cuban-main": "/models/Cuban_Main.glb",
+  "cuban-top-flat": "/models/cuban_top_flat.glb",
+  "cuban-top-diamond": "/models/cuban_top_diamond.glb",
+  "cuban-top-engraving": "/models/cuban_top_engraving.glb",
+  "cuban-top-filling": "/models/cuban_top_filling.glb",
+  "cuban-top-cavity": "/models/cuban_top_cavity.glb",
+  "cuban-top-cavity-diamond": "/models/cuban_top_cavity_diamond.glb",
+  "cuban-side-flat": "/models/cuban_side_flat.glb",
+  "cuban-side-diamond": "/models/cuban_side_diamond.glb",
+  "cuban-side-engraving": "/models/cuban_side_engraving.glb",
+  "cuban-side-filling": "/models/cuban_side_filling.glb",
+  "cuban-side-cavity": "/models/cuban_side_cavity.glb",
+  "cuban-side-cavity-diamond": "/models/cuban_side_cavity_diamond.glb",
 };
 
 // Reverse mapping
@@ -75,63 +83,91 @@ export interface LinkBounds {
 
 // Default bounds for each link type (can be updated after model loading)
 export const DEFAULT_LINK_BOUNDS: Record<ChainLinkType, LinkBounds> = {
-  "part1": {
-    width: 0.1,
+  "cuban-main": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "part3": {
-    width: 0.1,
+  "cuban-top-flat": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "part4": {
-    width: 0.1,
+  "cuban-top-diamond": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "part5": {
-    width: 0.1,
+  "cuban-top-engraving": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "part6": {
-    width: 0.1,
+  "cuban-top-filling": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "part7": {
-    width: 0.1,
+  "cuban-top-cavity": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "enamel": {
-    width: 0.1,
+  "cuban-top-cavity-diamond": {
+    width: 0.12,
     height: 0.05,
     depth: 0.03,
-    connectionPointStart: new THREE.Vector3(-0.05, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.05, 0, 0),
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "pattern1": {
-    width: 0.15,
-    height: 0.06,
-    depth: 0.04,
-    connectionPointStart: new THREE.Vector3(-0.075, 0, 0),
-    connectionPointEnd: new THREE.Vector3(0.075, 0, 0),
+  "cuban-side-flat": {
+    width: 0.12,
+    height: 0.05,
+    depth: 0.03,
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
   },
-  "cuban-link": {
+  "cuban-side-diamond": {
+    width: 0.12,
+    height: 0.05,
+    depth: 0.03,
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
+  },
+  "cuban-side-engraving": {
+    width: 0.12,
+    height: 0.05,
+    depth: 0.03,
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
+  },
+  "cuban-side-filling": {
+    width: 0.12,
+    height: 0.05,
+    depth: 0.03,
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
+  },
+  "cuban-side-cavity": {
+    width: 0.12,
+    height: 0.05,
+    depth: 0.03,
+    connectionPointStart: new THREE.Vector3(-0.06, 0, 0),
+    connectionPointEnd: new THREE.Vector3(0.06, 0, 0),
+  },
+  "cuban-side-cavity-diamond": {
     width: 0.12,
     height: 0.05,
     depth: 0.03,
@@ -378,7 +414,7 @@ export function convertUrlsToChainAssembly(
 ): ChainAssembly {
   const linkTypes: ChainLinkType[] = urls.map(url => {
     const type = URL_TO_LINK_TYPE[url];
-    return type || "part1";
+    return type || "cuban-main";
   });
 
   return createChainAssembly(linkTypes, { spacing, pattern: "linear" });
@@ -401,12 +437,53 @@ export function calculateModelBounds(scene: THREE.Object3D): LinkBounds {
 
 // Preset chain configurations
 export const CHAIN_PRESETS: Record<string, ChainLinkType[]> = {
-  "basic-7": ["part1", "part3", "part4", "part5", "part6", "part7", "part1"],
-  "basic-9": ["part1", "part3", "part4", "part5", "part6", "part7", "part1", "part3", "part4"],
-  "alternating": ["part1", "part3", "part1", "part3", "part1", "part3", "part1"],
-  "with-enamel": ["part1", "enamel", "part3", "enamel", "part4", "enamel", "part5"],
-  "pattern-mix": ["part1", "pattern1", "part3", "pattern1", "part5"],
-  "cuban-classic": ["cuban-link", "cuban-link", "cuban-link", "cuban-link", "cuban-link"],
+  "basic-7": [
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+  ],
+  "basic-9": [
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+    "cuban-main",
+  ],
+  "top-diamond": [
+    "cuban-main",
+    "cuban-top-diamond",
+    "cuban-main",
+    "cuban-top-diamond",
+    "cuban-main",
+    "cuban-top-diamond",
+    "cuban-main",
+  ],
+  "side-diamond": [
+    "cuban-main",
+    "cuban-side-diamond",
+    "cuban-main",
+    "cuban-side-diamond",
+    "cuban-main",
+    "cuban-side-diamond",
+    "cuban-main",
+  ],
+  "engraving-mix": [
+    "cuban-main",
+    "cuban-top-engraving",
+    "cuban-main",
+    "cuban-side-engraving",
+    "cuban-main",
+    "cuban-top-engraving",
+    "cuban-main",
+  ],
 };
 
 // Create chain from preset

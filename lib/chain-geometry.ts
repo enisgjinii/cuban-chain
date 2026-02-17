@@ -100,42 +100,38 @@ export const DEFAULT_ADDITIONAL_LINK_OFFSET: AdditionalLinkOffset = {
 // ============================================================================
 
 // Pattern to identify mesh types by name
-// Discovered patterns from model analysis:
-// - Cuban-Link.glb: Diamond_Octagon001-071, fill/fill001, loc_diamond_side_1, loc_fill_side1
-// - part5.glb: file2001-2007 (Diamond.001 material), Cube019-042
-// - part7.glb/enamel.glb: fill/fill001
-// - Other parts: B5-24-古巴链-OK-版-倒铜_XXXX (Chinese naming)
+// Discovered patterns from model analysis of the current Cuban link set.
 export const MESH_SURFACE_PATTERNS = {
   // Top surfaces - typically the main visible faces (general diamonds are on top)
   top1: ["_top1", "_Top1", "top_1", "Top_1", "_t1", "top1", "loc_diamonds"],
   top2: ["_top2", "_Top2", "top_2", "Top_2", "_t2", "top2", "loc_diamonds001"],
-  // Side surfaces - specific side zone patterns from Cuban-Link.glb
+  // Side surfaces - specific side zone patterns from the current Cuban models
   side1: ["_side1", "_Side1", "side_1", "Side_1", "_s1", "side1", "loc_diamond_side_1", "loc_fill_side1"],
   side2: ["_side2", "_Side2", "side_2", "Side_2", "_s2", "side2", "loc_diamond_side_1001", "loc_fill_side1001"],
   // Diamond/gemstone meshes - comprehensive patterns from all models
   diamond: [
     "Diamond", "diamond", "gem", "Gem", "stone", "Stone",
-    "Diamond_Octagon", // Cuban-Link.glb pattern
+    "Diamond_Octagon", // Common diamond pattern
     "loc_diamonds",    // General location node
-    "file2",           // part5.glb pattern (uses Diamond.001 material)
+    "file2",           // Diamond material pattern
   ],
-  // Enamel surfaces - fill patterns from enamel.glb, part7.glb, Cuban-Link.glb
+  // Enamel surfaces - fill patterns from the current Cuban models
   enamel: ["enamel", "Enamel", "fill", "Fill", "loc_fill"],
   // Base link body (for material application)
   body: [
-    "Cube",            // Generic Three.js cube pattern (part5.glb, part6.glb)
+    "Cube",            // Generic cube pattern
     "Part", "Link",    // General link structure
     "body", "Body",
     "古巴链",           // Chinese "Cuban chain"
     "cubanLink", "Cuban",
-    "sm_cubanLink",    // part6.glb pattern
+    "sm_cubanLink",    // Common mesh name pattern
     "Prongs",          // Most models use Prongs material
     "倒铜",             // Part of Chinese naming pattern
   ],
 };
 
 // Gemstone mesh patterns for each surface zone
-// Updated based on Cuban-Link.glb structure which has the most detailed naming
+// Updated based on the current Cuban models
 export const GEMSTONE_MESH_PATTERNS = {
   top1: {
     // General top diamonds (first half of Diamond_Octagon series)
@@ -285,7 +281,7 @@ export function applyLinkConfigToMesh(
       targetSurface = meshName.includes("1001") || meshName.includes("side_2") || meshName.includes("Side2") ? "side2" : "side1";
     } else {
       // For Diamond_Octagon meshes, use numeric ranges based on our mapping
-      // Cuban-Link.glb has Diamond_Octagon001 through Diamond_Octagon071
+      // Current Cuban models include Diamond_Octagon sequences
       const match = meshName.match(/(\d+)/);
       if (match) {
         const num = parseInt(match[1]);

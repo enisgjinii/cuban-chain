@@ -140,15 +140,19 @@ const ENGRAVING_PATTERNS = [
 ];
 
 const AVAILABLE_LINK_TYPES: { type: ChainLinkType; label: string }[] = [
-  { type: "part1", label: "Part 1" },
-  { type: "part3", label: "Part 3" },
-  { type: "part4", label: "Part 4" },
-  { type: "part5", label: "Part 5" },
-  { type: "part6", label: "Part 6" },
-  { type: "part7", label: "Part 7" },
-  { type: "enamel", label: "Enamel" },
-  { type: "pattern1", label: "Pattern 1" },
-  { type: "cuban-link", label: "Cuban Link" },
+  { type: "cuban-main", label: "Cuban Main" },
+  { type: "cuban-top-flat", label: "Top Flat" },
+  { type: "cuban-top-diamond", label: "Top Diamond" },
+  { type: "cuban-top-engraving", label: "Top Engraving" },
+  { type: "cuban-top-filling", label: "Top Filling" },
+  { type: "cuban-top-cavity", label: "Top Cavity" },
+  { type: "cuban-top-cavity-diamond", label: "Top Cavity Diamond" },
+  { type: "cuban-side-flat", label: "Side Flat" },
+  { type: "cuban-side-diamond", label: "Side Diamond" },
+  { type: "cuban-side-engraving", label: "Side Engraving" },
+  { type: "cuban-side-filling", label: "Side Filling" },
+  { type: "cuban-side-cavity", label: "Side Cavity" },
+  { type: "cuban-side-cavity-diamond", label: "Side Cavity Diamond" },
 ];
 
 const ENVIRONMENTS = [
@@ -206,7 +210,7 @@ export function CustomizerPanel({
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
   const [applyInserts, setApplyInserts] = useState(false);
   const [applyToAll, setApplyToAll] = useState(true);
-  const [selectedLinkType, setSelectedLinkType] = useState<ChainLinkType>("part1");
+  const [selectedLinkType, setSelectedLinkType] = useState<ChainLinkType>("cuban-main");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
   const linkCount = modelUrls.length;

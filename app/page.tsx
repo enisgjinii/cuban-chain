@@ -82,12 +82,12 @@ import { createDefaultConfig, setChainLength } from "@/lib/chain-helpers";
 const SIDEBAR_WIDTH = 380;
 
 const DEFAULT_MODEL_URLS = [
-  "/models/part1.glb",
-  "/models/part3.glb",
-  "/models/part4.glb",
-  "/models/part5.glb",
-  "/models/part6.glb",
-  "/models/part7.glb",
+  "/models/Cuban_Main.glb",
+  "/models/Cuban_Main.glb",
+  "/models/Cuban_Main.glb",
+  "/models/Cuban_Main.glb",
+  "/models/Cuban_Main.glb",
+  "/models/Cuban_Main.glb",
 ];
 
 type ViewPreset = "front" | "back" | "top" | "left" | "right" | "isometric";
@@ -355,7 +355,7 @@ export default function Home() {
         const newUrls = [...modelUrls];
         for (let i = 0; i < length - modelUrls.length; i++) {
           newUrls.push(
-            modelUrls.length > 0 ? modelUrls[modelUrls.length - 1] : "/models/part3.glb"
+            modelUrls.length > 0 ? modelUrls[modelUrls.length - 1] : "/models/Cuban_Main.glb"
           );
         }
         setModelUrls(newUrls);
