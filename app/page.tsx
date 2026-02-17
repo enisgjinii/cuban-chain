@@ -8,6 +8,8 @@ import { Suspense, useState, useRef, useCallback, useEffect, useMemo } from "rea
 import {
   Box,
   Typography,
+  Button,
+  TextField,
   IconButton,
   Tooltip,
   Paper,
@@ -83,11 +85,6 @@ const SIDEBAR_WIDTH = 380;
 
 const DEFAULT_MODEL_URLS = [
   "/models/Cuban_Main.glb",
-  "/models/Cuban_Main.glb",
-  "/models/Cuban_Main.glb",
-  "/models/Cuban_Main.glb",
-  "/models/Cuban_Main.glb",
-  "/models/Cuban_Main.glb",
 ];
 
 type ViewPreset = "front" | "back" | "top" | "left" | "right" | "isometric";
@@ -159,6 +156,21 @@ export default function Home() {
   const [showScreenshotModal, setShowScreenshotModal] = useState<boolean>(false);
   const [cameraZoom, setCameraZoom] = useState<number>(1);
   const [background, setBackground] = useState<any>("city");
+  const [showDuplicate, setShowDuplicate] = useState<boolean>(false);
+  const [dupX, setDupX] = useState<number>(0.06);
+  const [dupY, setDupY] = useState<number>(0);
+  const [dupZ, setDupZ] = useState<number>(0);
+  const [dupRotX, setDupRotX] = useState<number>(0);
+  const [dupRotY, setDupRotY] = useState<number>(0);
+  const [dupRotZ, setDupRotZ] = useState<number>(0);
+  const [dupScale, setDupScale] = useState<number>(1);
+  const [snapNowCounter, setSnapNowCounter] = useState<number>(0);
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(false);
+  const [snapDistance, setSnapDistance] = useState<number>(0.02);
+  const [snapAngleDeg, setSnapAngleDeg] = useState<number>(6);
+  const [nudgeStep, setNudgeStep] = useState<number>(0.01);
+  const [rotStepDeg, setRotStepDeg] = useState<number>(5);
+  const [dupTargetOffset, setDupTargetOffset] = useState<[number, number, number]>([0, 0, 0]);
 
   // ─── New Feature State ─────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -378,6 +390,136 @@ export default function Home() {
     setSelectedLinkIndex(linkIndex);
     setSelectedSurface(surfaceId);
   }, []);
+
+  const handleModelPicked = useCallback(() => {
+    if (autoRotate) {
+      setAutoRotate(false);
+    }
+  }, [autoRotate]);
+
+  const handleDuplicateSnap = useCallback((data: { position: [number, number, number]; rotationX: number; rotationY: number; rotationZ: number; scale: number }) => {
+    setDupX(data.position[0]);
+    setDupY(data.position[1]);
+    setDupZ(data.position[2]);
+    setDupRotX(data.rotationX);
+    setDupRotY(data.rotationY);
+    setDupRotZ(data.rotationZ);
+    setDupScale(data.scale);
+  }, []);
+
+  const handleDuplicateTarget = useCallback((offset: [number, number, number]) => {
+    setDupTargetOffset(offset);
+  }, []);
+
+  const handleNudge = useCallback((axis: "x" | "y" | "z", delta: number) => {
+    if (axis === "x") setDupX((v) => v + delta);
+    if (axis === "y") setDupY((v) => v + delta);
+    if (axis === "z") setDupZ((v) => v + delta);
+  }, []);
+
+  const handleRotateNudge = useCallback((deltaDeg: number) => {
+    setDupRotY((v) => v + (deltaDeg * Math.PI) / 180);
+  }, []);
+
+  const handleRotateNudgeX = useCallback((deltaDeg: number) => {
+    setDupRotX((v) => v + (deltaDeg * Math.PI) / 180);
+  }, []);
+
+  const handleRotateNudgeZ = useCallback((deltaDeg: number) => {
+    setDupRotZ((v) => v + (deltaDeg * Math.PI) / 180);
+  }, []);
+
+  const handleCopyDuplicate = useCallback(async () => {
+    const payload = {
+      x: dupX,
+      y: dupY,
+      z: dupZ,
+      rotX: dupRotX,
+      rotY: dupRotY,
+      rotZ: dupRotZ,
+      scale: dupScale,
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload));
+      showToast("Duplicate position copied", "success");
+    } catch (err) {
+      console.error("Failed to copy", err);
+      showToast("Copy failed", "error");
+    }
+  }, [dupX, dupY, dupZ, dupRotY, showToast]);
+
+  const handleSaveDuplicate = useCallback(() => {
+    const payload = {
+      x: dupX,
+      y: dupY,
+      z: dupZ,
+      rotX: dupRotX,
+      rotY: dupRotY,
+      rotZ: dupRotZ,
+      scale: dupScale,
+    };
+    localStorage.setItem("duplicatePreset", JSON.stringify(payload));
+    showToast("Duplicate preset saved", "success");
+  }, [dupX, dupY, dupZ, dupRotX, dupRotY, dupRotZ, dupScale, showToast]);
+
+  const handleLoadDuplicate = useCallback(() => {
+    const raw = localStorage.getItem("duplicatePreset");
+    if (!raw) {
+      showToast("No saved preset", "info");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw) as { x: number; y: number; z: number; rotX: number; rotY: number; rotZ: number; scale: number };
+      setDupX(parsed.x ?? 0);
+      setDupY(parsed.y ?? 0);
+      setDupZ(parsed.z ?? 0);
+      setDupRotX(parsed.rotX ?? 0);
+      setDupRotY(parsed.rotY ?? 0);
+      setDupRotZ(parsed.rotZ ?? 0);
+      setDupScale(parsed.scale ?? 1);
+      showToast("Duplicate preset loaded", "success");
+    } catch (err) {
+      console.error("Failed to load preset", err);
+      showToast("Preset load failed", "error");
+    }
+  }, [showToast]);
+
+  const handleSaveDuplicateSlot = useCallback((slot: number) => {
+    const payload = {
+      x: dupX,
+      y: dupY,
+      z: dupZ,
+      rotX: dupRotX,
+      rotY: dupRotY,
+      rotZ: dupRotZ,
+      scale: dupScale,
+    };
+    localStorage.setItem(`duplicatePreset${slot}`, JSON.stringify(payload));
+    showToast(`Preset ${slot} saved`, "success");
+  }, [dupX, dupY, dupZ, dupRotX, dupRotY, dupRotZ, dupScale, showToast]);
+
+  const handleLoadDuplicateSlot = useCallback((slot: number) => {
+    const raw = localStorage.getItem(`duplicatePreset${slot}`);
+    if (!raw) {
+      showToast(`Preset ${slot} empty`, "info");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw) as { x: number; y: number; z: number; rotX: number; rotY: number; rotZ: number; scale: number };
+      setDupX(parsed.x ?? 0);
+      setDupY(parsed.y ?? 0);
+      setDupZ(parsed.z ?? 0);
+      setDupRotX(parsed.rotX ?? 0);
+      setDupRotY(parsed.rotY ?? 0);
+      setDupRotZ(parsed.rotZ ?? 0);
+      setDupScale(parsed.scale ?? 1);
+      showToast(`Preset ${slot} loaded`, "success");
+    } catch (err) {
+      console.error("Failed to load preset", err);
+      showToast("Preset load failed", "error");
+    }
+  }, [showToast]);
 
   const handleLoadFavorite = useCallback(
     (config: ChainConfig, urls: string[]) => {
@@ -725,6 +867,19 @@ export default function Home() {
                   selectedMesh={selectedMesh}
                   hoveredMesh={hoveredMesh}
                   chainSpacing={chainSpacing}
+                  combineModels
+                  showDuplicate={showDuplicate}
+                  duplicatePosition={[dupX, dupY, dupZ]}
+                  duplicateRotationX={dupRotX}
+                  duplicateRotationY={dupRotY}
+                  duplicateRotationZ={dupRotZ}
+                  duplicateScale={dupScale}
+                  onDuplicateSnap={handleDuplicateSnap}
+                  onDuplicateTarget={handleDuplicateTarget}
+                  snapNowCounter={snapNowCounter}
+                  snapEnabled={snapEnabled}
+                  snapDistance={snapDistance}
+                  snapAngleDeg={snapAngleDeg}
                   applyMode={false}
                   undoCounter={undoCounter}
                   autoFitModel={false}
@@ -736,6 +891,7 @@ export default function Home() {
                   sceneRef={sceneRef}
                   onZoneClick={handleZoneClick}
                   selectedLinkIndex={selectedLinkIndex}
+                  onModelPicked={handleModelPicked}
                 />
               </Stage>
 
@@ -749,6 +905,371 @@ export default function Home() {
             </Suspense>
           </Canvas>
         </Box>
+
+        {/* ─── Duplicate Position Sliders (floating panel) ──── */}
+        {showDuplicate && !hideUI && (
+          <Paper
+            elevation={4}
+            sx={{
+              position: "absolute",
+              bottom: isMobile ? 70 : 80,
+              left: isMobile ? 12 : 20,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: (t: any) =>
+                t.palette.mode === "dark" ? "rgba(30,30,30,0.92)" : "rgba(255,255,255,0.92)",
+              backdropFilter: "blur(12px)",
+              width: isMobile ? 200 : 240,
+              zIndex: 20,
+            }}
+          >
+            <Typography variant="caption" sx={{ fontWeight: 700, mb: 0.5, display: "block" }}>
+              Duplicate Controls
+            </Typography>
+            <Box sx={{ display: "flex", gap: 0.5, mb: 0.75 }}>
+              <Button
+                size="small"
+                variant={nudgeStep === 0.001 ? "contained" : "outlined"}
+                onClick={() => setNudgeStep(0.001)}
+                sx={{ minWidth: 0, flex: 1, textTransform: "none" }}
+              >
+                0.001
+              </Button>
+              <Button
+                size="small"
+                variant={nudgeStep === 0.01 ? "contained" : "outlined"}
+                onClick={() => setNudgeStep(0.01)}
+                sx={{ minWidth: 0, flex: 1, textTransform: "none" }}
+              >
+                0.01
+              </Button>
+              <Button
+                size="small"
+                variant={nudgeStep === 0.1 ? "contained" : "outlined"}
+                onClick={() => setNudgeStep(0.1)}
+                sx={{ minWidth: 0, flex: 1, textTransform: "none" }}
+              >
+                0.1
+              </Button>
+            </Box>
+
+            {[
+              { label: "X", value: dupX, set: setDupX, min: -1, max: 1, axis: "x" as const },
+              { label: "Y", value: dupY, set: setDupY, min: -1, max: 1, axis: "y" as const },
+              { label: "Z", value: dupZ, set: setDupZ, min: -1, max: 1, axis: "z" as const },
+            ].map(({ label, value, set, min, max, axis }) => (
+              <Box key={label} sx={{ mb: 0.6 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ width: 14, fontWeight: 600 }}>{label}</Typography>
+                  <TextField
+                    size="small"
+                    value={value.toFixed(6)}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      if (Number.isFinite(next)) set(next);
+                    }}
+                    inputProps={{ inputMode: "decimal" }}
+                    sx={{ flex: 1 }}
+                  />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => handleNudge(axis, -nudgeStep)}
+                    sx={{ minWidth: 0, px: 1 }}
+                  >
+                    -
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => handleNudge(axis, nudgeStep)}
+                    sx={{ minWidth: 0, px: 1 }}
+                  >
+                    +
+                  </Button>
+                </Box>
+                <Slider
+                  size="small"
+                  min={min}
+                  max={max}
+                  step={0.001}
+                  value={value}
+                  onChange={(_, v) => set(v as number)}
+                />
+              </Box>
+            ))}
+
+            <Box sx={{ display: "flex", gap: 0.5, mb: 0.5 }}>
+              <Button
+                size="small"
+                variant={rotStepDeg === 1 ? "contained" : "outlined"}
+                onClick={() => setRotStepDeg(1)}
+                sx={{ minWidth: 0, flex: 1, textTransform: "none" }}
+              >
+                1deg
+              </Button>
+              <Button
+                size="small"
+                variant={rotStepDeg === 5 ? "contained" : "outlined"}
+                onClick={() => setRotStepDeg(5)}
+                sx={{ minWidth: 0, flex: 1, textTransform: "none" }}
+              >
+                5deg
+              </Button>
+              <Button
+                size="small"
+                variant={rotStepDeg === 15 ? "contained" : "outlined"}
+                onClick={() => setRotStepDeg(15)}
+                sx={{ minWidth: 0, flex: 1, textTransform: "none" }}
+              >
+                15deg
+              </Button>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.4 }}>
+              <Typography variant="caption" sx={{ width: 14, fontWeight: 600 }}>RX</Typography>
+              <TextField
+                size="small"
+                value={Math.round(dupRotX * (180 / Math.PI))}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next)) setDupRotX((next * Math.PI) / 180);
+                }}
+                inputProps={{ inputMode: "numeric" }}
+                sx={{ flex: 1 }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleRotateNudgeX(-rotStepDeg)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                -
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleRotateNudgeX(rotStepDeg)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                +
+              </Button>
+            </Box>
+            <Slider
+              size="small"
+              min={-180}
+              max={180}
+              step={1}
+              value={Math.round(dupRotX * (180 / Math.PI))}
+              onChange={(_, v) => setDupRotX((v as number) * (Math.PI / 180))}
+            />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.4, mt: 0.4 }}>
+              <Typography variant="caption" sx={{ width: 14, fontWeight: 600 }}>RY</Typography>
+              <TextField
+                size="small"
+                value={Math.round(dupRotY * (180 / Math.PI))}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next)) setDupRotY((next * Math.PI) / 180);
+                }}
+                inputProps={{ inputMode: "numeric" }}
+                sx={{ flex: 1 }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleRotateNudge(-rotStepDeg)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                -
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleRotateNudge(rotStepDeg)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                +
+              </Button>
+            </Box>
+            <Slider
+              size="small"
+              min={-180}
+              max={180}
+              step={1}
+              value={Math.round(dupRotY * (180 / Math.PI))}
+              onChange={(_, v) => setDupRotY((v as number) * (Math.PI / 180))}
+            />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.4, mt: 0.4 }}>
+              <Typography variant="caption" sx={{ width: 14, fontWeight: 600 }}>RZ</Typography>
+              <TextField
+                size="small"
+                value={Math.round(dupRotZ * (180 / Math.PI))}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next)) setDupRotZ((next * Math.PI) / 180);
+                }}
+                inputProps={{ inputMode: "numeric" }}
+                sx={{ flex: 1 }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleRotateNudgeZ(-rotStepDeg)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                -
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleRotateNudgeZ(rotStepDeg)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                +
+              </Button>
+            </Box>
+            <Slider
+              size="small"
+              min={-180}
+              max={180}
+              step={1}
+              value={Math.round(dupRotZ * (180 / Math.PI))}
+              onChange={(_, v) => setDupRotZ((v as number) * (Math.PI / 180))}
+            />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.4, mt: 0.4 }}>
+              <Typography variant="caption" sx={{ width: 14, fontWeight: 600 }}>S</Typography>
+              <TextField
+                size="small"
+                value={dupScale.toFixed(3)}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next)) setDupScale(next);
+                }}
+                inputProps={{ inputMode: "decimal" }}
+                sx={{ flex: 1 }}
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setDupScale((v) => v - 0.01)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                -
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setDupScale((v) => v + 0.01)}
+                sx={{ minWidth: 0, px: 1 }}
+              >
+                +
+              </Button>
+            </Box>
+            <Slider
+              size="small"
+              min={0.1}
+              max={3}
+              step={0.01}
+              value={dupScale}
+              onChange={(_, v) => setDupScale(v as number)}
+            />
+
+            <Box sx={{ display: "flex", gap: 0.5, mt: 0.5 }}>
+              <Button size="small" variant="outlined" fullWidth onClick={() => setSnapNowCounter((c) => c + 1)}>
+                Snap
+              </Button>
+              <Button size="small" variant={snapEnabled ? "contained" : "outlined"} fullWidth onClick={() => setSnapEnabled((v) => !v)}>
+                Snap {snapEnabled ? "On" : "Off"}
+              </Button>
+            </Box>
+
+            <Box sx={{ mt: 0.6 }}>
+              <Typography variant="caption">Snap Distance</Typography>
+              <Slider
+                size="small"
+                min={0.001}
+                max={0.2}
+                step={0.001}
+                value={snapDistance}
+                onChange={(_, v) => setSnapDistance(v as number)}
+              />
+              <Typography variant="caption">Snap Angle (deg)</Typography>
+              <Slider
+                size="small"
+                min={1}
+                max={30}
+                step={1}
+                value={snapAngleDeg}
+                onChange={(_, v) => setSnapAngleDeg(v as number)}
+              />
+            </Box>
+
+            <Box sx={{ mt: 0.6 }}>
+              <Typography variant="caption">Target Offset</Typography>
+              <Typography variant="caption" sx={{ fontFamily: "monospace", display: "block" }}>
+                {dupTargetOffset[0].toFixed(6)}, {dupTargetOffset[1].toFixed(6)}, {dupTargetOffset[2].toFixed(6)}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 0.5, mt: 0.6 }}>
+              <Button size="small" variant="outlined" fullWidth onClick={() => {
+                setDupX(0);
+                setDupY(0);
+                setDupZ(0);
+                setDupRotX(0);
+                setDupRotY(0);
+                setDupRotZ(0);
+                setDupScale(1);
+              }}>
+                Reset
+              </Button>
+              <Button size="small" variant="outlined" fullWidth onClick={() => setDupRotY(Math.PI)}>
+                Rotate 180
+              </Button>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 0.5, mt: 0.6 }}>
+              <Button size="small" variant="outlined" fullWidth onClick={handleCopyDuplicate}>
+                Copy
+              </Button>
+              <Button size="small" variant="outlined" fullWidth onClick={handleSaveDuplicate}>
+                Save
+              </Button>
+              <Button size="small" variant="outlined" fullWidth onClick={handleLoadDuplicate}>
+                Load
+              </Button>
+            </Box>
+
+            <Box sx={{ display: "flex", gap: 0.5, mt: 0.6 }}>
+              <Button size="small" variant="outlined" fullWidth onClick={() => handleSaveDuplicateSlot(1)}>
+                Save 1
+              </Button>
+              <Button size="small" variant="outlined" fullWidth onClick={() => handleLoadDuplicateSlot(1)}>
+                Load 1
+              </Button>
+            </Box>
+            <Box sx={{ display: "flex", gap: 0.5, mt: 0.4 }}>
+              <Button size="small" variant="outlined" fullWidth onClick={() => handleSaveDuplicateSlot(2)}>
+                Save 2
+              </Button>
+              <Button size="small" variant="outlined" fullWidth onClick={() => handleLoadDuplicateSlot(2)}>
+                Load 2
+              </Button>
+            </Box>
+            <Box sx={{ display: "flex", gap: 0.5, mt: 0.4 }}>
+              <Button size="small" variant="outlined" fullWidth onClick={() => handleSaveDuplicateSlot(3)}>
+                Save 3
+              </Button>
+              <Button size="small" variant="outlined" fullWidth onClick={() => handleLoadDuplicateSlot(3)}>
+                Load 3
+              </Button>
+            </Box>
+          </Paper>
+        )}
 
         {/* ─── Brand Watermark (top-left) ──────────────────── */}
         {!hideUI && (
@@ -983,6 +1504,12 @@ export default function Home() {
             <ToolbarBtn title="Undo" onClick={handleUndo} icon={<Undo sx={{ fontSize: 18 }} />} />
             <ToolbarBtn title="Redo" onClick={handleRedo} icon={<Redo sx={{ fontSize: 18 }} />} />
             <ToolbarBtn title="Randomize 🎲" onClick={handleRandomize} icon={<Casino sx={{ fontSize: 18 }} />} />
+            <ToolbarBtn
+              title={showDuplicate ? "Hide Duplicate" : "Show Duplicate"}
+              onClick={() => setShowDuplicate((v) => !v)}
+              icon={<ContentCopy sx={{ fontSize: 18 }} />}
+              active={showDuplicate}
+            />
 
             <Box sx={{ width: "1px", height: 18, bgcolor: "divider", mx: 0.15 }} />
 
@@ -1183,6 +1710,8 @@ export default function Home() {
             setAutoRotate={setAutoRotate}
             showDebug={showDebug}
             setShowDebug={setShowDebug}
+            showDuplicate={showDuplicate}
+            setShowDuplicate={setShowDuplicate}
             modelUrls={modelUrls}
             setModelUrls={setModelUrls}
             isMobile={true}
@@ -1234,6 +1763,8 @@ export default function Home() {
             setAutoRotate={setAutoRotate}
             showDebug={showDebug}
             setShowDebug={setShowDebug}
+            showDuplicate={showDuplicate}
+            setShowDuplicate={setShowDuplicate}
             modelUrls={modelUrls}
             setModelUrls={setModelUrls}
             isMobile={false}

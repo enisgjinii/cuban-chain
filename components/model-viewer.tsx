@@ -32,6 +32,13 @@ interface ModelViewerProps {
   selectedMesh?: string | null;
   hoveredMesh?: string | null;
   chainSpacing?: number;
+  combineModels?: boolean;
+  showDuplicate?: boolean;
+  duplicatePosition?: [number, number, number];
+  duplicateRotationX?: number;
+  duplicateRotationY?: number;
+  duplicateRotationZ?: number;
+  duplicateScale?: number;
   applyMode?: boolean;
   setApplyMode?: (mode: boolean) => void;
   undoCounter?: number;
@@ -49,10 +56,21 @@ interface ModelViewerProps {
   playEntranceAnimation?: boolean;
   onEntranceAnimationComplete?: () => void;
   // Zone click detection
-  // Zone click detection
   onZoneClick?: (linkIndex: number, surfaceId: import("@/lib/chain-config-types").SurfaceId) => void;
   selectedLinkIndex?: number | null;
-
+  onModelPicked?: () => void;
+  onDuplicateSnap?: (data: {
+    position: [number, number, number];
+    rotationX: number;
+    rotationY: number;
+    rotationZ: number;
+    scale: number;
+  }) => void;
+  onDuplicateTarget?: (offset: [number, number, number]) => void;
+  snapNowCounter?: number;
+  snapEnabled?: boolean;
+  snapDistance?: number;
+  snapAngleDeg?: number;
 }
 
 // Entrance animation configuration
@@ -179,6 +197,13 @@ function ModelViewerComponent({
   selectedMesh,
   hoveredMesh,
   chainSpacing = 0.02,
+  combineModels = false,
+  showDuplicate = false,
+  duplicatePosition = [0.12, 0, 0],
+  duplicateRotationX = 0,
+  duplicateRotationY = 0,
+  duplicateRotationZ = 0,
+  duplicateScale = 1,
   applyMode = false,
   setApplyMode,
   undoCounter = 0,
@@ -195,10 +220,19 @@ function ModelViewerComponent({
   onEntranceAnimationComplete,
   onZoneClick,
   selectedLinkIndex,
-
+  onModelPicked,
+  onDuplicateSnap,
+  onDuplicateTarget,
+  snapNowCounter = 0,
+  snapEnabled = false,
+  snapDistance = 0.02,
+  snapAngleDeg = 6,
 }: ModelViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [internalChainAssembly, setInternalChainAssembly] = useState<ChainAssembly | null>(null);
+  const [duplicateObject, setDuplicateObject] = useState<THREE.Object3D | null>(null);
+  const lastSnapCounterRef = useRef<number>(0);
+  const lastTargetOffsetRef = useRef<THREE.Vector3 | null>(null);
 
   // Animation state
   const [animationPlayed, setAnimationPlayed] = useState(false);
@@ -256,6 +290,16 @@ function ModelViewerComponent({
 
     const scene = new THREE.Scene();
 
+    let referenceBounds: THREE.Box3 | null = null;
+    let referenceCenter: THREE.Vector3 | null = null;
+    if (combineModels && scenes[0]) {
+      const refScene = scenes[0].clone(true);
+      const { center: refCenter } = getCenteredBounds(urls[0], scenes[0]);
+      refScene.position.set(-refCenter.x, -refCenter.y, -refCenter.z);
+      referenceBounds = new THREE.Box3().setFromObject(refScene);
+      referenceCenter = referenceBounds.getCenter(new THREE.Vector3());
+    }
+
     // Calculate the link width for consistent spacing (use first model as reference)
     let referenceWidth = 0.05; // Default fallback
     if (scenes[0]) {
@@ -289,26 +333,38 @@ function ModelViewerComponent({
 
         container.add(clonedScene);
 
-        // Calculate position along the chain (X-axis only for horizontal line)
-        // Use a consistent step size based on reference width and spacing
-        // Spacing set to 0.55
-        const stepSize = referenceWidth * 0.55;
-        const xPos = index * stepSize;
+        if (combineModels) {
+          let offset = new THREE.Vector3(0, 0, 0);
+          if (referenceBounds && referenceCenter) {
+            const centeredBounds = new THREE.Box3().setFromObject(clonedScene);
+            const centeredCenter = centeredBounds.getCenter(new THREE.Vector3());
+            const centerDelta = referenceCenter.clone().sub(centeredCenter);
+            const yDelta = referenceBounds.min.y - centeredBounds.min.y;
+            offset = new THREE.Vector3(centerDelta.x, yDelta, centerDelta.z);
+          }
+          container.position.copy(offset);
+        } else {
+          // Calculate position along the chain (X-axis only for horizontal line)
+          // Use a consistent step size based on reference width and spacing
+          // Spacing set to 0.55
+          const stepSize = referenceWidth * 0.55;
+          const xPos = index * stepSize;
 
-        // Position only on X axis - keep Y and Z at 0 for straight horizontal line
-        container.position.set(
-          xPos + config.connectionOffsetX,
-          0, // Will be adjusted in second pass to align to ground
-          0  // Keep all links in the same Z plane for straight line
-        );
+          // Position only on X axis - keep Y and Z at 0 for straight horizontal line
+          container.position.set(
+            xPos + config.connectionOffsetX,
+            0, // Will be adjusted in second pass to align to ground
+            0  // Keep all links in the same Z plane for straight line
+          );
 
-        // Apply alternating rotation for chain link interlocking effect
-        if (config.alternateRotation && index % 2 === 1) {
-          // Slight rotation for alternating links to simulate interlocking
-          container.rotation.z = Math.PI * 0.02;
+          // Apply alternating rotation for chain link interlocking effect
+          if (config.alternateRotation && index % 2 === 1) {
+            // Slight rotation for alternating links to simulate interlocking
+            container.rotation.z = Math.PI * 0.02;
+          }
         }
 
-        container.userData.linkIndex = index;
+        container.userData.linkIndex = combineModels ? 0 : index;
         container.userData.url = url;
         container.userData.originalBounds = bounds;
         containers.push(container);
@@ -316,37 +372,38 @@ function ModelViewerComponent({
       }
     });
 
-    // Second pass: align all links to the same ground level
-    // Find the lowest point across all links
-    let lowestY = 0;
-    containers.forEach(container => {
-      const bounds = new THREE.Box3().setFromObject(container);
-      if (bounds.min.y < lowestY) {
-        lowestY = bounds.min.y;
-      }
-    });
-
-    // Adjust all containers so their lowest point is at Y=0
-    containers.forEach(container => {
-      const bounds = new THREE.Box3().setFromObject(container);
-      const adjustment = -bounds.min.y;
-      container.position.y += adjustment;
-    });
-
-
-    // Third pass: center the entire chain horizontally and in Z
-    if (scene.children.length > 0) {
-      const chainBounds = new THREE.Box3().setFromObject(scene);
-      const chainCenter = chainBounds.getCenter(new THREE.Vector3());
-      scene.children.forEach(child => {
-        child.position.x -= chainCenter.x;
-        child.position.z -= chainCenter.z;
-        // Don't adjust Y - we want them on the ground
+    if (!combineModels) {
+      // Second pass: align all links to the same ground level
+      // Find the lowest point across all links
+      let lowestY = 0;
+      containers.forEach(container => {
+        const bounds = new THREE.Box3().setFromObject(container);
+        if (bounds.min.y < lowestY) {
+          lowestY = bounds.min.y;
+        }
       });
+
+      // Adjust all containers so their lowest point is at Y=0
+      containers.forEach(container => {
+        const bounds = new THREE.Box3().setFromObject(container);
+        const adjustment = -bounds.min.y;
+        container.position.y += adjustment;
+      });
+
+      // Third pass: center the entire chain horizontally and in Z
+      if (scene.children.length > 0) {
+        const chainBounds = new THREE.Box3().setFromObject(scene);
+        const chainCenter = chainBounds.getCenter(new THREE.Vector3());
+        scene.children.forEach(child => {
+          child.position.x -= chainCenter.x;
+          child.position.z -= chainCenter.z;
+          // Don't adjust Y - we want them on the ground
+        });
+      }
     }
 
     return scene;
-  }, [urlsKey, scenes, chainSpacing, getCenteredBounds]);
+  }, [urlsKey, scenes, chainSpacing, getCenteredBounds, combineModels]);
 
   // Initialize entrance animation when mainScene is ready
   useEffect(() => {
@@ -445,9 +502,138 @@ function ModelViewerComponent({
   useEffect(() => {
     if (!mainScene) return;
 
+    if (combineModels) {
+      const linkConfig = chainConfig.links[0];
+      if (!linkConfig) return;
+      mainScene.children.forEach((child) => {
+        applyLinkConfigToContainer(child, linkConfig);
+      });
+      if (duplicateObject) {
+        applyLinkConfigToContainer(duplicateObject, linkConfig);
+      }
+      return;
+    }
+
     // Apply the chain configuration to all links
     applyChainConfigToScene(mainScene, chainConfig);
-  }, [mainScene, chainConfig]);
+  }, [mainScene, chainConfig, combineModels, duplicateObject]);
+
+  useEffect(() => {
+    if (!mainScene || !showDuplicate) {
+      setDuplicateObject(null);
+      return;
+    }
+
+    const baseChild = mainScene.children.find((child) => child.userData.linkIndex !== undefined) || mainScene.children[0];
+    if (!baseChild) return;
+
+    // Get bounds for proper side-by-side placement
+    const bounds = new THREE.Box3().setFromObject(baseChild);
+    const size = bounds.getSize(new THREE.Vector3());
+
+    const clone = baseChild.clone(true);
+    // Place right next to the original, same Y/Z, offset on X
+    clone.position.set(
+      baseChild.position.x + size.x * 1.05,
+      baseChild.position.y,
+      baseChild.position.z
+    );
+    clone.rotation.copy(baseChild.rotation);
+    clone.userData.linkIndex = 0;
+    clone.userData.isDuplicate = true;
+
+    setDuplicateObject(clone);
+  }, [mainScene, showDuplicate]);
+
+  // Update duplicate position/rotation from props (offsets relative to original)
+  useEffect(() => {
+    if (!duplicateObject || !mainScene) return;
+    const baseChild = mainScene.children.find((child) => child.userData.linkIndex !== undefined) || mainScene.children[0];
+    if (!baseChild) return;
+
+    const bounds = new THREE.Box3().setFromObject(baseChild);
+    const size = bounds.getSize(new THREE.Vector3());
+
+    const targetOffset = new THREE.Vector3(size.x * 1.05, 0, 0);
+    const currentOffset = new THREE.Vector3(
+      duplicatePosition[0],
+      duplicatePosition[1],
+      duplicatePosition[2]
+    );
+
+    if (!lastTargetOffsetRef.current || !lastTargetOffsetRef.current.equals(targetOffset)) {
+      lastTargetOffsetRef.current = targetOffset.clone();
+      onDuplicateTarget?.([targetOffset.x, targetOffset.y, targetOffset.z]);
+    }
+
+    const forceSnap = snapNowCounter !== lastSnapCounterRef.current;
+    if (forceSnap) {
+      lastSnapCounterRef.current = snapNowCounter;
+    }
+
+    const snapAngleRad = (snapAngleDeg * Math.PI) / 180;
+
+    const shouldSnap =
+      forceSnap ||
+      (snapEnabled && currentOffset.distanceTo(targetOffset) < snapDistance && Math.abs(duplicateRotationY) < snapAngleRad);
+
+    let finalOffset = currentOffset;
+    let finalRotX = duplicateRotationX;
+    let finalRotY = duplicateRotationY;
+    let finalRotZ = duplicateRotationZ;
+    let finalScale = duplicateScale;
+
+    if (shouldSnap) {
+      finalOffset = targetOffset;
+      finalRotX = 0;
+      finalRotY = 0;
+      finalRotZ = 0;
+      finalScale = 1;
+
+      const alreadySnapped =
+        currentOffset.distanceTo(targetOffset) < 0.0001 &&
+        Math.abs(duplicateRotationX) < 0.0001 &&
+        Math.abs(duplicateRotationY) < 0.0001 &&
+        Math.abs(duplicateRotationZ) < 0.0001 &&
+        Math.abs(duplicateScale - 1) < 0.0001;
+
+      if (!alreadySnapped || forceSnap) {
+        onDuplicateSnap?.({
+          position: [finalOffset.x, finalOffset.y, finalOffset.z],
+          rotationX: finalRotX,
+          rotationY: finalRotY,
+          rotationZ: finalRotZ,
+          scale: finalScale,
+        });
+      }
+    }
+
+    duplicateObject.position.set(
+      baseChild.position.x + finalOffset.x,
+      baseChild.position.y + finalOffset.y,
+      baseChild.position.z + finalOffset.z
+    );
+    duplicateObject.rotation.x = baseChild.rotation.x + finalRotX;
+    duplicateObject.rotation.y = baseChild.rotation.y + finalRotY;
+    duplicateObject.rotation.z = baseChild.rotation.z + finalRotZ;
+    duplicateObject.scale.copy(baseChild.scale).multiplyScalar(finalScale);
+  }, [
+    duplicateObject,
+    mainScene,
+    duplicatePosition[0],
+    duplicatePosition[1],
+    duplicatePosition[2],
+    duplicateRotationX,
+    duplicateRotationY,
+    duplicateRotationZ,
+    duplicateScale,
+    onDuplicateSnap,
+    onDuplicateTarget,
+    snapNowCounter,
+    snapEnabled,
+    snapDistance,
+    snapAngleDeg,
+  ]);
 
   // Handle loading state
   useEffect(() => {
@@ -575,6 +761,16 @@ function ModelViewerComponent({
           });
         }
       });
+
+      if (duplicateObject && (targetModel === "all" || targetIndex === -1)) {
+        duplicateObject.traverse((mesh) => {
+          if (mesh instanceof THREE.Mesh) {
+            if (isBodyMesh(mesh.name) && !isDiamondMesh(mesh.name) && !isEnamelMesh(mesh.name)) {
+              mesh.material = createBaseMaterial(material as Material);
+            }
+          }
+        });
+      }
     };
 
     // Handle surface customization events
@@ -582,6 +778,18 @@ function ModelViewerComponent({
       const { linkIndex, surfaceId, surfaceConfig } = event.detail;
 
       if (!mainScene) return;
+
+      if (combineModels) {
+        const linkConfig = chainConfig.links[0];
+        if (!linkConfig) return;
+        mainScene.children.forEach((container) => {
+          applyLinkConfigToContainer(container, linkConfig);
+        });
+        if (duplicateObject) {
+          applyLinkConfigToContainer(duplicateObject, linkConfig);
+        }
+        return;
+      }
 
       if (linkIndex >= 0 && linkIndex < mainScene.children.length) {
         const container = mainScene.children[linkIndex];
@@ -665,7 +873,7 @@ function ModelViewerComponent({
       window.removeEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
       window.removeEventListener("captureImage", handleCaptureImage as EventListener);
     };
-  }, [mainScene, chainConfig, gl]);
+  }, [mainScene, chainConfig, gl, combineModels, duplicateObject]);
 
 
 
@@ -757,36 +965,36 @@ function ModelViewerComponent({
     }
   }, [isRecording, gl, threeScene, onRecordingComplete]);
 
-  // No auto-stop recording logic needed anymore as it's controlled by props
   // Handle click on link to detect zone
   const handlePointerDown = useCallback((event: any) => {
-    if (!onZoneClick || !event.intersections?.length) return;
+    if (!event.intersections?.length) return;
 
-    // Get the first intersection
     const intersection = event.intersections[0];
     if (!intersection.object) return;
 
-    // Find the link container (parent with linkIndex userData)
+    onModelPicked?.();
+
+    if (!onZoneClick) return;
+
     const linkContainer = findLinkContainer(intersection.object);
     if (!linkContainer) return;
 
-    // Detect the zone from the intersection
     const result = detectZoneFromIntersection(intersection, linkContainer);
     if (result) {
       onZoneClick(result.linkIndex, result.surfaceId);
     }
 
     event.stopPropagation();
-  }, [onZoneClick]);
-
-
+  }, [onZoneClick, onModelPicked]);
 
   if (!mainScene) return null;
 
   return (
     <group onPointerDown={handlePointerDown}>
       <primitive object={mainScene} />
-
+      {duplicateObject && (
+        <primitive object={duplicateObject} />
+      )}
     </group>
   );
 }

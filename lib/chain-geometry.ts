@@ -184,6 +184,7 @@ export function createBaseMaterial(materialType: Material): THREE.MeshStandardMa
     color: config.color,
     metalness: config.metalness,
     roughness: config.roughness,
+    side: THREE.DoubleSide,
   });
 }
 
@@ -198,6 +199,7 @@ export function createGemstoneMaterial(color: string): THREE.MeshPhysicalMateria
     ior: 2.4, // Diamond-like refraction
     clearcoat: 1.0,
     clearcoatRoughness: 0.1,
+    side: THREE.DoubleSide,
   });
 }
 
@@ -207,6 +209,7 @@ export function createEnamelMaterial(color: string): THREE.MeshStandardMaterial 
     color: hexColor,
     metalness: 0.1,
     roughness: 0.3,
+    side: THREE.DoubleSide,
   });
 }
 
@@ -217,6 +220,7 @@ export function createEngravingMaterial(pattern: "pattern1" | "pattern2"): THREE
     color: pattern === "pattern1" ? 0x333333 : 0x222222,
     metalness: 0.6,
     roughness: 0.4,
+    side: THREE.DoubleSide,
   });
 }
 

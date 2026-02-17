@@ -93,6 +93,8 @@ interface CustomizerPanelProps {
   onLoadFavorite?: (config: ChainConfig, urls: string[]) => void;
   background?: string;
   setBackground?: (bg: string) => void;
+  showDuplicate?: boolean;
+  setShowDuplicate?: (value: boolean) => void;
 }
 
 // ─── Data ──────────────────────────────────────────────
@@ -205,6 +207,8 @@ export function CustomizerPanel({
   setShowDebug,
   background = "city",
   setBackground,
+  showDuplicate = false,
+  setShowDuplicate,
 }: CustomizerPanelProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
@@ -641,6 +645,14 @@ export function CustomizerPanel({
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
                 <Typography variant="body2">Show Debug Info</Typography>
                 <Switch size="small" checked={!!showDebug} onChange={(e) => setShowDebug?.(e.target.checked)} />
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                <Typography variant="body2">Enable Duplicate</Typography>
+                <Switch
+                  size="small"
+                  checked={showDuplicate}
+                  onChange={(e) => setShowDuplicate?.(e.target.checked)}
+                />
               </Box>
               {onReplayAnimation && (
                 <Button variant="outlined" size="small" fullWidth onClick={onReplayAnimation} sx={{ mt: 1 }}>
