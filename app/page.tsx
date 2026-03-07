@@ -716,6 +716,8 @@ export default function Home() {
                 enablePan={false}
                 minDistance={0.7}
                 maxDistance={4}
+                minPolarAngle={0.08}
+                maxPolarAngle={Math.PI / 2 - 0.08}
                 autoRotate={autoRotate}
                 autoRotateSpeed={1.2}
               />

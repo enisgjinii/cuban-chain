@@ -115,6 +115,13 @@ interface ModelConnectionConfig {
   scale: number;
 }
 
+interface DuplicateSnapTransform {
+  offset: THREE.Vector3;
+  rotation: THREE.Euler;
+  scale: number;
+  groundBias: number;
+}
+
 const MODEL_CONNECTION_CONFIG: Record<string, ModelConnectionConfig> = {
   "/models/Cuban_Main.glb": {
     connectionOffsetX: 0,
@@ -189,6 +196,35 @@ const getModelConfig = (url: string): ModelConnectionConfig => {
     alternateRotation: false,
     scale: 1,
   };
+};
+
+const getDuplicateSnapTransform = (
+  url: string | undefined,
+  size: THREE.Vector3,
+  pairedDuplicate: boolean
+): DuplicateSnapTransform => {
+  if (pairedDuplicate && url === "/models/Cuban_Main.glb") {
+    const linkSpan = Math.max(size.x, size.z);
+    return {
+      // Mirror the second link across the opening and keep the diagonal offset tight enough to read as one snapped pair.
+      offset: new THREE.Vector3(-linkSpan * 0.56, 0, linkSpan * 0.22),
+      rotation: new THREE.Euler(0, Math.PI, 0),
+      scale: 1,
+      groundBias: 0,
+    };
+  }
+
+  return {
+    offset: new THREE.Vector3(size.x * 1.05, 0, 0),
+    rotation: new THREE.Euler(0, 0, 0),
+    scale: 1,
+    groundBias: 0,
+  };
+};
+
+const placeObjectOnGround = (object: THREE.Object3D, groundBias = 0) => {
+  const bounds = new THREE.Box3().setFromObject(object);
+  object.position.y -= bounds.min.y + groundBias;
 };
 
 function ModelViewerComponent({
@@ -540,21 +576,32 @@ function ModelViewerComponent({
     // Get bounds for proper side-by-side placement
     const bounds = new THREE.Box3().setFromObject(baseChild);
     const size = bounds.getSize(new THREE.Vector3());
+    const snapTransform = getDuplicateSnapTransform(
+      baseChild.userData.url,
+      size,
+      pairedDuplicate
+    );
 
     const clone = baseChild.clone(true);
-    // Place right next to the original, same Y/Z, offset on X
+    // Place the duplicate using the snap transform so paired links can interlock immediately.
     clone.position.set(
-      baseChild.position.x + size.x * 1.05,
-      baseChild.position.y,
-      baseChild.position.z
+      baseChild.position.x + snapTransform.offset.x,
+      baseChild.position.y + snapTransform.offset.y,
+      baseChild.position.z + snapTransform.offset.z
     );
-    clone.rotation.copy(baseChild.rotation);
+    clone.rotation.set(
+      baseChild.rotation.x + snapTransform.rotation.x,
+      baseChild.rotation.y + snapTransform.rotation.y,
+      baseChild.rotation.z + snapTransform.rotation.z
+    );
+    clone.scale.copy(baseChild.scale).multiplyScalar(snapTransform.scale);
+    placeObjectOnGround(clone, snapTransform.groundBias);
     clone.userData.linkIndex = 0;
     clone.userData.isDuplicate = true;
     clone.userData.sourceLinkIndex = baseChild.userData.linkIndex ?? 0;
 
     setDuplicateObject(clone);
-  }, [mainScene, shouldShowDuplicate]);
+  }, [mainScene, shouldShowDuplicate, pairedDuplicate]);
 
   // Update duplicate position/rotation from props (offsets relative to original)
   useEffect(() => {
@@ -564,8 +611,12 @@ function ModelViewerComponent({
 
     const bounds = new THREE.Box3().setFromObject(baseChild);
     const size = bounds.getSize(new THREE.Vector3());
-
-    const targetOffset = new THREE.Vector3(size.x * 1.05, 0, 0);
+    const snapTransform = getDuplicateSnapTransform(
+      baseChild.userData.url,
+      size,
+      pairedDuplicate
+    );
+    const targetOffset = snapTransform.offset.clone();
     const currentOffset = pairedDuplicate
       ? targetOffset.clone()
       : new THREE.Vector3(
@@ -589,7 +640,11 @@ function ModelViewerComponent({
     const shouldSnap =
       pairedDuplicate ||
       forceSnap ||
-      (snapEnabled && currentOffset.distanceTo(targetOffset) < snapDistance && Math.abs(duplicateRotationY) < snapAngleRad);
+      (
+        snapEnabled &&
+        currentOffset.distanceTo(targetOffset) < snapDistance &&
+        Math.abs(duplicateRotationY - snapTransform.rotation.y) < snapAngleRad
+      );
 
     let finalOffset = currentOffset;
     let finalRotX = duplicateRotationX;
@@ -599,17 +654,17 @@ function ModelViewerComponent({
 
     if (shouldSnap) {
       finalOffset = targetOffset;
-      finalRotX = 0;
-      finalRotY = 0;
-      finalRotZ = 0;
-      finalScale = 1;
+      finalRotX = snapTransform.rotation.x;
+      finalRotY = snapTransform.rotation.y;
+      finalRotZ = snapTransform.rotation.z;
+      finalScale = snapTransform.scale;
 
       const alreadySnapped =
         currentOffset.distanceTo(targetOffset) < 0.0001 &&
-        Math.abs(duplicateRotationX) < 0.0001 &&
-        Math.abs(duplicateRotationY) < 0.0001 &&
-        Math.abs(duplicateRotationZ) < 0.0001 &&
-        Math.abs(duplicateScale - 1) < 0.0001;
+        Math.abs(duplicateRotationX - snapTransform.rotation.x) < 0.0001 &&
+        Math.abs(duplicateRotationY - snapTransform.rotation.y) < 0.0001 &&
+        Math.abs(duplicateRotationZ - snapTransform.rotation.z) < 0.0001 &&
+        Math.abs(duplicateScale - snapTransform.scale) < 0.0001;
 
       if (!alreadySnapped || forceSnap) {
         onDuplicateSnap?.({
@@ -631,6 +686,7 @@ function ModelViewerComponent({
     duplicateObject.rotation.y = baseChild.rotation.y + finalRotY;
     duplicateObject.rotation.z = baseChild.rotation.z + finalRotZ;
     duplicateObject.scale.copy(baseChild.scale).multiplyScalar(finalScale);
+    placeObjectOnGround(duplicateObject, snapTransform.groundBias);
   }, [
     duplicateObject,
     mainScene,
