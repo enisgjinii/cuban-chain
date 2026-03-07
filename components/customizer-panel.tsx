@@ -1,120 +1,140 @@
 "use client";
 
 import type React from "react";
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Typography,
-  Tabs,
-  Tab,
   Button,
   Checkbox,
-  FormControlLabel,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Switch,
-  Divider,
-  IconButton,
   Chip,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Select,
+  Stack,
+  Switch,
+  Tab,
+  Tabs,
+  Typography,
 } from "@mui/material";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Add,
-  Delete,
+  AutoAwesome,
   CameraAlt,
+  ContentCopy,
+  ContentPaste,
+  DeleteOutline,
+  Diamond,
+  Edit,
+  Link as LinkIcon,
+  LibraryAdd,
+  Palette,
+  Replay,
+  Share,
   Videocam,
   Stop,
-  Share,
-  Link as LinkIcon,
-  Diamond,
-  AutoAwesome,
-  Star,
-  Palette,
-  Block,
-  Edit,
-  DarkMode,
-  LightMode,
 } from "@mui/icons-material";
-import { useThemeMode } from "@/components/mui-theme-registry";
 
 import { FavoritesPanel } from "@/components/favorites-panel";
-import { StoneColorPicker } from "./stone-color-picker";
-import { PriceCalculator } from "./price-calculator";
+import { PriceCalculator } from "@/components/price-calculator";
+import { StoneColorPicker } from "@/components/stone-color-picker";
+import { useThemeMode } from "@/components/mui-theme-registry";
 import type {
   ChainConfig,
-  SurfaceId,
   Material,
-  SurfaceType,
   SurfaceConfig,
+  SurfaceId,
+  SurfaceType,
 } from "@/lib/chain-config-types";
 import {
+  applyMaterialToAllLinks,
+  applySurfaceToAllLinks,
+  createDefaultGemstoneColors,
   updateLinkMaterial,
   updateSurface,
-  createDefaultGemstoneColors,
-  applyMaterialToAllLinks,
-  setChainLength,
 } from "@/lib/chain-helpers";
 import {
-  type ChainLinkType,
-  LINK_TYPE_TO_URL,
   CHAIN_PRESETS,
+  type ChainLinkType,
+  URL_TO_LINK_TYPE,
 } from "@/lib/chain-manager";
 
-// ─── Types ─────────────────────────────────────────────
 interface CustomizerPanelProps {
   chainConfig: ChainConfig;
   setChainConfig: (config: ChainConfig) => void;
   selectedSurface: SurfaceId;
   setSelectedSurface: (surface: SurfaceId) => void;
+  selectedLinkIndex: number;
+  setSelectedLinkIndex: (index: number) => void;
   onSaveConfiguration: () => void;
   onLoadConfiguration: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  meshes: string[];
-  nodes: string[];
-  onSelectMesh: (mesh: string | null) => void;
-  onHoverMesh: (mesh: string | null) => void;
-  chainSpacing?: number;
-  setChainSpacing?: (value: number) => void;
-  onUndo?: () => void;
-  autoRotate?: boolean;
-  setAutoRotate?: (value: boolean) => void;
-  showDebug?: boolean;
-  setShowDebug?: (value: boolean) => void;
   onCaptureImage?: () => void;
   onStartRecording?: () => void;
   isRecording?: boolean;
-  modelUrls?: string[];
-  setModelUrls?: (urls: string[]) => void;
-  isMobile?: boolean;
+  modelUrls: string[];
   onChainLengthChange?: (length: number) => void;
-  onReplayAnimation?: () => void;
   onLoadFavorite?: (config: ChainConfig, urls: string[]) => void;
-  background?: string;
-  setBackground?: (bg: string) => void;
-  showDuplicate?: boolean;
-  setShowDuplicate?: (value: boolean) => void;
+  autoRotate?: boolean;
+  setAutoRotate?: (value: boolean) => void;
+  background?:
+    | "city"
+    | "studio"
+    | "sunset"
+    | "dawn"
+    | "night"
+    | "warehouse"
+    | "forest"
+    | "apartment"
+    | "park"
+    | "lobby";
+  setBackground?: (
+    bg:
+      | "city"
+      | "studio"
+      | "sunset"
+      | "dawn"
+      | "night"
+      | "warehouse"
+      | "forest"
+      | "apartment"
+      | "park"
+      | "lobby"
+  ) => void;
+  onDuplicateSelectedLink?: () => void;
+  onRemoveSelectedLink?: () => void;
+  onAddLinkType?: (linkType: ChainLinkType) => void;
+  onReplaceSelectedLinkType?: (linkType: ChainLinkType) => void;
+  onLoadPreset?: (presetName: string) => void;
+  onCopySelectedLink?: () => void;
+  onPasteToSelectedLink?: () => void;
+  onResetSelectedLink?: () => void;
+  onReplayAnimation?: () => void;
 }
 
-// ─── Data ──────────────────────────────────────────────
 const MATERIALS: { label: string; value: Material; color: string }[] = [
-  { label: "Silver", value: "silver", color: "#c0c0c0" },
-  { label: "Gold", value: "gold", color: "#ffd700" },
-  { label: "Grey", value: "grey", color: "#808080" },
-  { label: "Black", value: "black", color: "#1a1a1a" },
-  { label: "White", value: "white", color: "#f5f5f5" },
+  { label: "Silver", value: "silver", color: "#c7c8cc" },
+  { label: "Gold", value: "gold", color: "#f4c21c" },
+  { label: "Grey", value: "grey", color: "#7a7a7d" },
+  { label: "Black", value: "black", color: "#1d1d1f" },
+  { label: "White", value: "white", color: "#f4f4f2" },
 ];
 
-const DIAMOND_TYPES: { label: string; value: SurfaceType; icon: React.ReactNode }[] = [
-  { label: "Diamonds", value: "gemstones", icon: <Diamond sx={{ fontSize: 18 }} /> },
-  { label: "Moissanites", value: "moissanites", icon: <AutoAwesome sx={{ fontSize: 18 }} /> },
-  { label: "Enamel", value: "enamel", icon: <Palette sx={{ fontSize: 18 }} /> },
-  { label: "Engraving", value: "engraving", icon: <Edit sx={{ fontSize: 18 }} /> },
-  { label: "Empty", value: "empty", icon: <Block sx={{ fontSize: 18 }} /> },
+const SURFACE_TYPES: { label: string; value: SurfaceType; icon: React.ReactNode }[] = [
+  { label: "Diamonds", value: "gemstones", icon: <Diamond sx={{ fontSize: 16 }} /> },
+  { label: "Moissanite", value: "moissanites", icon: <AutoAwesome sx={{ fontSize: 16 }} /> },
+  { label: "Enamel", value: "enamel", icon: <Palette sx={{ fontSize: 16 }} /> },
+  { label: "Engraving", value: "engraving", icon: <Edit sx={{ fontSize: 16 }} /> },
 ];
 
-const GEMSTONE_COLORS = [
+const SURFACE_OPTIONS: { label: string; value: SurfaceId }[] = [
+  { label: "Top 1", value: "top1" },
+  { label: "Top 2", value: "top2" },
+  { label: "Side 1", value: "side1" },
+  { label: "Side 2", value: "side2" },
+];
+
+const COLOR_OPTIONS = [
   { label: "Colourless", value: "#ffffff" },
   { label: "Black", value: "#000000" },
   { label: "Green", value: "#16a34a" },
@@ -124,41 +144,29 @@ const GEMSTONE_COLORS = [
   { label: "Orange", value: "#ea580c" },
 ];
 
-const ENAMEL_COLORS = [
-  { label: "Black", value: "#000000" },
-  { label: "White", value: "#ffffff" },
-  { label: "Green", value: "#16a34a" },
-  { label: "Red", value: "#dc2626" },
-  { label: "Blue", value: "#2563eb" },
-  { label: "Yellow", value: "#eab308" },
-  { label: "Orange", value: "#ea580c" },
-  { label: "Opal 1", value: "#b8b8ff" },
-  { label: "Opal 2", value: "#ffb8d1" },
-];
-
 const ENGRAVING_PATTERNS = [
   { label: "Pattern 1", value: "pattern1" },
   { label: "Pattern 2", value: "pattern2" },
 ];
 
-const AVAILABLE_LINK_TYPES: { type: ChainLinkType; label: string }[] = [
-  { type: "cuban-main", label: "Cuban Main" },
-  { type: "cuban-top-flat", label: "Top Flat" },
-  { type: "cuban-top-diamond", label: "Top Diamond" },
-  { type: "cuban-top-engraving", label: "Top Engraving" },
-  { type: "cuban-top-filling", label: "Top Filling" },
-  { type: "cuban-top-cavity", label: "Top Cavity" },
-  { type: "cuban-top-cavity-diamond", label: "Top Cavity Diamond" },
-  { type: "cuban-side-flat", label: "Side Flat" },
-  { type: "cuban-side-diamond", label: "Side Diamond" },
-  { type: "cuban-side-engraving", label: "Side Engraving" },
-  { type: "cuban-side-filling", label: "Side Filling" },
-  { type: "cuban-side-cavity", label: "Side Cavity" },
-  { type: "cuban-side-cavity-diamond", label: "Side Cavity Diamond" },
+const AVAILABLE_LINK_TYPES: { value: ChainLinkType; label: string }[] = [
+  { value: "cuban-main", label: "Cuban Main" },
+  { value: "cuban-top-flat", label: "Top Flat" },
+  { value: "cuban-top-diamond", label: "Top Diamond" },
+  { value: "cuban-top-engraving", label: "Top Engraving" },
+  { value: "cuban-top-filling", label: "Top Filling" },
+  { value: "cuban-top-cavity", label: "Top Cavity" },
+  { value: "cuban-top-cavity-diamond", label: "Top Cavity Diamond" },
+  { value: "cuban-side-flat", label: "Side Flat" },
+  { value: "cuban-side-diamond", label: "Side Diamond" },
+  { value: "cuban-side-engraving", label: "Side Engraving" },
+  { value: "cuban-side-filling", label: "Side Filling" },
+  { value: "cuban-side-cavity", label: "Side Cavity" },
+  { value: "cuban-side-cavity-diamond", label: "Side Cavity Diamond" },
 ];
 
 const ENVIRONMENTS = [
-  { label: "City (Default)", value: "city" },
+  { label: "City", value: "city" },
   { label: "Studio", value: "studio" },
   { label: "Sunset", value: "sunset" },
   { label: "Dawn", value: "dawn" },
@@ -170,510 +178,624 @@ const ENVIRONMENTS = [
   { label: "Lobby", value: "lobby" },
 ];
 
-// Small sub-component for the theme toggle row
 function ThemeToggleRow() {
   const { mode, toggleTheme } = useThemeMode();
+
   return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        {mode === "dark" ? <DarkMode sx={{ fontSize: 18, color: "primary.main" }} /> : <LightMode sx={{ fontSize: 18, color: "primary.main" }} />}
-        <Typography variant="body2">{mode === "dark" ? "Dark Mode" : "Light Mode"}</Typography>
-      </Box>
+    <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Typography variant="body2">{mode === "dark" ? "Dark mode" : "Light mode"}</Typography>
       <Switch size="small" checked={mode === "dark"} onChange={toggleTheme} />
+    </Stack>
+  );
+}
+
+function PanelSection({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 3,
+        p: 1.5,
+        bgcolor: "background.default",
+      }}
+    >
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.25, mb: 1.25 }}>
+          {subtitle}
+        </Typography>
+      )}
+      {children}
     </Box>
   );
 }
 
-// ─── Component ─────────────────────────────────────────
 export function CustomizerPanel({
   chainConfig,
   setChainConfig,
   selectedSurface,
   setSelectedSurface,
+  selectedLinkIndex,
+  setSelectedLinkIndex,
   onSaveConfiguration,
   onLoadConfiguration,
-  onUndo,
   onCaptureImage,
   onStartRecording,
   isRecording = false,
-  modelUrls = [],
-  setModelUrls,
+  modelUrls,
   onChainLengthChange,
-  onReplayAnimation,
   onLoadFavorite,
-  autoRotate,
+  autoRotate = false,
   setAutoRotate,
-  showDebug,
-  setShowDebug,
   background = "city",
   setBackground,
-  showDuplicate = false,
-  setShowDuplicate,
+  onDuplicateSelectedLink,
+  onRemoveSelectedLink,
+  onAddLinkType,
+  onReplaceSelectedLinkType,
+  onLoadPreset,
+  onCopySelectedLink,
+  onPasteToSelectedLink,
+  onResetSelectedLink,
+  onReplayAnimation,
 }: CustomizerPanelProps) {
   const [tabIndex, setTabIndex] = useState(0);
-  const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
-  const [applyInserts, setApplyInserts] = useState(false);
-  const [applyToAll, setApplyToAll] = useState(true);
-  const [selectedLinkType, setSelectedLinkType] = useState<ChainLinkType>("cuban-main");
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [applyToAll, setApplyToAll] = useState(false);
+  const [addLinkType, setAddLinkType] = useState<ChainLinkType>("cuban-main");
 
   const linkCount = modelUrls.length;
   const currentLink = chainConfig.links[selectedLinkIndex];
   const currentSurfaceConfig = currentLink?.surfaces[selectedSurface];
-  const isTopSurface = selectedSurface === "top1" || selectedSurface === "top2";
+  const selectedLinkType = (URL_TO_LINK_TYPE[modelUrls[selectedLinkIndex]] ?? "cuban-main") as ChainLinkType;
+  const isSurfaceEnabled = currentSurfaceConfig?.type !== "empty";
+  const defaultGemstoneColors = useMemo(
+    () => createDefaultGemstoneColors(selectedSurface) ?? { stone1: "#ffffff", stone2: "#ffffff" },
+    [selectedSurface]
+  );
 
   useEffect(() => {
-    if (selectedLinkIndex >= linkCount) setSelectedLinkIndex(Math.max(0, linkCount - 1));
-  }, [linkCount, selectedLinkIndex]);
+    setAddLinkType(selectedLinkType);
+  }, [selectedLinkType]);
 
-  // ─── Helpers ────────────────────────────────────────
-  const getColorOptions = () => {
-    if (!currentSurfaceConfig) return [];
-    switch (currentSurfaceConfig.type) {
-      case "gemstones": return [{ label: "Colourless", value: "#ffffff" }];
-      case "moissanites": return GEMSTONE_COLORS;
-      case "enamel": return ENAMEL_COLORS;
-      case "engraving": return ENGRAVING_PATTERNS;
-      default: return [];
-    }
-  };
+  const applySurfaceConfig = useCallback(
+    (surfaceConfig: SurfaceConfig) => {
+      if (applyToAll) {
+        setChainConfig(applySurfaceToAllLinks(chainConfig, selectedSurface, surfaceConfig));
+        return;
+      }
 
-  const getCurrentColorValue = () => {
-    if (!currentSurfaceConfig) return "";
-    switch (currentSurfaceConfig.type) {
-      case "gemstones":
-      case "moissanites": return currentSurfaceConfig.gemstoneColors?.stone1 || "#ffffff";
-      case "enamel": return currentSurfaceConfig.enamelColor || "#ffffff";
-      case "engraving": return currentSurfaceConfig.engravingDesign || "pattern1";
-      default: return "";
-    }
-  };
+      setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, surfaceConfig));
+    },
+    [applyToAll, chainConfig, selectedLinkIndex, selectedSurface, setChainConfig]
+  );
 
-  const handleMaterialChange = (material: Material) => {
-    if (applyToAll) {
-      setChainConfig(applyMaterialToAllLinks(chainConfig, material));
-      window.dispatchEvent(new CustomEvent("applyMaterialToModel", { detail: { material, targetModel: "all", targetIndex: -1 } }));
-    } else {
+  const handleMaterialChange = useCallback(
+    (material: Material) => {
+      if (applyToAll) {
+        setChainConfig(applyMaterialToAllLinks(chainConfig, material));
+        return;
+      }
+
       setChainConfig(updateLinkMaterial(chainConfig, selectedLinkIndex, material));
-      window.dispatchEvent(new CustomEvent("applyMaterialToModel", { detail: { material, targetModel: "specific", targetIndex: selectedLinkIndex } }));
-    }
-  };
+    },
+    [applyToAll, chainConfig, selectedLinkIndex, setChainConfig]
+  );
 
-  const handleDiamondTypeChange = (type: SurfaceType) => {
-    if (!applyInserts) return;
-    let newSurfaceConfig: SurfaceConfig = { type };
-    if (type === "gemstones" || type === "moissanites") {
-      newSurfaceConfig = { type, gemstoneColors: createDefaultGemstoneColors(selectedSurface) };
-    } else if (type === "enamel") {
-      newSurfaceConfig = { type, enamelColor: "#ffffff" };
-    } else if (type === "engraving") {
-      newSurfaceConfig = { type, engravingDesign: "pattern1" };
-    }
-    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
-  };
+  const handleToggleSurface = useCallback(
+    (enabled: boolean) => {
+      if (!enabled) {
+        applySurfaceConfig({ type: "empty" });
+        return;
+      }
 
-  const handleColorChange = (value: string) => {
-    if (!currentSurfaceConfig || !applyInserts) return;
-    let newSurfaceConfig: SurfaceConfig;
-    if (currentSurfaceConfig.type === "gemstones" || currentSurfaceConfig.type === "moissanites") {
-      const colors = { stone1: value, stone2: value, ...(isTopSurface && { stone3: value }) };
-      newSurfaceConfig = { ...currentSurfaceConfig, gemstoneColors: colors };
-    } else if (currentSurfaceConfig.type === "enamel") {
-      newSurfaceConfig = { ...currentSurfaceConfig, enamelColor: value };
-    } else if (currentSurfaceConfig.type === "engraving") {
-      newSurfaceConfig = { ...currentSurfaceConfig, engravingDesign: value as "pattern1" | "pattern2" };
-    } else return;
-    setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newSurfaceConfig));
-  };
+      applySurfaceConfig({
+        type: "gemstones",
+        gemstoneColors: defaultGemstoneColors,
+      });
+    },
+    [applySurfaceConfig, defaultGemstoneColors]
+  );
 
-  const handleAddLink = useCallback((linkType: ChainLinkType) => {
-    const url = LINK_TYPE_TO_URL[linkType];
-    if (!url || !setModelUrls) return;
-    setModelUrls([...modelUrls, url]);
-  }, [modelUrls, setModelUrls]);
+  const handleSurfaceTypeChange = useCallback(
+    (surfaceType: SurfaceType) => {
+      let nextConfig: SurfaceConfig = { type: surfaceType };
 
-  const handleRemoveLink = useCallback((index: number) => {
-    if (!setModelUrls || modelUrls.length <= 1) return;
-    setModelUrls(modelUrls.filter((_, i) => i !== index));
-  }, [modelUrls, setModelUrls]);
+      if (surfaceType === "gemstones" || surfaceType === "moissanites") {
+        nextConfig = {
+          type: surfaceType,
+          gemstoneColors: currentSurfaceConfig?.gemstoneColors ?? defaultGemstoneColors,
+        };
+      } else if (surfaceType === "enamel") {
+        nextConfig = {
+          type: surfaceType,
+          enamelColor: currentSurfaceConfig?.enamelColor ?? "#ffffff",
+        };
+      } else if (surfaceType === "engraving") {
+        nextConfig = {
+          type: surfaceType,
+          engravingDesign: currentSurfaceConfig?.engravingDesign ?? "pattern1",
+        };
+      }
 
-  const handleLoadPreset = useCallback((presetName: string) => {
-    const preset = CHAIN_PRESETS[presetName];
-    if (!preset || !setModelUrls) return;
-    setModelUrls(preset.map((type) => LINK_TYPE_TO_URL[type]));
-    setSelectedPreset(presetName);
-  }, [setModelUrls]);
+      applySurfaceConfig(nextConfig);
+    },
+    [applySurfaceConfig, currentSurfaceConfig, defaultGemstoneColors]
+  );
 
-  const handleShare = async () => {
+  const handleColorChange = useCallback(
+    (value: string) => {
+      if (!currentSurfaceConfig) {
+        return;
+      }
+
+      if (currentSurfaceConfig.type === "gemstones" || currentSurfaceConfig.type === "moissanites") {
+        applySurfaceConfig({
+          ...currentSurfaceConfig,
+          gemstoneColors: {
+            stone1: value,
+            stone2: value,
+            ...(selectedSurface === "top1" || selectedSurface === "top2" ? { stone3: value } : {}),
+          },
+        });
+        return;
+      }
+
+      if (currentSurfaceConfig.type === "enamel") {
+        applySurfaceConfig({ ...currentSurfaceConfig, enamelColor: value });
+        return;
+      }
+
+      if (currentSurfaceConfig.type === "engraving") {
+        applySurfaceConfig({
+          ...currentSurfaceConfig,
+          engravingDesign: value as "pattern1" | "pattern2",
+        });
+      }
+    },
+    [applySurfaceConfig, currentSurfaceConfig, selectedSurface]
+  );
+
+  const handleShare = useCallback(async () => {
     if (typeof navigator !== "undefined" && navigator.share) {
-      try { await navigator.share({ title: "My Custom Cuban Chain", text: "Check out this Cuban chain I designed!", url: window.location.href }); }
-      catch (err) { if ((err as Error).name !== "AbortError") console.error("Error sharing:", err); }
-    } else {
-      try { await navigator.clipboard.writeText(window.location.href); }
-      catch (err) { console.error("Failed to copy:", err); }
+      try {
+        await navigator.share({
+          title: "My Cuban chain",
+          text: "Check out this Cuban chain design.",
+          url: window.location.href,
+        });
+        return;
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          return;
+        }
+      }
     }
+
+    await navigator.clipboard.writeText(window.location.href);
+  }, []);
+
+  const surfaceDescription = useMemo(() => {
+    if (!currentSurfaceConfig || currentSurfaceConfig.type === "empty") {
+      return "Inactive";
+    }
+    return currentSurfaceConfig.type;
+  }, [currentSurfaceConfig]);
+
+  const renderColorControls = () => {
+    if (!currentSurfaceConfig || currentSurfaceConfig.type === "empty") {
+      return null;
+    }
+
+    if (currentSurfaceConfig.type === "engraving") {
+      return (
+        <FormControl fullWidth size="small">
+          <InputLabel>Pattern</InputLabel>
+          <Select
+            label="Pattern"
+            value={currentSurfaceConfig.engravingDesign ?? "pattern1"}
+            onChange={(event) => handleColorChange(event.target.value)}
+          >
+            {ENGRAVING_PATTERNS.map((pattern) => (
+              <MenuItem key={pattern.value} value={pattern.value}>
+                {pattern.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      );
+    }
+
+    const currentValue =
+      currentSurfaceConfig.type === "enamel"
+        ? currentSurfaceConfig.enamelColor ?? "#ffffff"
+        : currentSurfaceConfig.gemstoneColors?.stone1 ?? "#ffffff";
+
+    return (
+      <Box>
+        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 1 }}>
+          Quick color
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          {COLOR_OPTIONS.map((option) => (
+            <Box
+              key={option.value}
+              className={`swatch-btn ${currentValue === option.value ? "active" : ""}`}
+              onClick={() => handleColorChange(option.value)}
+              sx={{
+                bgcolor: option.value,
+                border: option.value === "#ffffff" ? "2px solid #444" : undefined,
+              }}
+              title={option.label}
+            />
+          ))}
+        </Box>
+      </Box>
+    );
   };
 
-  const showColorDropdown = applyInserts && currentSurfaceConfig?.type && currentSurfaceConfig.type !== "empty";
-
-  // ─── Render ─────────────────────────────────────────
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      {/* Header */}
-      <Box sx={{ px: 2.5, pt: 2, pb: 1 }}>
-        <Typography
-          variant="h6"
-          sx={{
-            background: "linear-gradient(135deg, #d4a017, #ffd700)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            mb: 0.5,
-          }}
-        >
+      <Box sx={{ px: 2.25, pt: 2.25, pb: 1.25 }}>
+        <Typography variant="overline" sx={{ letterSpacing: "0.16em", color: "text.secondary" }}>
           Customize
+        </Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
+          Cuban chain sidebar
         </Typography>
         <PriceCalculator chainConfig={chainConfig} chainLength={linkCount} />
       </Box>
 
-      {/* Tabs */}
       <Tabs
         value={tabIndex}
-        onChange={(_, v) => setTabIndex(v)}
+        onChange={(_, nextValue) => setTabIndex(nextValue)}
         variant="fullWidth"
-        sx={{ borderBottom: 1, borderColor: "divider", minHeight: 42, px: 1 }}
+        sx={{ minHeight: 44, px: 1, borderBottom: "1px solid", borderColor: "divider" }}
       >
         <Tab label="Design" />
-        <Tab label="Assembly" />
+        <Tab label="Links" />
         <Tab label="Saved" />
-        <Tab label="Settings" />
+        <Tab label="View" />
       </Tabs>
 
-      {/* Scrollable Content */}
-      <Box className="custom-scrollbar" sx={{ flex: 1, overflowY: "auto", px: 2.5, py: 2 }}>
-        {/* ═══════ DESIGN TAB ═══════ */}
+      <Box className="custom-scrollbar" sx={{ flex: 1, overflowY: "auto", px: 2.25, py: 2 }}>
         {tabIndex === 0 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-            {/* Link selection */}
-            <Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                <Typography variant="subtitle2">Selected Link</Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "action.hover", borderRadius: 2, px: 0.5 }}>
-                  <IconButton size="small" onClick={() => selectedLinkIndex > 0 && setSelectedLinkIndex(selectedLinkIndex - 1)} disabled={selectedLinkIndex <= 0}>
-                    <ChevronLeft sx={{ fontSize: 18 }} />
-                  </IconButton>
-                  <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 48, textAlign: "center" }}>
-                    {selectedLinkIndex + 1} / {linkCount}
+          <Stack spacing={1.5}>
+            <PanelSection title="Selected link" subtitle="One shared selection now drives the viewer and sidebar.">
+              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={selectedLinkIndex === 0}
+                  onClick={() => setSelectedLinkIndex(Math.max(0, selectedLinkIndex - 1))}
+                >
+                  Prev
+                </Button>
+                <Box sx={{ textAlign: "center", minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    Link {selectedLinkIndex + 1} of {linkCount}
                   </Typography>
-                  <IconButton size="small" onClick={() => selectedLinkIndex < linkCount - 1 && setSelectedLinkIndex(selectedLinkIndex + 1)} disabled={selectedLinkIndex >= linkCount - 1}>
-                    <ChevronRight sx={{ fontSize: 18 }} />
-                  </IconButton>
+                  <Typography variant="caption" sx={{ color: "text.secondary", textTransform: "capitalize" }}>
+                    {selectedLinkType.replace("cuban-", "").replaceAll("-", " ")}
+                  </Typography>
                 </Box>
-              </Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={selectedLinkIndex >= linkCount - 1}
+                  onClick={() => setSelectedLinkIndex(Math.min(linkCount - 1, selectedLinkIndex + 1))}
+                >
+                  Next
+                </Button>
+              </Stack>
+
               <FormControlLabel
-                control={<Checkbox size="small" checked={applyToAll} onChange={(e) => setApplyToAll(e.target.checked)} />}
-                label={<Typography variant="caption">Apply changes to all links</Typography>}
-              />
-            </Box>
-
-            <Divider />
-
-            {/* Material */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Base Material</Typography>
-              <Box sx={{ display: "flex", gap: 1.5, justifyContent: "center" }}>
-                {MATERIALS.map((m) => (
-                  <Box
-                    key={m.value}
-                    onClick={() => handleMaterialChange(m.value)}
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      bgcolor: m.color,
-                      border: currentLink?.material === m.value ? "3px solid #d4a017" : "2px solid transparent",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                      boxShadow: currentLink?.material === m.value ? "0 0 0 2px rgba(212,160,23,0.3)" : "none",
-                      "&:hover": { transform: "scale(1.1)" },
-                    }}
-                    title={m.label}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={applyToAll}
+                    onChange={(event) => setApplyToAll(event.target.checked)}
                   />
+                }
+                label={<Typography variant="caption">Apply edits to all links</Typography>}
+                sx={{ mt: 0.75 }}
+              />
+            </PanelSection>
+
+            <PanelSection title="Material">
+              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                {MATERIALS.map((material) => (
+                  <Box key={material.value} sx={{ textAlign: "center", flex: 1 }}>
+                    <Box
+                      onClick={() => handleMaterialChange(material.value)}
+                      sx={{
+                        width: 38,
+                        height: 38,
+                        mx: "auto",
+                        borderRadius: "50%",
+                        bgcolor: material.color,
+                        border: currentLink?.material === material.value ? "3px solid" : "1px solid",
+                        borderColor: currentLink?.material === material.value ? "primary.main" : "divider",
+                        cursor: "pointer",
+                        boxShadow:
+                          currentLink?.material === material.value
+                            ? "0 0 0 3px rgba(212,160,23,0.18)"
+                            : "none",
+                      }}
+                    />
+                    <Typography variant="caption" sx={{ mt: 0.75, display: "block" }}>
+                      {material.label}
+                    </Typography>
+                  </Box>
                 ))}
               </Box>
-              <Typography variant="caption" sx={{ display: "block", textAlign: "center", mt: 1, color: "text.secondary" }}>
-                {MATERIALS.find((m) => m.value === currentLink?.material)?.label || "Select Material"}
-              </Typography>
-            </Box>
+            </PanelSection>
 
-            <Divider />
+            <PanelSection title="Surface" subtitle={`Editing ${selectedSurface.toUpperCase()} • ${surfaceDescription}`}>
+              <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", mb: 1.25 }}>
+                {SURFACE_OPTIONS.map((surface) => (
+                  <Chip
+                    key={surface.value}
+                    label={surface.label}
+                    onClick={() => setSelectedSurface(surface.value)}
+                    color={selectedSurface === surface.value ? "primary" : "default"}
+                    variant={selectedSurface === surface.value ? "filled" : "outlined"}
+                    size="small"
+                  />
+                ))}
+              </Stack>
 
-            {/* Surface Design */}
-            <Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                <Typography variant="subtitle2">Surface Design</Typography>
-                <FormControlLabel
-                  control={<Switch size="small" checked={applyInserts} onChange={(e) => setApplyInserts(e.target.checked)} />}
-                  label={<Typography variant="caption">Enable</Typography>}
-                  sx={{ mr: 0 }}
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
+                <Typography variant="body2">Enable surface design</Typography>
+                <Switch
+                  size="small"
+                  checked={isSurfaceEnabled}
+                  onChange={(event) => handleToggleSurface(event.target.checked)}
                 />
-              </Box>
+              </Stack>
 
-              {applyInserts && (
-                <Box sx={{ bgcolor: "action.hover", borderRadius: 2, p: 1.5, display: "flex", flexDirection: "column", gap: 2 }}>
-                  {/* Diamond type grid */}
-                  <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1 }}>
-                    {DIAMOND_TYPES.map((type) => {
-                      const isSelected = currentSurfaceConfig?.type === type.value;
+              {isSurfaceEnabled && (
+                <Stack spacing={1.25}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                    {SURFACE_TYPES.map((surfaceType) => {
+                      const active = currentSurfaceConfig?.type === surfaceType.value;
                       return (
-                        <Box
-                          key={type.value}
-                          onClick={() => handleDiamondTypeChange(type.value)}
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 0.5,
-                            p: 1.5,
-                            borderRadius: 2,
-                            border: "2px solid",
-                            borderColor: isSelected ? "primary.main" : "divider",
-                            bgcolor: isSelected ? "rgba(212,160,23,0.08)" : "transparent",
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                            "&:hover": { borderColor: isSelected ? "primary.main" : "text.secondary" },
-                          }}
+                        <Button
+                          key={surfaceType.value}
+                          variant={active ? "contained" : "outlined"}
+                          onClick={() => handleSurfaceTypeChange(surfaceType.value)}
+                          startIcon={surfaceType.icon}
+                          sx={{ justifyContent: "flex-start" }}
                         >
-                          <Box sx={{ color: isSelected ? "primary.main" : "text.secondary" }}>{type.icon}</Box>
-                          <Typography variant="caption" sx={{ fontWeight: isSelected ? 600 : 400, color: isSelected ? "primary.main" : "text.secondary", fontSize: "0.65rem" }}>
-                            {type.label}
-                          </Typography>
-                        </Box>
+                          {surfaceType.label}
+                        </Button>
                       );
                     })}
                   </Box>
 
-                  {/* Color swatches */}
-                  {showColorDropdown && (
-                    <Box>
-                      <Typography variant="caption" sx={{ color: "text.secondary", mb: 1, display: "block" }}>
-                        {currentSurfaceConfig?.type === "engraving" ? "Pattern" : "Color"}
-                      </Typography>
-                      {(currentSurfaceConfig?.type === "gemstones" || currentSurfaceConfig?.type === "moissanites" || currentSurfaceConfig?.type === "enamel") ? (
-                        <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-                          {getColorOptions().map((option) => (
-                            <Box
-                              key={option.value}
-                              className={`swatch-btn ${getCurrentColorValue() === option.value ? "active" : ""}`}
-                              onClick={() => handleColorChange(option.value)}
-                              sx={{ bgcolor: option.value, border: option.value === "#ffffff" ? "2px solid #333" : undefined }}
-                              title={option.label}
-                            />
-                          ))}
-                        </Box>
-                      ) : (
-                        <FormControl fullWidth size="small">
-                          <Select value={getCurrentColorValue()} onChange={(e) => handleColorChange(e.target.value)}>
-                            {getColorOptions().map((option) => (
-                              <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      )}
-                    </Box>
-                  )}
+                  {renderColorControls()}
 
-                  {/* Individual stone colors */}
-                  {(currentSurfaceConfig?.type === "gemstones" || currentSurfaceConfig?.type === "moissanites") && (
+                  {(currentSurfaceConfig?.type === "gemstones" ||
+                    currentSurfaceConfig?.type === "moissanites") && (
                     <StoneColorPicker
                       surfaceId={selectedSurface}
-                      gemstoneColors={currentSurfaceConfig.gemstoneColors || { stone1: "#ffffff", stone2: "#ffffff" }}
-                      onChange={(newColors) => {
-                        const newConfig = { ...currentSurfaceConfig, gemstoneColors: newColors };
-                        setChainConfig(updateSurface(chainConfig, selectedLinkIndex, selectedSurface, newConfig));
-                      }}
+                      gemstoneColors={currentSurfaceConfig.gemstoneColors ?? defaultGemstoneColors}
+                      onChange={(gemstoneColors) =>
+                        applySurfaceConfig({
+                          ...currentSurfaceConfig,
+                          gemstoneColors,
+                        })
+                      }
                     />
                   )}
-                </Box>
+                </Stack>
               )}
-            </Box>
-          </Box>
+            </PanelSection>
+          </Stack>
         )}
 
-        {/* ═══════ ASSEMBLY TAB ═══════ */}
         {tabIndex === 1 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-            <Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
-                <Typography variant="subtitle2">Chain Length</Typography>
-                <Chip label={`${linkCount} links`} size="small" variant="outlined" />
-              </Box>
-              <Box sx={{ display: "flex", gap: 1 }}>
+          <Stack spacing={1.5}>
+            <PanelSection title="Chain length">
+              <Stack direction="row" spacing={1} alignItems="center">
                 <Button
                   variant="outlined"
-                  size="small"
                   fullWidth
                   disabled={linkCount <= 1}
-                  onClick={() => onChainLengthChange?.(Math.max(1, linkCount - 1))}
+                  onClick={() => onChainLengthChange?.(linkCount - 1)}
                 >
-                  − Link
+                  Remove one
                 </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  fullWidth
-                  onClick={() => onChainLengthChange?.(linkCount + 1)}
-                >
-                  + Link
+                <Chip label={`${linkCount} total`} color="primary" variant="outlined" />
+                <Button variant="outlined" fullWidth onClick={() => onChainLengthChange?.(linkCount + 1)}>
+                  Add one
+                </Button>
+              </Stack>
+            </PanelSection>
+
+            <PanelSection title="Selected link actions">
+              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                <Button variant="outlined" startIcon={<LibraryAdd />} onClick={onDuplicateSelectedLink}>
+                  Duplicate
+                </Button>
+                <Button variant="outlined" startIcon={<DeleteOutline />} onClick={onRemoveSelectedLink}>
+                  Remove
+                </Button>
+                <Button variant="outlined" startIcon={<ContentCopy />} onClick={onCopySelectedLink}>
+                  Copy
+                </Button>
+                <Button variant="outlined" startIcon={<ContentPaste />} onClick={onPasteToSelectedLink}>
+                  Paste
                 </Button>
               </Box>
-            </Box>
+              <Button fullWidth variant="text" sx={{ mt: 1 }} onClick={onResetSelectedLink}>
+                Reset selected link
+              </Button>
+            </PanelSection>
 
-            {setModelUrls && (
-              <Box>
-                <Typography variant="caption" sx={{ color: "text.secondary", mb: 1, display: "block" }}>
-                  Add Specific Link Type
-                </Typography>
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1 }}>
-                  {AVAILABLE_LINK_TYPES.slice(0, 6).map((item) => (
-                    <Button
-                      key={item.type}
-                      variant="outlined"
-                      size="small"
-                      onClick={() => handleAddLink(item.type)}
-                      sx={{
-                        height: 64,
-                        flexDirection: "column",
-                        gap: 0.5,
-                        fontSize: "0.7rem",
-                        borderColor: "divider",
-                        "&:hover": { borderColor: "primary.main", bgcolor: "rgba(212,160,23,0.05)" },
-                      }}
-                    >
-                      <Add sx={{ fontSize: 16 }} />
-                      {item.label}
-                    </Button>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            <Divider />
-
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Quick Presets</Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1 }}>
-                {Object.keys(CHAIN_PRESETS).map((preset) => (
-                  <Button
-                    key={preset}
-                    variant={selectedPreset === preset ? "contained" : "outlined"}
-                    size="small"
-                    onClick={() => handleLoadPreset(preset)}
-                    startIcon={<LinkIcon sx={{ fontSize: 14 }} />}
-                    sx={{ fontSize: "0.7rem", justifyContent: "flex-start", textAlign: "left", borderColor: "divider" }}
+            <PanelSection title="Link types">
+              <Stack spacing={1.25}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Selected link type</InputLabel>
+                  <Select
+                    label="Selected link type"
+                    value={selectedLinkType}
+                    onChange={(event) =>
+                      onReplaceSelectedLinkType?.(event.target.value as ChainLinkType)
+                    }
                   >
-                    {preset.charAt(0).toUpperCase() + preset.slice(1)}
+                    {AVAILABLE_LINK_TYPES.map((linkType) => (
+                      <MenuItem key={linkType.value} value={linkType.value}>
+                        {linkType.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Stack direction="row" spacing={1}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Add link type</InputLabel>
+                    <Select
+                      label="Add link type"
+                      value={addLinkType}
+                      onChange={(event) => setAddLinkType(event.target.value as ChainLinkType)}
+                    >
+                      {AVAILABLE_LINK_TYPES.map((linkType) => (
+                        <MenuItem key={linkType.value} value={linkType.value}>
+                          {linkType.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button variant="contained" onClick={() => onAddLinkType?.(addLinkType)}>
+                    Add
+                  </Button>
+                </Stack>
+              </Stack>
+            </PanelSection>
+
+            <PanelSection title="Quick presets">
+              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                {Object.keys(CHAIN_PRESETS).map((presetName) => (
+                  <Button
+                    key={presetName}
+                    variant="outlined"
+                    startIcon={<LinkIcon />}
+                    onClick={() => onLoadPreset?.(presetName)}
+                    sx={{ justifyContent: "flex-start" }}
+                  >
+                    {presetName}
                   </Button>
                 ))}
               </Box>
-            </Box>
-          </Box>
+            </PanelSection>
+          </Stack>
         )}
 
-        {/* ═══════ SAVED TAB ═══════ */}
         {tabIndex === 2 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box sx={{ bgcolor: "rgba(212,160,23,0.08)", p: 1.5, borderRadius: 2, border: "1px solid rgba(212,160,23,0.2)" }}>
-              <Typography variant="caption" sx={{ color: "primary.light" }}>
-                Save your designs to load them later. Designs are saved in your browser.
-              </Typography>
-            </Box>
-            <FavoritesPanel
-              chainConfig={chainConfig}
-              modelUrls={modelUrls}
-              onLoadFavorite={(config, urls) => onLoadFavorite?.(config, urls)}
-            />
-            <Button variant="outlined" size="small" fullWidth onClick={onSaveConfiguration}>
-              Save Configuration (JSON)
-            </Button>
-            <Button variant="outlined" size="small" fullWidth component="label">
-              Load from JSON File
-              <input type="file" accept=".json" onChange={onLoadConfiguration} hidden />
-            </Button>
-          </Box>
+          <Stack spacing={1.5}>
+            <PanelSection title="Saved designs" subtitle="Browser-stored favorites plus JSON export and import.">
+              <FavoritesPanel
+                chainConfig={chainConfig}
+                modelUrls={modelUrls}
+                onLoadFavorite={(config, urls) => onLoadFavorite?.(config, urls)}
+              />
+            </PanelSection>
+
+            <PanelSection title="Backup">
+              <Stack spacing={1}>
+                <Button fullWidth variant="outlined" onClick={onSaveConfiguration}>
+                  Save JSON
+                </Button>
+                <Button fullWidth variant="outlined" component="label">
+                  Load JSON
+                  <input type="file" accept=".json" hidden onChange={onLoadConfiguration} />
+                </Button>
+              </Stack>
+            </PanelSection>
+          </Stack>
         )}
 
-        {/* ═══════ SETTINGS TAB ═══════ */}
         {tabIndex === 3 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Export & Share</Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1 }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={onCaptureImage}
-                  sx={{ height: 64, flexDirection: "column", gap: 0.5, borderColor: "divider" }}
-                >
-                  <CameraAlt sx={{ fontSize: 20 }} />
-                  <Typography variant="caption">Capture</Typography>
+          <Stack spacing={1.5}>
+            <PanelSection title="Capture">
+              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                <Button variant="outlined" startIcon={<CameraAlt />} onClick={onCaptureImage}>
+                  Capture
                 </Button>
                 <Button
                   variant={isRecording ? "contained" : "outlined"}
-                  size="small"
                   color={isRecording ? "error" : "primary"}
+                  startIcon={isRecording ? <Stop /> : <Videocam />}
                   onClick={onStartRecording}
-                  sx={{ height: 64, flexDirection: "column", gap: 0.5, borderColor: "divider" }}
                 >
-                  {isRecording ? <Stop sx={{ fontSize: 20 }} /> : <Videocam sx={{ fontSize: 20 }} />}
-                  <Typography variant="caption">{isRecording ? "Stop" : "Record"}</Typography>
+                  {isRecording ? "Stop" : "Record"}
                 </Button>
               </Box>
-              <Button variant="outlined" size="small" fullWidth startIcon={<Share />} onClick={handleShare} sx={{ mt: 1 }}>
-                Share Design
+              <Button fullWidth variant="text" sx={{ mt: 1 }} startIcon={<Share />} onClick={handleShare}>
+                Share current page
               </Button>
-            </Box>
+            </PanelSection>
 
-            <Divider />
+            <PanelSection title="Display">
+              <Stack spacing={1.25}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2">Auto rotate</Typography>
+                  <Switch
+                    size="small"
+                    checked={autoRotate}
+                    onChange={(event) => setAutoRotate?.(event.target.checked)}
+                  />
+                </Stack>
+                <ThemeToggleRow />
+                <Divider />
+                <FormControl fullWidth size="small">
+                  <InputLabel>Environment</InputLabel>
+                  <Select
+                    label="Environment"
+                    value={background}
+                    onChange={(event) =>
+                      setBackground?.(
+                        event.target.value as
+                          | "city"
+                          | "studio"
+                          | "sunset"
+                          | "dawn"
+                          | "night"
+                          | "warehouse"
+                          | "forest"
+                          | "apartment"
+                          | "park"
+                          | "lobby"
+                      )
+                    }
+                  >
+                    {ENVIRONMENTS.map((environment) => (
+                      <MenuItem key={environment.value} value={environment.value}>
+                        {environment.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
+            </PanelSection>
 
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>View Settings</Typography>
-              <ThemeToggleRow />
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                <Typography variant="body2">Auto Rotate</Typography>
-                <Switch size="small" checked={!!autoRotate} onChange={(e) => setAutoRotate?.(e.target.checked)} />
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                <Typography variant="body2">Show Debug Info</Typography>
-                <Switch size="small" checked={!!showDebug} onChange={(e) => setShowDebug?.(e.target.checked)} />
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-                <Typography variant="body2">Enable Duplicate</Typography>
-                <Switch
-                  size="small"
-                  checked={showDuplicate}
-                  onChange={(e) => setShowDuplicate?.(e.target.checked)}
-                />
-              </Box>
-              {onReplayAnimation && (
-                <Button variant="outlined" size="small" fullWidth onClick={onReplayAnimation} sx={{ mt: 1 }}>
-                  Replay Entrance Animation
-                </Button>
-              )}
-            </Box>
-
-            <Divider />
-
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Environment</Typography>
-              <FormControl fullWidth size="small">
-                <Select value={background} onChange={(e) => setBackground?.(e.target.value)}>
-                  {ENVIRONMENTS.map((env) => (
-                    <MenuItem key={env.value} value={env.value}>{env.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </Box>
+            <PanelSection title="Animation">
+              <Button fullWidth variant="outlined" startIcon={<Replay />} onClick={onReplayAnimation}>
+                Replay entrance animation
+              </Button>
+            </PanelSection>
+          </Stack>
         )}
       </Box>
     </Box>

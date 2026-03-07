@@ -34,6 +34,7 @@ interface ModelViewerProps {
   chainSpacing?: number;
   combineModels?: boolean;
   showDuplicate?: boolean;
+  pairedDuplicate?: boolean;
   duplicatePosition?: [number, number, number];
   duplicateRotationX?: number;
   duplicateRotationY?: number;
@@ -199,6 +200,7 @@ function ModelViewerComponent({
   chainSpacing = 0.02,
   combineModels = false,
   showDuplicate = false,
+  pairedDuplicate = false,
   duplicatePosition = [0.12, 0, 0],
   duplicateRotationX = 0,
   duplicateRotationY = 0,
@@ -231,6 +233,7 @@ function ModelViewerComponent({
   const [isLoading, setIsLoading] = useState(true);
   const [internalChainAssembly, setInternalChainAssembly] = useState<ChainAssembly | null>(null);
   const [duplicateObject, setDuplicateObject] = useState<THREE.Object3D | null>(null);
+  const shouldShowDuplicate = showDuplicate || pairedDuplicate;
   const lastSnapCounterRef = useRef<number>(0);
   const lastTargetOffsetRef = useRef<THREE.Vector3 | null>(null);
 
@@ -300,15 +303,10 @@ function ModelViewerComponent({
       referenceCenter = referenceBounds.getCenter(new THREE.Vector3());
     }
 
-    // Calculate the link width for consistent spacing (use first model as reference)
-    let referenceWidth = 0.05; // Default fallback
-    if (scenes[0]) {
-      const firstBounds = getCenteredBounds(urls[0], scenes[0]);
-      referenceWidth = firstBounds.size.x;
-    }
-
     // First pass: create and position all links
     const containers: THREE.Group[] = [];
+    let previousCenterX = 0;
+    let previousHalfWidth = 0;
 
     urls.forEach((url, index) => {
       const modelScene = scenes[index];
@@ -319,6 +317,8 @@ function ModelViewerComponent({
         const clonedScene = modelScene.clone(true);
         const { center, size, bounds } = getCenteredBounds(url, modelScene);
         const config = getModelConfig(url);
+        const scaledWidth = size.x * config.scale;
+        const currentHalfWidth = scaledWidth / 2;
 
         // Create a container group to handle positioning
         const container = new THREE.Group();
@@ -344,17 +344,16 @@ function ModelViewerComponent({
           }
           container.position.copy(offset);
         } else {
-          // Calculate position along the chain (X-axis only for horizontal line)
-          // Use a consistent step size based on reference width and spacing
-          // Spacing set to 0.55
-          const stepSize = referenceWidth * 0.55;
-          const xPos = index * stepSize;
+          // Position links side-by-side using their actual widths instead of the old overlap factor.
+          const xPos =
+            index === 0
+              ? 0
+              : previousCenterX + previousHalfWidth + currentHalfWidth + chainSpacing;
 
-          // Position only on X axis - keep Y and Z at 0 for straight horizontal line
           container.position.set(
             xPos + config.connectionOffsetX,
-            0, // Will be adjusted in second pass to align to ground
-            0  // Keep all links in the same Z plane for straight line
+            0,
+            0
           );
 
           // Apply alternating rotation for chain link interlocking effect
@@ -362,6 +361,9 @@ function ModelViewerComponent({
             // Slight rotation for alternating links to simulate interlocking
             container.rotation.z = Math.PI * 0.02;
           }
+
+          previousCenterX = xPos;
+          previousHalfWidth = currentHalfWidth;
         }
 
         container.userData.linkIndex = combineModels ? 0 : index;
@@ -516,10 +518,18 @@ function ModelViewerComponent({
 
     // Apply the chain configuration to all links
     applyChainConfigToScene(mainScene, chainConfig);
+
+    if (duplicateObject) {
+      const sourceLinkIndex = duplicateObject.userData.sourceLinkIndex ?? 0;
+      const duplicateConfig = chainConfig.links[sourceLinkIndex] ?? chainConfig.links[0];
+      if (duplicateConfig) {
+        applyLinkConfigToContainer(duplicateObject, duplicateConfig);
+      }
+    }
   }, [mainScene, chainConfig, combineModels, duplicateObject]);
 
   useEffect(() => {
-    if (!mainScene || !showDuplicate) {
+    if (!mainScene || !shouldShowDuplicate) {
       setDuplicateObject(null);
       return;
     }
@@ -541,9 +551,10 @@ function ModelViewerComponent({
     clone.rotation.copy(baseChild.rotation);
     clone.userData.linkIndex = 0;
     clone.userData.isDuplicate = true;
+    clone.userData.sourceLinkIndex = baseChild.userData.linkIndex ?? 0;
 
     setDuplicateObject(clone);
-  }, [mainScene, showDuplicate]);
+  }, [mainScene, shouldShowDuplicate]);
 
   // Update duplicate position/rotation from props (offsets relative to original)
   useEffect(() => {
@@ -555,11 +566,13 @@ function ModelViewerComponent({
     const size = bounds.getSize(new THREE.Vector3());
 
     const targetOffset = new THREE.Vector3(size.x * 1.05, 0, 0);
-    const currentOffset = new THREE.Vector3(
-      duplicatePosition[0],
-      duplicatePosition[1],
-      duplicatePosition[2]
-    );
+    const currentOffset = pairedDuplicate
+      ? targetOffset.clone()
+      : new THREE.Vector3(
+          duplicatePosition[0],
+          duplicatePosition[1],
+          duplicatePosition[2]
+        );
 
     if (!lastTargetOffsetRef.current || !lastTargetOffsetRef.current.equals(targetOffset)) {
       lastTargetOffsetRef.current = targetOffset.clone();
@@ -574,6 +587,7 @@ function ModelViewerComponent({
     const snapAngleRad = (snapAngleDeg * Math.PI) / 180;
 
     const shouldSnap =
+      pairedDuplicate ||
       forceSnap ||
       (snapEnabled && currentOffset.distanceTo(targetOffset) < snapDistance && Math.abs(duplicateRotationY) < snapAngleRad);
 
@@ -629,6 +643,7 @@ function ModelViewerComponent({
     duplicateScale,
     onDuplicateSnap,
     onDuplicateTarget,
+    pairedDuplicate,
     snapNowCounter,
     snapEnabled,
     snapDistance,
