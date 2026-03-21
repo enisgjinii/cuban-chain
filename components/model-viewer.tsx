@@ -103,6 +103,7 @@ function springValue(
 
 // Cache for loaded model bounds
 const modelBoundsCache: Record<string, THREE.Box3> = {};
+const ENTIRE_CHAIN_URL = "/models/EntireChain.glb";
 
 // Model-specific connection offsets - these define how each model connects to the chain
 // Values are calibrated for proper chain link interlocking
@@ -292,6 +293,7 @@ function ModelViewerComponent({
 
   // Memoize the URLs string to prevent unnecessary re-renders
   const urlsKey = urls.join(',');
+  const isRawEntireChainMode = urls.length === 1 && urls[0] === ENTIRE_CHAIN_URL;
 
   // Initialize chain assembly from URLs if not provided externally
   useEffect(() => {
@@ -325,6 +327,25 @@ function ModelViewerComponent({
     // Safety check: if no URLs or scenes aren't ready, return null
     if (!urls || urls.length === 0 || scenes.length !== urls.length) {
       return null;
+    }
+
+    if (isRawEntireChainMode && scenes[0]) {
+      const rawScene = new THREE.Scene();
+      const container = new THREE.Group();
+      const clonedScene = scenes[0].clone(true);
+      const bounds = new THREE.Box3().setFromObject(clonedScene);
+      const center = bounds.getCenter(new THREE.Vector3());
+
+      clonedScene.position.set(-center.x, -center.y, -center.z);
+      container.add(clonedScene);
+
+      const groundedBounds = new THREE.Box3().setFromObject(container);
+      container.position.y -= groundedBounds.min.y;
+      container.userData.linkIndex = 0;
+      container.userData.url = ENTIRE_CHAIN_URL;
+
+      rawScene.add(container);
+      return rawScene;
     }
 
     const scene = new THREE.Scene();
@@ -441,7 +462,7 @@ function ModelViewerComponent({
     }
 
     return scene;
-  }, [urlsKey, scenes, chainSpacing, getCenteredBounds, combineModels]);
+  }, [urlsKey, scenes, chainSpacing, getCenteredBounds, combineModels, isRawEntireChainMode]);
 
   // Initialize entrance animation when mainScene is ready
   useEffect(() => {
@@ -540,6 +561,10 @@ function ModelViewerComponent({
   useEffect(() => {
     if (!mainScene) return;
 
+    if (isRawEntireChainMode) {
+      return;
+    }
+
     if (combineModels) {
       const linkConfig = chainConfig.links[0];
       if (!linkConfig) return;
@@ -562,7 +587,7 @@ function ModelViewerComponent({
         applyLinkConfigToContainer(duplicateObject, duplicateConfig);
       }
     }
-  }, [mainScene, chainConfig, combineModels, duplicateObject]);
+  }, [mainScene, chainConfig, combineModels, duplicateObject, isRawEntireChainMode]);
 
   useEffect(() => {
     if (!mainScene || !shouldShowDuplicate) {
@@ -806,6 +831,7 @@ function ModelViewerComponent({
   // Event listeners for material application
   useEffect(() => {
     const handleMaterialApplication = (event: CustomEvent) => {
+      if (isRawEntireChainMode) return;
       const { material, targetModel, targetIndex } = event.detail;
 
       if (!mainScene) return;
@@ -846,6 +872,7 @@ function ModelViewerComponent({
 
     // Handle surface customization events
     const handleSurfaceApplication = (event: CustomEvent) => {
+      if (isRawEntireChainMode) return;
       const { linkIndex, surfaceId, surfaceConfig } = event.detail;
 
       if (!mainScene) return;
@@ -873,6 +900,7 @@ function ModelViewerComponent({
 
     // Handle toggle diamonds visibility
     const handleToggleDiamonds = (event: CustomEvent) => {
+      if (isRawEntireChainMode) return;
       const { visible } = event.detail;
       if (!mainScene) return;
       toggleDiamondsVisibility(mainScene, visible);
@@ -944,7 +972,7 @@ function ModelViewerComponent({
       window.removeEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
       window.removeEventListener("captureImage", handleCaptureImage as EventListener);
     };
-  }, [mainScene, chainConfig, gl, combineModels, duplicateObject]);
+  }, [mainScene, chainConfig, gl, combineModels, duplicateObject, isRawEntireChainMode]);
 
 
 

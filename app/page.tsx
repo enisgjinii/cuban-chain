@@ -55,7 +55,7 @@ import {
 
 const SIDEBAR_WIDTH = 372;
 const DEFAULT_MAIN_URL = LINK_TYPE_TO_URL["cuban-main"];
-const DEFAULT_MODEL_URLS = [DEFAULT_MAIN_URL];
+const DEFAULT_MODEL_URLS = ["/models/EntireChain.glb"];
 
 const MATERIAL_WEIGHTS: Record<string, number> = {
   silver: 8.5,
