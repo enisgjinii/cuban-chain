@@ -728,6 +728,7 @@ export default function Home() {
         <Paper
           elevation={0}
           sx={{
+            display: "none",
             position: "absolute",
             top: 20,
             left: 20,
