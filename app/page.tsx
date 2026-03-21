@@ -155,6 +155,7 @@ export default function Home() {
   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [desktopConfiguratorOpen, setDesktopConfiguratorOpen] = useState(true);
   const [clipboardLink, setClipboardLink] = useState<LinkConfig | null>(null);
   const [undoStack, setUndoStack] = useState<HistoryState[]>([]);
   const [redoStack, setRedoStack] = useState<HistoryState[]>([]);
@@ -612,6 +613,14 @@ export default function Home() {
     requestAnimationFrame(animate);
   }, []);
 
+  const handleDoneConfigurator = useCallback(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+      return;
+    }
+    setDesktopConfiguratorOpen(false);
+  }, [isMobile]);
+
   const sidebar = (
     <CustomizerPanel
       chainConfig={chainConfig}
@@ -620,27 +629,11 @@ export default function Home() {
       setSelectedSurface={setSelectedSurface}
       selectedLinkIndex={selectedLinkIndex}
       setSelectedLinkIndex={setSelectedLinkIndex}
+      modelUrls={modelUrls}
       onSaveConfiguration={handleSaveConfiguration}
       onLoadConfiguration={handleLoadConfiguration}
-      onCaptureImage={() => setShowScreenshotModal(true)}
-      onStartRecording={handleToggleRecording}
-      isRecording={isRecording}
-      modelUrls={modelUrls}
-      onChainLengthChange={handleChainLengthChange}
-      onLoadFavorite={handleLoadFavorite}
-      autoRotate={autoRotate}
-      setAutoRotate={setAutoRotate}
-      background={background}
-      setBackground={setBackground}
-      onDuplicateSelectedLink={handleDuplicateSelectedLink}
-      onRemoveSelectedLink={handleRemoveSelectedLink}
-      onAddLinkType={handleAddLinkType}
-      onReplaceSelectedLinkType={handleReplaceSelectedLinkType}
-      onLoadPreset={handleLoadPreset}
-      onCopySelectedLink={handleCopySelectedLink}
-      onPasteToSelectedLink={handlePasteToSelectedLink}
-      onResetSelectedLink={handleResetSelectedLink}
-      onReplayAnimation={handleReplayAnimation}
+      onUndoAction={handleUndo}
+      onDone={handleDoneConfigurator}
     />
   );
 
@@ -851,7 +844,7 @@ export default function Home() {
         >
           {sidebar}
         </SwipeableDrawer>
-      ) : (
+      ) : desktopConfiguratorOpen ? (
         <Paper
           elevation={0}
           square
@@ -864,7 +857,7 @@ export default function Home() {
         >
           {sidebar}
         </Paper>
-      )}
+      ) : null}
     </Box>
   );
 }
