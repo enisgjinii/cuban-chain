@@ -676,7 +676,7 @@ export default function Home() {
         <Box className="canvas-wrapper" sx={{ height: "100%" }}>
           <Canvas
             gl={{ preserveDrawingBuffer: true }}
-            camera={{ position: [0.78, 1.12, 1.45], fov: 34 }}
+            camera={{ position: [0.36, 0.64, 0.74], fov: 28 }}
             style={{
               width: "100%",
               height: "100%",
@@ -707,8 +707,8 @@ export default function Home() {
                 ref={orbitControlsRef}
                 makeDefault
                 enablePan={false}
-                minDistance={0.7}
-                maxDistance={4}
+                minDistance={0.22}
+                maxDistance={1.7}
                 minPolarAngle={0.08}
                 maxPolarAngle={Math.PI / 2 - 0.08}
                 autoRotate={autoRotate}
