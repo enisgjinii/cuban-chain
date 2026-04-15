@@ -1,3 +1,99 @@
+import * as THREE from "three";
+
+function isThreeMesh(object: THREE.Object3D): object is THREE.Mesh {
+  return object instanceof THREE.Mesh || (object as THREE.Mesh).isMesh === true;
+}
+
+const SEMANTIC_NAME_PATTERN = /^(cuban_|top_|side_|diamond_|fill|file2|loc_|enamel)/i;
+const GENERIC_PRIMITIVE_PATTERN = /^(cube|cylinder|sphere|torus|plane|file)\d*(?:_\d+)?$/i;
+
+function findSemanticAncestorName(object: THREE.Object3D): string | null {
+  let current = object.parent;
+
+  while (current) {
+    if (current.name && SEMANTIC_NAME_PATTERN.test(current.name)) {
+      return current.name;
+    }
+    current = current.parent;
+  }
+
+  return null;
+}
+
+/**
+ * Rename meshes in a loaded scene so that the pattern-matching functions
+ * in chain-geometry.ts can identify diamonds, enamel, and body meshes.
+ *
+ * The EntireChain.glb uses generic Blender names (Cube, Cube001, Diamond_Octagon001, fill, etc.)
+ * which don't match the semantic patterns the material system expects.
+ * This function assigns semantic names based on the known rename map.
+ */
+export function renameMeshesForPatternMatching(scene: THREE.Object3D): void {
+  scene.traverse((child) => {
+    if (!isThreeMesh(child)) return;
+    const originalName = child.name;
+    if (!originalName) return;
+    child.userData.originalMeshName ??= originalName;
+
+    const semanticAncestorName = findSemanticAncestorName(child);
+    if (semanticAncestorName && GENERIC_PRIMITIVE_PATTERN.test(originalName)) {
+      child.userData.semanticSourceName = semanticAncestorName;
+      child.name = semanticAncestorName;
+      return;
+    }
+
+    // Check the explicit rename map first
+    const mapped = MESH_RENAMES[originalName];
+    if (mapped) {
+      // Diamond meshes → give a diamond-matching name
+      if (mapped.includes("Diamond")) {
+        child.name = `diamond_octagon_${originalName.toLowerCase()}`;
+        return;
+      }
+      // Fill/enamel meshes
+      if (mapped.startsWith("Fill_")) {
+        child.name = `fill_${originalName.toLowerCase()}`;
+        return;
+      }
+      // File meshes (polishing)
+      if (mapped.startsWith("File_")) {
+        child.name = `file_${originalName.toLowerCase()}`;
+        return;
+      }
+      // Ground plane – hide it
+      if (mapped === "Ground_Plane") {
+        child.visible = false;
+        return;
+      }
+      // Body / link part meshes – give a body-matching name
+      // Format: Link{N}_Part{M} or ExtraLink_Part{M} or Chain_End_*
+      child.name = `cuban_body_${originalName.toLowerCase()}`;
+      return;
+    }
+
+    // Heuristic fallback for meshes not in the map
+    const lower = originalName.toLowerCase();
+
+    // Already has a semantic name (diamond_, cuban_, top_, side_, fill, etc.)
+    if (
+      lower.startsWith("diamond") ||
+      lower.startsWith("cuban") ||
+      lower.startsWith("top_") ||
+      lower.startsWith("side_") ||
+      lower.startsWith("fill") ||
+      lower.startsWith("file")
+    ) {
+      return; // keep as-is
+    }
+
+    // Generic Blender meshes (Cube###, Cylinder###, etc.) → body
+    if (GENERIC_PRIMITIVE_PATTERN.test(originalName)) {
+      child.name = `cuban_body_${lower}`;
+      return;
+    }
+  });
+}
+
 export const MESH_RENAMES: Record<string, string> = {
   // Base Link (Link 1)
   "Cube": "Link1_Part01",

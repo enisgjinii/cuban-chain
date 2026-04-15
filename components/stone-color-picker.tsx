@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Box, Typography, Button } from "@mui/material";
-import { AutoAwesome } from "@mui/icons-material";
+import { useEffect, useState } from "react";
+import { Box, Button, Group, Stack, Text } from "@mantine/core";
+import { IconSparkles } from "@tabler/icons-react";
 import type { SurfaceId, GemstoneColors } from "@/lib/chain-config-types";
 
 interface StoneColorPickerProps {
@@ -30,6 +30,12 @@ export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled
   const isTopSurface = surfaceId === "top1" || surfaceId === "top2";
   const stoneCount = isTopSurface ? 3 : 2;
 
+  useEffect(() => {
+    if (!isTopSurface && selectedStone === "stone3") {
+      setSelectedStone("stone1");
+    }
+  }, [isTopSurface, selectedStone]);
+
   const handleColorChange = (color: string) => {
     onChange({ ...gemstoneColors, [selectedStone]: color });
   };
@@ -39,14 +45,13 @@ export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled
   };
 
   return (
-    <Box sx={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1.5 }}>
-        <AutoAwesome sx={{ fontSize: 14, color: "primary.main" }} />
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>Individual Stone Colors</Typography>
-      </Box>
+    <Stack gap="xs" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}>
+      <Group gap={6}>
+        <IconSparkles size={14} color="#2b2d30" />
+        <Text size="xs" fw={700}>Individual stone colors</Text>
+      </Group>
 
-      {/* Stone Selection */}
-      <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+      <Group gap="xs" grow>
         {Array.from({ length: stoneCount }).map((_, index) => {
           const stoneKey = `stone${index + 1}` as "stone1" | "stone2" | "stone3";
           const color = gemstoneColors[stoneKey] || "#ffffff";
@@ -56,86 +61,85 @@ export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled
             <Box
               key={stoneKey}
               onClick={() => setSelectedStone(stoneKey)}
-              sx={{
-                flex: 1,
+              style={{
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 0.5,
-                p: 1,
-                borderRadius: 2,
-                border: "2px solid",
-                borderColor: isActive ? "primary.main" : "divider",
-                bgcolor: isActive ? "rgba(212,160,23,0.08)" : "transparent",
+                gap: 4,
+                padding: 8,
+                borderRadius: 8,
+                border: `1px solid ${isActive ? "rgba(80,105,255,0.72)" : "rgba(45,45,45,0.12)"}`,
+                background: isActive ? "rgba(255,255,255,0.56)" : "rgba(255,255,255,0.18)",
                 cursor: "pointer",
                 transition: "all 0.15s",
               }}
             >
               <Box
-                sx={{
+                style={{
                   width: 28,
                   height: 28,
                   borderRadius: "50%",
-                  bgcolor: color,
+                  background: color,
                   border: "2px solid rgba(255,255,255,0.3)",
                   boxShadow: color === "#ffffff" ? "inset 0 0 0 1px #555" : "0 2px 6px rgba(0,0,0,0.3)",
                 }}
               />
-              <Typography variant="caption" sx={{ fontSize: "0.65rem", color: "text.secondary" }}>
+              <Text size="xs" c="dimmed">
                 Stone {index + 1}
-              </Typography>
+              </Text>
             </Box>
           );
         })}
-      </Box>
+      </Group>
 
-      {/* Color Presets */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>Color Presets</Typography>
+      <Group justify="space-between">
+        <Text size="xs" c="dimmed">Color presets</Text>
         <Button
-          size="small"
+          size="xs"
+          variant="subtle"
           onClick={() => handleApplyToAll(gemstoneColors[selectedStone] || "#ffffff")}
-          sx={{ fontSize: "0.65rem", minWidth: 0, p: 0.5, color: "primary.light" }}
         >
           Apply to all
         </Button>
-      </Box>
+      </Group>
 
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, mb: 2 }}>
+      <Box style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
         {COLOR_PRESETS.map((preset) => (
           <Box
             key={preset.value}
             className={`swatch-btn ${gemstoneColors[selectedStone] === preset.value ? "active" : ""}`}
             onClick={() => handleColorChange(preset.value)}
-            sx={{
+            style={{
               width: "100%",
               aspectRatio: "1",
-              borderRadius: 1.5,
-              bgcolor: preset.value,
-              border: preset.value === "#ffffff" ? "2px solid #444" : undefined,
+              borderRadius: 8,
+              background: preset.value,
+              border:
+                gemstoneColors[selectedStone] === preset.value
+                  ? "2px solid rgba(80,105,255,0.72)"
+                  : preset.value === "#ffffff"
+                    ? "1px solid rgba(0,0,0,0.35)"
+                    : "1px solid rgba(255,255,255,0.4)",
+              cursor: "pointer",
             }}
             title={preset.label}
           />
         ))}
       </Box>
 
-      {/* Custom input */}
-      <Box sx={{ display: "flex", gap: 1 }}>
+      <Group gap="xs" wrap="nowrap">
         <Box
           component="input"
           type="color"
           value={gemstoneColors[selectedStone] || "#ffffff"}
           onChange={(e: any) => handleColorChange(e.target.value)}
-          sx={{
+          style={{
             width: 36,
             height: 36,
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: "divider",
+            borderRadius: 8,
+            border: "1px solid rgba(45,45,45,0.12)",
             cursor: "pointer",
             background: "none",
-            "&::-webkit-color-swatch-wrapper": { padding: 0 },
-            "&::-webkit-color-swatch": { borderRadius: 4, border: "none" },
           }}
         />
         <Box
@@ -144,22 +148,19 @@ export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled
           value={gemstoneColors[selectedStone] || "#ffffff"}
           onChange={(e: any) => handleColorChange(e.target.value)}
           placeholder="#ffffff"
-          sx={{
+          style={{
             flex: 1,
-            px: 1.25,
-            py: 0.75,
+            padding: "8px 10px",
             fontSize: "0.8rem",
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: "divider",
-            bgcolor: "action.hover",
-            color: "text.primary",
+            borderRadius: 8,
+            border: "1px solid rgba(45,45,45,0.12)",
+            background: "rgba(255,255,255,0.36)",
+            color: "#24272b",
             textTransform: "uppercase",
             outline: "none",
-            "&:focus": { borderColor: "primary.main" },
           }}
         />
-      </Box>
-    </Box>
+      </Group>
+    </Stack>
   );
 }

@@ -4,10 +4,10 @@ export type Material = "silver" | "grey" | "black" | "white" | "gold";
 // Material display names and colors for UI
 export const MATERIAL_OPTIONS: Array<{ name: string; value: Material; color: string }> = [
   { name: "Silver", value: "silver", color: "#c0c0c0" },
-  { name: "Gold", value: "gold", color: "#ffd700" },
   { name: "Grey", value: "grey", color: "#808080" },
   { name: "Black", value: "black", color: "#1a1a1a" },
   { name: "White", value: "white", color: "#f5f5f5" },
+  { name: "Gold", value: "gold", color: "#ffd700" },
 ];
 
 // Surface customization types

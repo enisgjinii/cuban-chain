@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
+import "@mantine/core/styles.css";
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 import "./globals.css";
 
+import { MantineThemeProvider } from "@/components/mantine-theme-provider";
 import MuiThemeRegistry from "@/components/mui-theme-registry";
 
 export const metadata: Metadata = {
@@ -28,10 +31,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" {...mantineHtmlProps}>
+      <head>
+        <ColorSchemeScript defaultColorScheme="light" />
+      </head>
       <body suppressHydrationWarning>
         <MuiThemeRegistry>
-          {children}
+          <MantineThemeProvider>{children}</MantineThemeProvider>
         </MuiThemeRegistry>
         <Analytics />
       </body>

@@ -10,35 +10,54 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
+  IconButton,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
+  Slider,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import {
+  Add,
+  Remove,
+  ContentCopy,
+  ContentPaste,
+  FileCopy,
+  Delete,
+  RestartAlt,
+} from "@mui/icons-material";
 import type {
   ChainConfig,
   GemstoneColors,
   Material,
   SurfaceConfig,
   SurfaceId,
+  SurfaceType,
 } from "@/lib/chain-config-types";
-import { URL_TO_LINK_TYPE } from "@/lib/chain-manager";
+import {
+  ENAMEL_COLORS,
+  ENGRAVING_DESIGNS,
+  MATERIAL_OPTIONS as MATERIAL_LIBRARY,
+} from "@/lib/chain-config-types";
+import { MAX_CHAIN_LINKS } from "@/lib/chain-geometry";
+import { URL_TO_LINK_TYPE, CHAIN_PRESETS } from "@/lib/chain-manager";
+import { StoneColorPicker } from "@/components/stone-color-picker";
 
-type InsertType = "diamonds" | "moissanite";
+type EditableSurfaceType = Extract<SurfaceType, "empty" | "gemstones" | "enamel" | "engraving">;
 type EngravingPattern = "pattern1" | "pattern2";
 
 type ConfiguratorDraft = {
   material: Material;
-  enableInserts: boolean;
-  insertType: InsertType | "";
-  insertColor: string;
-  enableEngraving: boolean;
+  surfaceType: EditableSurfaceType;
+  gemstoneColors: GemstoneColors;
+  enamelColor: string;
   engravingPattern: EngravingPattern;
   selectedSurface: SurfaceId;
-  applyToSides: boolean;
+  applyToPair: boolean;
   applyToAllLinks: boolean;
+  applyMaterialToAllLinks: boolean;
 };
 
 interface CustomizerPanelProps {
@@ -53,32 +72,16 @@ interface CustomizerPanelProps {
   onLoadConfiguration?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onUndoAction?: () => void;
   onDone?: () => void;
+  onChainLengthChange?: (length: number) => void;
+  onDuplicateLink?: () => void;
+  onRemoveLink?: () => void;
+  onCopyLink?: () => void;
+  onPasteLink?: () => void;
+  onResetLink?: () => void;
+  onLoadPreset?: (presetName: string) => void;
+  clipboardLink?: import("@/lib/chain-config-types").LinkConfig | null;
+  children?: React.ReactNode;
 }
-
-const MATERIAL_OPTIONS: Array<{ label: string; value: Material }> = [
-  { label: "Silver", value: "silver" },
-  { label: "Gold", value: "gold" },
-  { label: "Grey", value: "grey" },
-  { label: "Black", value: "black" },
-];
-
-const INSERT_OPTIONS: Array<{ label: string; value: InsertType }> = [
-  { label: "Diamonds", value: "diamonds" },
-  { label: "Moissanite", value: "moissanite" },
-];
-
-const DIAMOND_COLORS = [{ label: "Colourless", value: "#ffffff" }];
-
-const MOISSANITE_COLORS = [
-  { label: "Black", value: "#000000" },
-  { label: "Green", value: "#16a34a" },
-  { label: "Red", value: "#dc2626" },
-  { label: "Blue", value: "#2563eb" },
-  { label: "Yellow", value: "#eab308" },
-  { label: "Orange", value: "#ea580c" },
-  { label: "Rainbow1", value: "#ff4d6d" },
-  { label: "Rainbow2", value: "#7c3aed" },
-];
 
 const SURFACE_OPTIONS: Array<{ label: string; value: SurfaceId }> = [
   { label: "Top 1", value: "top1" },
@@ -87,59 +90,67 @@ const SURFACE_OPTIONS: Array<{ label: string; value: SurfaceId }> = [
   { label: "Side 2", value: "side2" },
 ];
 
-const ENGRAVING_OPTIONS: Array<{ label: string; value: EngravingPattern }> = [
-  { label: "Pattern 1", value: "pattern1" },
-  { label: "Pattern 2", value: "pattern2" },
+const SURFACE_TYPE_OPTIONS: Array<{ label: string; value: EditableSurfaceType }> = [
+  { label: "Empty", value: "empty" },
+  { label: "Gemstones", value: "gemstones" },
+  { label: "Enamel", value: "enamel" },
+  { label: "Engraving", value: "engraving" },
 ];
 
-function createGemstoneColors(surfaceId: SurfaceId, color: string): GemstoneColors {
+function isTopSurface(surfaceId: SurfaceId): boolean {
+  return surfaceId === "top1" || surfaceId === "top2";
+}
+
+function createGemstoneColors(surfaceId: SurfaceId, color = "#ffffff"): GemstoneColors {
   if (surfaceId === "top1" || surfaceId === "top2") {
     return { stone1: color, stone2: color, stone3: color };
   }
   return { stone1: color, stone2: color };
 }
 
+function normalizeGemstoneColors(surfaceId: SurfaceId, colors?: GemstoneColors): GemstoneColors {
+  const fallback = createGemstoneColors(surfaceId);
+  return {
+    stone1: colors?.stone1 ?? fallback.stone1,
+    stone2: colors?.stone2 ?? fallback.stone2,
+    ...(isTopSurface(surfaceId) && { stone3: colors?.stone3 ?? fallback.stone3 }),
+  };
+}
+
+function normalizeSurfaceType(type?: SurfaceType): EditableSurfaceType {
+  if (type === "gemstones" || type === "enamel" || type === "engraving") {
+    return type;
+  }
+
+  return "empty";
+}
+
 function deriveDraft(linkMaterial: Material, selectedSurface: SurfaceId, surfaceConfig?: SurfaceConfig): ConfiguratorDraft {
-  const isGemstone = surfaceConfig?.type === "gemstones";
-  const isMoissanite = surfaceConfig?.type === "moissanites";
-  const isEngraving = surfaceConfig?.type === "engraving";
-
-  const inferredInsertType: InsertType | "" = isGemstone
-    ? "diamonds"
-    : isMoissanite
-      ? "moissanite"
-      : "";
-
   return {
     material: linkMaterial,
-    enableInserts: Boolean(isGemstone || isMoissanite),
-    insertType: inferredInsertType,
-    insertColor: surfaceConfig?.gemstoneColors?.stone1 ?? "",
-    enableEngraving: Boolean(isEngraving),
+    surfaceType: normalizeSurfaceType(surfaceConfig?.type),
+    gemstoneColors: normalizeGemstoneColors(selectedSurface, surfaceConfig?.gemstoneColors),
+    enamelColor: surfaceConfig?.enamelColor ?? "#ffffff",
     engravingPattern: surfaceConfig?.engravingDesign ?? "pattern1",
     selectedSurface,
-    applyToSides: false,
+    applyToPair: false,
     applyToAllLinks: false,
+    applyMaterialToAllLinks: false,
   };
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Paper
-      elevation={0}
+    <Box
       sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 0,
-        p: 1.5,
-        bgcolor: "background.paper",
+        py: 1.25,
       }}
     >
-      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.25, letterSpacing: 0.2 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.1, letterSpacing: 0.2 }}>
         {title}
       </Typography>
       {children}
-    </Paper>
+    </Box>
   );
 }
 
@@ -155,6 +166,15 @@ export function CustomizerPanel({
   onLoadConfiguration,
   onUndoAction,
   onDone,
+  onChainLengthChange,
+  onDuplicateLink,
+  onRemoveLink,
+  onCopyLink,
+  onPasteLink,
+  onResetLink,
+  onLoadPreset,
+  clipboardLink,
+  children,
 }: CustomizerPanelProps) {
   const selectedLink = chainConfig.links[selectedLinkIndex];
   const linkCount = chainConfig.links.length;
@@ -174,86 +194,67 @@ export function CustomizerPanel({
 
     setDraft((previous) => ({
       ...deriveDraft(selectedLink.material, selectedSurface, selectedLink.surfaces[selectedSurface]),
-      applyToSides: previous.applyToSides,
+      applyToPair: previous.applyToPair,
       applyToAllLinks: previous.applyToAllLinks,
+      applyMaterialToAllLinks: previous.applyMaterialToAllLinks,
     }));
   }, [selectedLink, selectedLinkIndex, selectedSurface]);
 
   useEffect(() => {
-    if (!draft.enableInserts) {
-      setDraft((previous) => ({ ...previous, insertType: "", insertColor: "" }));
-      return;
+    const normalizedColors = normalizeGemstoneColors(draft.selectedSurface, draft.gemstoneColors);
+    if (JSON.stringify(normalizedColors) !== JSON.stringify(draft.gemstoneColors)) {
+      setDraft((previous) => ({ ...previous, gemstoneColors: normalizedColors }));
     }
-
-    if (!draft.insertType) {
-      return;
-    }
-
-    if (draft.insertType === "diamonds") {
-      if (draft.insertColor !== "#ffffff") {
-        setDraft((previous) => ({ ...previous, insertColor: "#ffffff" }));
-      }
-      return;
-    }
-
-    const isValidMoissaniteColor = MOISSANITE_COLORS.some((option) => option.value === draft.insertColor);
-    if (!isValidMoissaniteColor) {
-      setDraft((previous) => ({ ...previous, insertColor: MOISSANITE_COLORS[0].value }));
-    }
-  }, [draft.enableInserts, draft.insertType, draft.insertColor]);
-
-  useEffect(() => {
-    if (draft.enableEngraving && draft.enableInserts) {
-      setDraft((previous) => ({
-        ...previous,
-        enableInserts: false,
-        insertType: "",
-        insertColor: "",
-      }));
-    }
-  }, [draft.enableEngraving, draft.enableInserts]);
+  }, [draft.gemstoneColors, draft.selectedSurface]);
 
   const handleApply = useCallback(() => {
     if (!selectedLink) {
       return;
     }
 
-    const targetSurfaces: SurfaceId[] = draft.applyToSides
-      ? ["side1", "side2"]
+    const targetSurfaces: SurfaceId[] = draft.applyToPair
+      ? isTopSurface(draft.selectedSurface)
+        ? ["top1", "top2"]
+        : ["side1", "side2"]
       : [draft.selectedSurface];
 
     const buildSurfaceConfig = (surfaceId: SurfaceId): SurfaceConfig => {
-      if (draft.enableInserts && draft.insertType && draft.insertColor) {
-        return {
-          type: draft.insertType === "diamonds" ? "gemstones" : "moissanites",
-          gemstoneColors: createGemstoneColors(surfaceId, draft.insertColor),
-        };
+      switch (draft.surfaceType) {
+        case "gemstones":
+          return {
+            type: "gemstones",
+            gemstoneColors: normalizeGemstoneColors(surfaceId, draft.gemstoneColors),
+          };
+        case "enamel":
+          return {
+            type: "enamel",
+            enamelColor: draft.enamelColor,
+          };
+        case "engraving":
+          return {
+            type: "engraving",
+            engravingDesign: draft.engravingPattern,
+          };
+        case "empty":
+        default:
+          return { type: "empty" };
       }
-
-      if (draft.enableEngraving) {
-        return {
-          type: "engraving",
-          engravingDesign: draft.engravingPattern,
-        };
-      }
-
-      return { type: "empty" };
     };
 
     const nextLinks = chainConfig.links.map((link, index) => {
-      const shouldApplyToLink = draft.applyToAllLinks || index === selectedLinkIndex;
-      if (!shouldApplyToLink) {
-        return link;
-      }
-
+      const shouldApplySurface = draft.applyToAllLinks || index === selectedLinkIndex;
+      const shouldApplyMaterial = draft.applyMaterialToAllLinks || index === selectedLinkIndex;
       const nextSurfaces = { ...link.surfaces };
-      targetSurfaces.forEach((surfaceId) => {
-        nextSurfaces[surfaceId] = buildSurfaceConfig(surfaceId);
-      });
+
+      if (shouldApplySurface) {
+        targetSurfaces.forEach((surfaceId) => {
+          nextSurfaces[surfaceId] = buildSurfaceConfig(surfaceId);
+        });
+      }
 
       return {
         ...link,
-        material: draft.material,
+        material: shouldApplyMaterial ? draft.material : link.material,
         surfaces: nextSurfaces,
       };
     });
@@ -264,8 +265,6 @@ export function CustomizerPanel({
     });
   }, [chainConfig, draft, selectedLink, selectedLinkIndex, setChainConfig]);
 
-  const colorOptions = draft.insertType === "diamonds" ? DIAMOND_COLORS : MOISSANITE_COLORS;
-
   return (
     <Box
       sx={{
@@ -273,18 +272,28 @@ export function CustomizerPanel({
         flexDirection: "column",
         height: "100%",
         overflow: "hidden",
-        bgcolor: "background.default",
+        bgcolor: "background.paper",
         "& .MuiButton-root": {
-          borderRadius: 0,
+          borderRadius: 1.25,
           textTransform: "none",
           boxShadow: "none",
         },
         "& .MuiOutlinedInput-root": {
-          borderRadius: 0,
+          borderRadius: 1.25,
         },
       }}
     >
-      <Box sx={{ px: 2, py: 2, borderBottom: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+      <Box
+        sx={{
+          px: 2,
+          py: 2,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          bgcolor: "action.hover",
+          borderBottomLeftRadius: 1.5,
+          borderBottomRightRadius: 1.5,
+        }}
+      >
         <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 600, mb: 0.5 }}>
           Configurator
         </Typography>
@@ -294,7 +303,47 @@ export function CustomizerPanel({
       </Box>
 
       <Box className="custom-scrollbar" sx={{ flex: 1, overflowY: "auto", px: 2, py: 1.5 }}>
-        <Stack spacing={1.25}>
+        <Stack spacing={0} divider={<Divider />}>
+          <Section title="Chain Length">
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Tooltip title="Remove link">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => onChainLengthChange?.(linkCount - 1)}
+                    disabled={linkCount <= 1}
+                  >
+                    <Remove sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Slider
+                value={linkCount}
+                min={1}
+                max={MAX_CHAIN_LINKS}
+                step={1}
+                onChange={(_, value) => onChainLengthChange?.(value as number)}
+                valueLabelDisplay="auto"
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              <Tooltip title="Add link">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() => onChainLengthChange?.(linkCount + 1)}
+                    disabled={linkCount >= MAX_CHAIN_LINKS}
+                  >
+                    <Add sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Typography variant="body2" sx={{ fontWeight: 700, minWidth: 24, textAlign: "center" }}>
+                {linkCount}
+              </Typography>
+            </Stack>
+          </Section>
+
           <Section title="Selected Link">
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
               <Button
@@ -324,90 +373,90 @@ export function CustomizerPanel({
                 Next
               </Button>
             </Stack>
+
+            <Stack direction="row" spacing={0.5} sx={{ mt: 1, justifyContent: "center" }}>
+              <Tooltip title="Duplicate link">
+                <IconButton size="small" onClick={onDuplicateLink}>
+                  <FileCopy sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Remove link">
+                <span>
+                  <IconButton size="small" onClick={onRemoveLink} disabled={linkCount <= 1}>
+                    <Delete sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Copy link config">
+                <IconButton size="small" onClick={onCopyLink}>
+                  <ContentCopy sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Paste link config">
+                <span>
+                  <IconButton size="small" onClick={onPasteLink} disabled={!clipboardLink}>
+                    <ContentPaste sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Reset link">
+                <IconButton size="small" onClick={onResetLink}>
+                  <RestartAlt sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Section>
 
           <Section title="Material Selection">
-            <FormControl fullWidth size="small">
-              <InputLabel>Material</InputLabel>
-              <Select
-                label="Material"
-                value={draft.material}
-                onChange={(event) =>
-                  setDraft((previous) => ({
-                    ...previous,
-                    material: event.target.value as Material,
-                  }))
-                }
-              >
-                {MATERIAL_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Section>
-
-          <Section title="Apply Inserts">
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  checked={draft.enableInserts}
+            <Stack spacing={1}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Material</InputLabel>
+                <Select
+                  label="Material"
+                  value={draft.material}
                   onChange={(event) =>
                     setDraft((previous) => ({
                       ...previous,
-                      enableInserts: event.target.checked,
+                      material: event.target.value as Material,
                     }))
                   }
-                />
-              }
-              label="Enable Inserts"
-            />
+                >
+                  {MATERIAL_LIBRARY.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          sx={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: "50%",
+                            bgcolor: option.color,
+                            border: "1px solid",
+                            borderColor: option.value === "white" ? "divider" : "transparent",
+                          }}
+                        />
+                        <span>{option.name}</span>
+                      </Stack>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-            <Collapse in={draft.enableInserts}>
-              <Stack spacing={1} sx={{ mt: 0.5 }}>
-                <FormControl fullWidth size="small" disabled={!draft.enableInserts}>
-                  <InputLabel>Apply Inserts</InputLabel>
-                  <Select
-                    label="Apply Inserts"
-                    value={draft.insertType}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={draft.applyMaterialToAllLinks}
                     onChange={(event) =>
                       setDraft((previous) => ({
                         ...previous,
-                        insertType: event.target.value as InsertType,
+                        applyMaterialToAllLinks: event.target.checked,
                       }))
                     }
-                  >
-                    {INSERT_OPTIONS.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl fullWidth size="small" disabled={!draft.enableInserts || !draft.insertType}>
-                  <InputLabel>Color</InputLabel>
-                  <Select
-                    label="Color"
-                    value={draft.insertColor}
-                    onChange={(event) =>
-                      setDraft((previous) => ({
-                        ...previous,
-                        insertColor: event.target.value,
-                      }))
-                    }
-                  >
-                    {colorOptions.map((option) => (
-                      <MenuItem key={option.value} value={option.value}>
-                        {option.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Stack>
-            </Collapse>
+                  />
+                }
+                label="Apply material to all links"
+              />
+            </Stack>
           </Section>
 
           <Section title="Surface Controls">
@@ -422,6 +471,7 @@ export function CustomizerPanel({
                     setDraft((previous) => ({
                       ...previous,
                       selectedSurface: surface.value,
+                      gemstoneColors: normalizeGemstoneColors(surface.value, previous.gemstoneColors),
                     }));
                   }}
                 >
@@ -430,20 +480,165 @@ export function CustomizerPanel({
               ))}
             </Stack>
 
+            <Typography variant="caption" sx={{ display: "block", color: "text.secondary", mb: 1 }}>
+              Top surfaces use 3 gemstones. Side surfaces use 2 gemstones.
+            </Typography>
+
+            <Stack spacing={1}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Customization</InputLabel>
+                <Select
+                  label="Customization"
+                  value={draft.surfaceType}
+                  onChange={(event) =>
+                    setDraft((previous) => ({
+                      ...previous,
+                      surfaceType: event.target.value as EditableSurfaceType,
+                    }))
+                  }
+                >
+                  {SURFACE_TYPE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Collapse in={draft.surfaceType === "gemstones"} unmountOnExit>
+                <StoneColorPicker
+                  surfaceId={draft.selectedSurface}
+                  gemstoneColors={draft.gemstoneColors}
+                  onChange={(gemstoneColors) =>
+                    setDraft((previous) => ({
+                      ...previous,
+                      gemstoneColors: normalizeGemstoneColors(previous.selectedSurface, gemstoneColors),
+                    }))
+                  }
+                />
+              </Collapse>
+
+              <Collapse in={draft.surfaceType === "enamel"} unmountOnExit>
+                <Stack spacing={1} sx={{ pt: 0.5 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Enamel Color</InputLabel>
+                    <Select
+                      label="Enamel Color"
+                      value={draft.enamelColor}
+                      onChange={(event) =>
+                        setDraft((previous) => ({
+                          ...previous,
+                          enamelColor: event.target.value,
+                        }))
+                      }
+                    >
+                      {ENAMEL_COLORS.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <Box
+                              sx={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                bgcolor: option.value,
+                                border: "1px solid",
+                                borderColor: option.value === "#ffffff" ? "divider" : "transparent",
+                              }}
+                            />
+                            <span>{option.name}</span>
+                          </Stack>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <Stack direction="row" spacing={1}>
+                    <Box
+                      component="input"
+                      type="color"
+                      value={draft.enamelColor}
+                      onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                        setDraft((previous) => ({ ...previous, enamelColor: event.target.value }))
+                      }
+                      sx={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 1,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        cursor: "pointer",
+                        background: "none",
+                      }}
+                    />
+                    <Box
+                      component="input"
+                      type="text"
+                      value={draft.enamelColor}
+                      onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                        setDraft((previous) => ({ ...previous, enamelColor: event.target.value }))
+                      }
+                      sx={{
+                        flex: 1,
+                        px: 1.25,
+                        py: 0.75,
+                        fontSize: "0.8rem",
+                        borderRadius: 1,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        bgcolor: "action.hover",
+                        color: "text.primary",
+                        textTransform: "uppercase",
+                        outline: "none",
+                        "&:focus": { borderColor: "primary.main" },
+                      }}
+                    />
+                  </Stack>
+                </Stack>
+              </Collapse>
+
+              <Collapse in={draft.surfaceType === "engraving"} unmountOnExit>
+                <FormControl fullWidth size="small" sx={{ pt: 0.5 }}>
+                  <InputLabel>Engraving Design</InputLabel>
+                  <Select
+                    label="Engraving Design"
+                    value={draft.engravingPattern}
+                    onChange={(event) =>
+                      setDraft((previous) => ({
+                        ...previous,
+                        engravingPattern: event.target.value as EngravingPattern,
+                      }))
+                    }
+                  >
+                    {ENGRAVING_DESIGNS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Collapse>
+
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Empty keeps the base material visible with no added element.
+              </Typography>
+            </Stack>
+          </Section>
+
+          <Section title="Apply Scope">
             <FormControlLabel
               control={
                 <Checkbox
                   size="small"
-                  checked={draft.applyToSides}
+                  checked={draft.applyToPair}
                   onChange={(event) =>
                     setDraft((previous) => ({
                       ...previous,
-                      applyToSides: event.target.checked,
+                      applyToPair: event.target.checked,
                     }))
                   }
                 />
               }
-              label="Apply to sides"
+              label={isTopSurface(draft.selectedSurface) ? "Apply to both top surfaces" : "Apply to both side surfaces"}
             />
 
             <FormControlLabel
@@ -459,48 +654,8 @@ export function CustomizerPanel({
                   }
                 />
               }
-              label="Apply to all links"
+              label="Apply this surface to all links"
             />
-          </Section>
-
-          <Section title="Engraving">
-            <FormControlLabel
-              control={
-                <Checkbox
-                  size="small"
-                  checked={draft.enableEngraving}
-                  onChange={(event) =>
-                    setDraft((previous) => ({
-                      ...previous,
-                      enableEngraving: event.target.checked,
-                    }))
-                  }
-                />
-              }
-              label="Enable Engraving"
-            />
-
-            <Collapse in={draft.enableEngraving}>
-              <FormControl fullWidth size="small" sx={{ mt: 0.5 }}>
-                <InputLabel>Pattern</InputLabel>
-                <Select
-                  label="Pattern"
-                  value={draft.engravingPattern}
-                  onChange={(event) =>
-                    setDraft((previous) => ({
-                      ...previous,
-                      engravingPattern: event.target.value as EngravingPattern,
-                    }))
-                  }
-                >
-                  {ENGRAVING_OPTIONS.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Collapse>
           </Section>
 
           <Section title="Actions">
@@ -517,6 +672,22 @@ export function CustomizerPanel({
             </Stack>
           </Section>
 
+          <Section title="Presets">
+            <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>
+              {Object.keys(CHAIN_PRESETS).map((presetName) => (
+                <Button
+                  key={presetName}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onLoadPreset?.(presetName)}
+                  sx={{ textTransform: "capitalize", fontSize: "0.72rem" }}
+                >
+                  {presetName.replaceAll("-", " ")}
+                </Button>
+              ))}
+            </Stack>
+          </Section>
+
           <Section title="Configuration">
             <Stack direction="row" spacing={1}>
               <Button variant="outlined" onClick={onSaveConfiguration} disabled={!onSaveConfiguration} fullWidth>
@@ -529,7 +700,8 @@ export function CustomizerPanel({
             </Stack>
           </Section>
 
-          <Divider sx={{ my: 0.25 }} />
+          {children}
+
         </Stack>
       </Box>
     </Box>

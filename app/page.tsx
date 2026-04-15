@@ -4,107 +4,32 @@ import type React from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stage } from "@react-three/drei";
 import * as THREE from "three";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
-  Chip,
-  Fab,
   IconButton,
-  Paper,
   Slide,
   Snackbar,
   Stack,
-  SwipeableDrawer,
   Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import {
-  AutoAwesome,
-  CameraAlt,
-  FitScreen,
-  Menu as MenuIcon,
-  Refresh,
-  Replay,
-  ThreeDRotation,
-  Undo,
-  Redo,
-  Visibility,
-  ArrowUpward,
-  ArrowBack,
-  ArrowForward,
-  ViewInAr,
-  Videocam,
-  Stop as StopIcon,
-} from "@mui/icons-material";
-
-import { CustomizerPanel } from "@/components/customizer-panel";
-import { LoadingOverlay } from "@/components/loading-overlay";
+import { CameraAlt, FitScreen, Refresh, ViewInAr } from "@mui/icons-material";
+import { SimpleCustomizerDock } from "@/components/simple-customizer-dock";
 import { ModelViewer } from "@/components/model-viewer";
 import { ScreenshotModal, type ScreenshotOptions } from "@/components/screenshot-modal";
 import type { ChainConfig, LinkConfig, SurfaceConfig, SurfaceId } from "@/lib/chain-config-types";
 import { createDefaultConfig, createDefaultLink } from "@/lib/chain-helpers";
-import {
-  CHAIN_PRESETS,
-  LINK_TYPE_TO_URL,
-  type ChainLinkType,
-  URL_TO_LINK_TYPE,
-} from "@/lib/chain-manager";
+import { MAX_CHAIN_LINKS } from "@/lib/chain-geometry";
 
-const SIDEBAR_WIDTH = 372;
-const DEFAULT_MAIN_URL = LINK_TYPE_TO_URL["cuban-main"];
-const DEFAULT_MODEL_URLS = ["/models/EntireChain.glb"];
+const DEFAULT_CHAIN_LENGTH = 12;
+const DEFAULT_MODEL_URL = "/models/EntireChain.glb";
+const DEFAULT_MODEL_URLS = Array(DEFAULT_CHAIN_LENGTH).fill(DEFAULT_MODEL_URL);
 
-const MATERIAL_WEIGHTS: Record<string, number> = {
-  silver: 8.5,
-  gold: 15.2,
-  grey: 7.8,
-  black: 9.1,
-  white: 8.0,
-};
-
-const RECENT_DESIGNS_KEY = "cuban-chain-recent-designs";
-
-type ViewPreset = "front" | "top" | "left" | "right" | "isometric";
-type EnvironmentPreset =
-  | "city"
-  | "studio"
-  | "sunset"
-  | "dawn"
-  | "night"
-  | "warehouse"
-  | "forest"
-  | "apartment"
-  | "park"
-  | "lobby";
-
-const VIEW_PRESET_POSITIONS: Record<
-  ViewPreset,
-  { position: [number, number, number]; target: [number, number, number] }
-> = {
-  front: { position: [0, 0.35, 1.8], target: [0, 0.1, 0] },
-  top: { position: [0, 2.1, 0.001], target: [0, 0, 0] },
-  left: { position: [-1.8, 0.45, 0], target: [0, 0.1, 0] },
-  right: { position: [1.8, 0.45, 0], target: [0, 0.1, 0] },
-  isometric: { position: [0.78, 1.12, 1.45], target: [0, 0.1, 0] },
-};
-
-const VIEW_PRESETS: { id: ViewPreset; label: string; icon: React.ReactNode }[] = [
-  { id: "front", label: "Front", icon: <Visibility sx={{ fontSize: 16 }} /> },
-  { id: "top", label: "Top", icon: <ArrowUpward sx={{ fontSize: 16 }} /> },
-  { id: "left", label: "Left", icon: <ArrowBack sx={{ fontSize: 16 }} /> },
-  { id: "right", label: "Right", icon: <ArrowForward sx={{ fontSize: 16 }} /> },
-  { id: "isometric", label: "3D", icon: <ViewInAr sx={{ fontSize: 16 }} /> },
-];
-
-type HistoryState = {
-  chainConfig: ChainConfig;
-  modelUrls: string[];
-  selectedLinkIndex: number;
-  selectedSurface: SurfaceId;
-};
+type EnvironmentPreset = "city" | "studio" | "sunset" | "dawn" | "night" | "warehouse" | "forest" | "apartment" | "park" | "lobby";
 
 function cloneSurfaceConfig(surface: SurfaceConfig): SurfaceConfig {
   return {
@@ -138,27 +63,21 @@ function SlideTransition(props: any) {
 
 export default function Home() {
   const muiTheme = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down("lg"));
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down("sm"));
   const sceneRef = useRef<THREE.Object3D | null>(null);
   const orbitControlsRef = useRef<any>(null);
 
   const [modelUrls, setModelUrls] = useState<string[]>(DEFAULT_MODEL_URLS);
+  const [detectedLinkCount, setDetectedLinkCount] = useState<number>(MAX_CHAIN_LINKS);
   const [chainConfig, setChainConfig] = useState<ChainConfig>(() =>
     createDefaultConfig(DEFAULT_MODEL_URLS.length)
   );
   const [selectedSurface, setSelectedSurface] = useState<SurfaceId>("top1");
   const [selectedLinkIndex, setSelectedLinkIndex] = useState(0);
-  const [background, setBackground] = useState<EnvironmentPreset>("city");
-  const [autoRotate, setAutoRotate] = useState(false);
-  const [animationKey, setAnimationKey] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [background] = useState<EnvironmentPreset>("city");
+  const [autoRotate] = useState(false);
   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
-  const [desktopConfiguratorOpen, setDesktopConfiguratorOpen] = useState(true);
-  const [clipboardLink, setClipboardLink] = useState<LinkConfig | null>(null);
-  const [undoStack, setUndoStack] = useState<HistoryState[]>([]);
-  const [redoStack, setRedoStack] = useState<HistoryState[]>([]);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -172,33 +91,9 @@ export default function Home() {
     []
   );
 
-  const createHistoryState = useCallback(
-    (): HistoryState => ({
-      chainConfig: cloneChainConfig(chainConfig),
-      modelUrls: [...modelUrls],
-      selectedLinkIndex,
-      selectedSurface,
-    }),
-    [chainConfig, modelUrls, selectedLinkIndex, selectedSurface]
-  );
-
-  const restoreHistoryState = useCallback((state: HistoryState) => {
-    setChainConfig(cloneChainConfig(state.chainConfig));
-    setModelUrls([...state.modelUrls]);
-    setSelectedLinkIndex(state.selectedLinkIndex);
-    setSelectedSurface(state.selectedSurface);
-  }, []);
-
-  const pushUndo = useCallback(() => {
-    setUndoStack((previous) => [...previous.slice(-19), createHistoryState()]);
-    setRedoStack([]);
-  }, [createHistoryState]);
-
   useEffect(() => {
     setChainConfig((previous) => {
-      if (previous.chainLength === modelUrls.length) {
-        return previous;
-      }
+      if (previous.chainLength === modelUrls.length) return previous;
 
       const nextLinks = previous.links.map(cloneLinkConfig);
       while (nextLinks.length < modelUrls.length) {
@@ -218,112 +113,9 @@ export default function Home() {
     setSelectedLinkIndex((previous) => Math.min(previous, Math.max(modelUrls.length - 1, 0)));
   }, [modelUrls.length]);
 
-  useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
-
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = window.setTimeout(() => setIsLoading(false), 450);
-    return () => window.clearTimeout(timer);
-  }, [modelUrls]);
-
-  const chainWeight = useMemo(() => {
-    return chainConfig.links.reduce((total, link) => total + (MATERIAL_WEIGHTS[link.material] ?? 8), 0);
-  }, [chainConfig]);
-
-  const selectedLinkType = useMemo(() => {
-    return URL_TO_LINK_TYPE[modelUrls[selectedLinkIndex]] ?? "cuban-main";
-  }, [modelUrls, selectedLinkIndex]);
-
-  const handleUndo = useCallback(() => {
-    if (undoStack.length === 0) {
-      return;
-    }
-
-    const previous = undoStack[undoStack.length - 1];
-    setUndoStack((current) => current.slice(0, -1));
-    setRedoStack((current) => [...current, createHistoryState()]);
-    restoreHistoryState(previous);
-    showToast("Previous step restored", "info");
-  }, [createHistoryState, restoreHistoryState, showToast, undoStack]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStack.length === 0) {
-      return;
-    }
-
-    const next = redoStack[redoStack.length - 1];
-    setRedoStack((current) => current.slice(0, -1));
-    setUndoStack((current) => [...current, createHistoryState()]);
-    restoreHistoryState(next);
-    showToast("Step reapplied", "info");
-  }, [createHistoryState, redoStack, restoreHistoryState, showToast]);
-
-  const setChainConfigWithUndo = useCallback(
-    (nextConfig: ChainConfig) => {
-      pushUndo();
-      setChainConfig(nextConfig);
-    },
-    [pushUndo]
-  );
-
-  const handleSaveConfiguration = useCallback(() => {
-    const payload = { chainConfig, modelUrls };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "chain-configuration.json";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    try {
-      const recent = JSON.parse(localStorage.getItem(RECENT_DESIGNS_KEY) || "[]");
-      recent.unshift({
-        id: Date.now(),
-        name: `Design ${new Date().toLocaleDateString()}`,
-        chainConfig,
-        modelUrls,
-        timestamp: Date.now(),
-      });
-      localStorage.setItem(RECENT_DESIGNS_KEY, JSON.stringify(recent.slice(0, 10)));
-    } catch {}
-
-    showToast("Configuration saved", "success");
-  }, [chainConfig, modelUrls, showToast]);
-
-  const handleLoadConfiguration = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) {
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (loadEvent) => {
-        try {
-          const parsed = JSON.parse(loadEvent.target?.result as string);
-          if (!parsed.chainConfig || !parsed.modelUrls) {
-            throw new Error("Invalid configuration");
-          }
-
-          pushUndo();
-          setChainConfig(cloneChainConfig(parsed.chainConfig));
-          setModelUrls([...parsed.modelUrls]);
-          setSelectedLinkIndex(0);
-          setSelectedSurface("top1");
-          showToast("Configuration loaded", "success");
-        } catch {
-          showToast("Failed to load configuration", "error");
-        }
-      };
-      reader.readAsText(file);
-    },
-    [pushUndo, showToast]
-  );
+  const setChainConfigFromDock = useCallback((nextConfig: ChainConfig) => {
+    setChainConfig(cloneChainConfig(nextConfig));
+  }, []);
 
   const handleScreenshotCapture = useCallback(
     (options: ScreenshotOptions) => {
@@ -333,19 +125,9 @@ export default function Home() {
     [showToast]
   );
 
-  const handleToggleRecording = useCallback(() => {
-    setIsRecording((recording) => {
-      const next = !recording;
-      showToast(next ? "Recording started" : "Recording stopped", "info");
-      return next;
-    });
-    setAutoRotate((value) => (isRecording ? value : true));
-  }, [isRecording, showToast]);
-
   const handleRecordingComplete = useCallback(
     (videoBlob: Blob) => {
       setIsRecording(false);
-      setAutoRotate(false);
       const extension = videoBlob.type.includes("mp4") ? "mp4" : "webm";
       const url = URL.createObjectURL(videoBlob);
       const link = document.createElement("a");
@@ -362,212 +144,41 @@ export default function Home() {
 
   const handleChainLengthChange = useCallback(
     (length: number) => {
-      if (length < 1 || length === modelUrls.length) {
-        return;
-      }
+      const capped = Math.max(1, Math.min(Math.round(length), detectedLinkCount));
+      if (capped === modelUrls.length) return;
 
-      pushUndo();
+      const configTemplate =
+        chainConfig.links[selectedLinkIndex] ??
+        chainConfig.links[chainConfig.links.length - 1] ??
+        createDefaultLink();
 
-      if (length > modelUrls.length) {
-        const urlTemplate = modelUrls[selectedLinkIndex] ?? modelUrls[modelUrls.length - 1] ?? DEFAULT_MAIN_URL;
-        const configTemplate =
-          chainConfig.links[selectedLinkIndex] ??
-          chainConfig.links[chainConfig.links.length - 1] ??
-          createDefaultLink();
-
-        setModelUrls((previous) => {
-          const next = [...previous];
-          while (next.length < length) {
-            next.push(urlTemplate);
-          }
-          return next;
-        });
-
-        setChainConfig((previous) => {
-          const nextLinks = previous.links.map(cloneLinkConfig);
-          while (nextLinks.length < length) {
-            nextLinks.push(cloneLinkConfig(configTemplate));
-          }
-          return { chainLength: length, links: nextLinks };
-        });
-      } else {
-        setModelUrls((previous) => previous.slice(0, length));
-        setChainConfig((previous) => ({
-          chainLength: length,
-          links: previous.links.slice(0, length).map(cloneLinkConfig),
-        }));
-        setSelectedLinkIndex((previous) => Math.min(previous, length - 1));
-      }
-
-      showToast(`Chain updated to ${length} links`, "info");
-    },
-    [chainConfig.links, modelUrls, pushUndo, selectedLinkIndex, showToast]
-  );
-
-  const handleDuplicateSelectedLink = useCallback(() => {
-    const sourceUrl = modelUrls[selectedLinkIndex] ?? DEFAULT_MAIN_URL;
-    const sourceConfig = chainConfig.links[selectedLinkIndex] ?? createDefaultLink();
-
-    pushUndo();
-    setModelUrls((previous) => [
-      ...previous.slice(0, selectedLinkIndex + 1),
-      sourceUrl,
-      ...previous.slice(selectedLinkIndex + 1),
-    ]);
-    setChainConfig((previous) => ({
-      chainLength: previous.chainLength + 1,
-      links: [
-        ...previous.links.slice(0, selectedLinkIndex + 1),
-        cloneLinkConfig(sourceConfig),
-        ...previous.links.slice(selectedLinkIndex + 1).map(cloneLinkConfig),
-      ],
-    }));
-    setSelectedLinkIndex(selectedLinkIndex + 1);
-    showToast("Selected link duplicated", "success");
-  }, [chainConfig.links, modelUrls, pushUndo, selectedLinkIndex, showToast]);
-
-  const handleRemoveSelectedLink = useCallback(() => {
-    if (modelUrls.length <= 1) {
-      showToast("The chain needs at least one link", "warning");
-      return;
-    }
-
-    pushUndo();
-    setModelUrls((previous) => previous.filter((_, index) => index !== selectedLinkIndex));
-    setChainConfig((previous) => ({
-      chainLength: previous.chainLength - 1,
-      links: previous.links.filter((_, index) => index !== selectedLinkIndex).map(cloneLinkConfig),
-    }));
-    setSelectedLinkIndex((previous) => Math.max(0, Math.min(previous - 1, modelUrls.length - 2)));
-    showToast("Selected link removed", "info");
-  }, [modelUrls.length, pushUndo, selectedLinkIndex, showToast]);
-
-  const handleReplaceSelectedLinkType = useCallback(
-    (linkType: ChainLinkType) => {
-      pushUndo();
-      setModelUrls((previous) =>
-        previous.map((url, index) => (index === selectedLinkIndex ? LINK_TYPE_TO_URL[linkType] : url))
+      setModelUrls(Array(capped).fill(DEFAULT_MODEL_URL));
+      setChainConfig((previous) => {
+        const nextLinks = previous.links.map(cloneLinkConfig);
+        while (nextLinks.length < capped) {
+          nextLinks.push(cloneLinkConfig(configTemplate));
+        }
+        nextLinks.splice(capped);
+        return { chainLength: capped, links: nextLinks };
+      });
+      setSelectedLinkIndex((previous) =>
+        capped > modelUrls.length ? capped - 1 : Math.min(previous, capped - 1)
       );
-      showToast("Selected link type updated", "success");
     },
-    [pushUndo, selectedLinkIndex, showToast]
+    [chainConfig.links, detectedLinkCount, modelUrls.length, selectedLinkIndex]
   );
 
-  const handleAddLinkType = useCallback(
-    (linkType: ChainLinkType) => {
-      pushUndo();
-      setModelUrls((previous) => [
-        ...previous.slice(0, selectedLinkIndex + 1),
-        LINK_TYPE_TO_URL[linkType],
-        ...previous.slice(selectedLinkIndex + 1),
-      ]);
-      setChainConfig((previous) => ({
-        chainLength: previous.chainLength + 1,
-        links: [
-          ...previous.links.slice(0, selectedLinkIndex + 1),
-          createDefaultLink(),
-          ...previous.links.slice(selectedLinkIndex + 1).map(cloneLinkConfig),
-        ],
-      }));
-      setSelectedLinkIndex(selectedLinkIndex + 1);
-      showToast("New link added", "success");
-    },
-    [pushUndo, selectedLinkIndex, showToast]
-  );
-
-  const handleLoadPreset = useCallback(
-    (presetName: string) => {
-      const preset = CHAIN_PRESETS[presetName];
-      if (!preset) {
-        return;
-      }
-
-      pushUndo();
-      setModelUrls(preset.map((type) => LINK_TYPE_TO_URL[type]));
-      setChainConfig(createDefaultConfig(preset.length));
-      setSelectedLinkIndex(0);
-      setSelectedSurface("top1");
-      showToast(`${presetName} preset loaded`, "success");
-    },
-    [pushUndo, showToast]
-  );
-
-  const handleLoadFavorite = useCallback(
-    (config: ChainConfig, urls: string[]) => {
-      pushUndo();
-      setChainConfig(cloneChainConfig(config));
-      setModelUrls([...urls]);
-      setSelectedLinkIndex(0);
-      setSelectedSurface("top1");
-      showToast("Saved design loaded", "success");
-    },
-    [pushUndo, showToast]
-  );
-
-  const handleCopySelectedLink = useCallback(() => {
-    const link = chainConfig.links[selectedLinkIndex];
-    if (!link) {
-      return;
-    }
-    setClipboardLink(cloneLinkConfig(link));
-    showToast("Selected link copied", "info");
-  }, [chainConfig.links, selectedLinkIndex, showToast]);
-
-  const handlePasteToSelectedLink = useCallback(() => {
-    if (!clipboardLink) {
-      showToast("No copied link yet", "warning");
-      return;
-    }
-
-    pushUndo();
-    setChainConfig((previous) => ({
-      chainLength: previous.chainLength,
-      links: previous.links.map((link, index) =>
-        index === selectedLinkIndex ? cloneLinkConfig(clipboardLink) : cloneLinkConfig(link)
-      ),
-    }));
-    showToast("Copied link applied", "success");
-  }, [clipboardLink, pushUndo, selectedLinkIndex, showToast]);
-
-  const handleResetSelectedLink = useCallback(() => {
-    pushUndo();
-    setChainConfig((previous) => ({
-      chainLength: previous.chainLength,
-      links: previous.links.map((link, index) =>
-        index === selectedLinkIndex ? createDefaultLink() : cloneLinkConfig(link)
-      ),
-    }));
-    showToast("Selected link reset", "info");
-  }, [pushUndo, selectedLinkIndex, showToast]);
-
-  const handleReplayAnimation = useCallback(() => {
-    setAnimationKey((previous) => previous + 1);
-    showToast("Replay started", "info");
-  }, [showToast]);
-
-  const handleZoneClick = useCallback(
-    (linkIndex: number, surfaceId: SurfaceId) => {
-      setSelectedLinkIndex(linkIndex);
-      setSelectedSurface(surfaceId);
-      if (isMobile) {
-        setSidebarOpen(true);
-      }
-    },
-    [isMobile]
-  );
+  const handleZoneClick = useCallback((linkIndex: number, surfaceId: SurfaceId) => {
+    setSelectedLinkIndex(linkIndex);
+    setSelectedSurface(surfaceId);
+  }, []);
 
   const handleResetView = useCallback(() => {
-    if (!orbitControlsRef.current) {
-      return;
-    }
-    orbitControlsRef.current.reset();
-    showToast("View reset", "info");
-  }, [showToast]);
+    orbitControlsRef.current?.reset();
+  }, []);
 
   const handleZoomToFit = useCallback(() => {
-    if (!sceneRef.current || !orbitControlsRef.current) {
-      return;
-    }
+    if (!sceneRef.current || !orbitControlsRef.current) return;
 
     const box = new THREE.Box3().setFromObject(sceneRef.current);
     const center = box.getCenter(new THREE.Vector3());
@@ -581,74 +192,42 @@ export default function Home() {
     camera.position.set(center.x, center.y + size.y * 0.35, center.z + cameraDistance);
     controls.target.copy(center);
     controls.update();
-    showToast("Model fitted to view", "info");
-  }, [showToast]);
-
-  const handleViewPreset = useCallback((preset: ViewPreset) => {
-    if (!orbitControlsRef.current) {
-      return;
-    }
-
-    const controls = orbitControlsRef.current;
-    const camera = controls.object;
-    const presetData = VIEW_PRESET_POSITIONS[preset];
-    const startPosition = camera.position.clone();
-    const startTarget = controls.target.clone();
-    const endPosition = new THREE.Vector3(...presetData.position);
-    const endTarget = new THREE.Vector3(...presetData.target);
-    const startTime = performance.now();
-    const duration = 400;
-
-    const animate = (currentTime: number) => {
-      const progress = Math.min((currentTime - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      camera.position.lerpVectors(startPosition, endPosition, eased);
-      controls.target.lerpVectors(startTarget, endTarget, eased);
-      controls.update();
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
   }, []);
 
-  const handleDoneConfigurator = useCallback(() => {
-    if (isMobile) {
-      setSidebarOpen(false);
-      return;
-    }
-    setDesktopConfiguratorOpen(false);
-  }, [isMobile]);
+  const handleDetectedLinkCount = useCallback((count: number) => {
+    const supportedCount = Math.max(1, Math.min(count, MAX_CHAIN_LINKS));
+    setDetectedLinkCount((previousCount) =>
+      supportedCount === previousCount ? previousCount : supportedCount
+    );
+    setModelUrls((previous) => previous.slice(0, supportedCount));
+    setChainConfig((previous) => {
+      if (previous.chainLength <= supportedCount) return previous;
+      return {
+        chainLength: supportedCount,
+        links: previous.links.slice(0, supportedCount).map(cloneLinkConfig),
+      };
+    });
+    setSelectedLinkIndex((previous) => Math.min(previous, supportedCount - 1));
+  }, []);
 
-  const sidebar = (
-    <CustomizerPanel
-      chainConfig={chainConfig}
-      setChainConfig={setChainConfigWithUndo}
-      selectedSurface={selectedSurface}
-      setSelectedSurface={setSelectedSurface}
-      selectedLinkIndex={selectedLinkIndex}
-      setSelectedLinkIndex={setSelectedLinkIndex}
-      modelUrls={modelUrls}
-      onSaveConfiguration={handleSaveConfiguration}
-      onLoadConfiguration={handleLoadConfiguration}
-      onUndoAction={handleUndo}
-      onDone={handleDoneConfigurator}
-    />
-  );
+  const handleToggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  }, []);
 
   return (
     <Box
+      suppressHydrationWarning
       sx={{
-        display: "flex",
-        height: "100vh",
+        height: "100dvh",
         width: "100vw",
         overflow: "hidden",
-        bgcolor: "background.default",
+        bgcolor: "#f4f5f2",
       }}
     >
-      <LoadingOverlay isLoading={isLoading} message="Loading Cuban chain…" />
-
       <ScreenshotModal
         isOpen={showScreenshotModal}
         onClose={() => setShowScreenshotModal(false)}
@@ -657,7 +236,7 @@ export default function Home() {
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={2600}
+        autoHideDuration={2200}
         onClose={() => setSnackbar((current) => ({ ...current, open: false }))}
         TransitionComponent={SlideTransition}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
@@ -666,47 +245,53 @@ export default function Home() {
           severity={snackbar.severity}
           variant="filled"
           onClose={() => setSnackbar((current) => ({ ...current, open: false }))}
-          sx={{ borderRadius: 2 }}
+          sx={{ borderRadius: 1.5 }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
 
-      <Box sx={{ flex: 1, minWidth: 0, position: "relative", overflow: "hidden" }}>
+      <Box sx={{ height: "100%", position: "relative", overflow: "hidden" }}>
         <Box className="canvas-wrapper" sx={{ height: "100%" }}>
           <Canvas
-            gl={{ preserveDrawingBuffer: true }}
-            camera={{ position: [0.36, 0.64, 0.74], fov: 28 }}
+            frameloop={autoRotate || isRecording ? "always" : "demand"}
+            dpr={isMobile ? [0.8, 1.15] : [1, 1.35]}
+            performance={{ min: 0.6 }}
+            gl={{
+              preserveDrawingBuffer: false,
+              antialias: !isMobile,
+              powerPreference: "high-performance",
+            }}
+            camera={{
+              position: isMobile ? [0.3, 0.48, 0.86] : [0.36, 0.64, 0.74],
+              fov: isMobile ? 36 : 28,
+            }}
             style={{
               width: "100%",
               height: "100%",
-              background:
-                muiTheme.palette.mode === "dark"
-                  ? "radial-gradient(circle at top, #2d2b29 0%, #171717 60%, #111111 100%)"
-                  : "radial-gradient(circle at top, #f6f2eb 0%, #ece6dc 42%, #ddd8cf 100%)",
+              background: "linear-gradient(180deg, #fcfdff 0%, #eef4f3 100%)",
             }}
           >
             <Suspense fallback={null}>
-              <Stage environment={background} intensity={0.65} adjustCamera={false}>
+              <Stage environment={background} intensity={0.58} adjustCamera={false} shadows={false}>
                 <ModelViewer
-                  key={animationKey}
                   urls={modelUrls}
                   chainConfig={chainConfig}
-                  chainSpacing={0.03}
-                  combineModels={false}
-                  pairedDuplicate={modelUrls.length === 1 && modelUrls[0] === DEFAULT_MAIN_URL}
                   autoRotate={autoRotate}
                   isRecording={isRecording}
                   onRecordingComplete={handleRecordingComplete}
-                  sceneRef={sceneRef as React.MutableRefObject<any>}
+                  sceneRef={sceneRef as React.MutableRefObject<THREE.Object3D | null>}
                   onZoneClick={handleZoneClick}
                   selectedLinkIndex={selectedLinkIndex}
+                  onDetectedLinkCount={handleDetectedLinkCount}
                 />
               </Stage>
               <OrbitControls
                 ref={orbitControlsRef}
                 makeDefault
+                enableDamping={false}
                 enablePan={false}
+                target={[0, 0.03, 0]}
                 minDistance={0.22}
                 maxDistance={1.7}
                 minPolarAngle={0.08}
@@ -718,146 +303,117 @@ export default function Home() {
           </Canvas>
         </Box>
 
-        <Paper
-          elevation={0}
+        <Box
           sx={{
-            display: "none",
             position: "absolute",
-            top: 20,
-            left: 20,
-            zIndex: 2,
-            width: { xs: "calc(100% - 88px)", sm: 360 },
-            p: 1.75,
-            borderRadius: 4,
-            border: "1px solid",
-            borderColor: "divider",
-            bgcolor: "rgba(255,255,255,0.78)",
-            backdropFilter: "blur(18px)",
+            left: { xs: 10, sm: 22 },
+            top: { xs: 10, sm: 22 },
+            zIndex: 13,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            maxWidth: "calc(100vw - 96px)",
+            px: { xs: 1.1, sm: 1.35 },
+            py: 0.8,
+            borderRadius: "8px",
+            color: "#203035",
+            bgcolor: "rgba(249,251,252,0.84)",
+            border: "1px solid rgba(117,133,139,0.28)",
+            boxShadow: "0 12px 28px rgba(31,45,48,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
+            backdropFilter: "blur(10px) saturate(130%)",
+            WebkitBackdropFilter: "blur(10px) saturate(130%)",
           }}
         >
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
-            <Box>
-              <Typography variant="overline" sx={{ letterSpacing: "0.18em", color: "text.secondary" }}>
-                Cuban Builder
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
-                Compact chain workbench
-              </Typography>
-            </Box>
-            {isMobile && (
-              <Fab size="small" color="primary" onClick={() => setSidebarOpen(true)}>
-                <MenuIcon sx={{ fontSize: 20 }} />
-              </Fab>
-            )}
-          </Stack>
+          <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.1, whiteSpace: "nowrap" }}>
+            Cuban Link
+          </Typography>
+          <Box
+            sx={{
+              display: { xs: "none", sm: "block" },
+              width: 1,
+              alignSelf: "stretch",
+              bgcolor: "rgba(79,93,99,0.22)",
+            }}
+          />
+          <Typography
+            variant="caption"
+            sx={{ display: { xs: "none", sm: "block" }, color: "#52636a", fontWeight: 700, whiteSpace: "nowrap" }}
+          >
+            {chainConfig.chainLength} links
+          </Typography>
+        </Box>
 
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1.5 }}>
-            <Chip label={`${modelUrls.length} links`} size="small" />
-            <Chip label={`Selected ${selectedLinkIndex + 1}`} size="small" />
-            <Chip
-              label={selectedLinkType.replace("cuban-", "").replaceAll("-", " ")}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-            <Chip label={`${chainWeight.toFixed(1)}g`} size="small" variant="outlined" />
-          </Stack>
-
-          <Stack direction="row" spacing={0.5} sx={{ mt: 1.5, flexWrap: "wrap" }}>
-            <Tooltip title="Undo">
-              <span>
-                <IconButton size="small" onClick={handleUndo} disabled={undoStack.length === 0}>
-                  <Undo sx={{ fontSize: 18 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Redo">
-              <span>
-                <IconButton size="small" onClick={handleRedo} disabled={redoStack.length === 0}>
-                  <Redo sx={{ fontSize: 18 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Reset view">
-              <IconButton size="small" onClick={handleResetView}>
-                <Refresh sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Fit model">
-              <IconButton size="small" onClick={handleZoomToFit}>
-                <FitScreen sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={autoRotate ? "Stop rotation" : "Start rotation"}>
-              <IconButton size="small" onClick={() => setAutoRotate((value) => !value)} color={autoRotate ? "primary" : "default"}>
-                <ThreeDRotation sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Capture image">
-              <IconButton size="small" onClick={() => setShowScreenshotModal(true)}>
-                <CameraAlt sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title={isRecording ? "Stop recording" : "Start recording"}>
-              <IconButton
-                size="small"
-                onClick={handleToggleRecording}
-                color={isRecording ? "error" : "default"}
-              >
-                {isRecording ? <StopIcon sx={{ fontSize: 18 }} /> : <Videocam sx={{ fontSize: 18 }} />}
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Replay entrance">
-              <IconButton size="small" onClick={handleReplayAnimation}>
-                <Replay sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-
-          <Stack direction="row" spacing={0.75} sx={{ mt: 1.5, flexWrap: "wrap" }}>
-            {VIEW_PRESETS.map((preset) => (
-              <Chip
-                key={preset.id}
-                icon={preset.icon as any}
-                label={preset.label}
-                onClick={() => handleViewPreset(preset.id)}
-                variant="outlined"
-                size="small"
-              />
-            ))}
-          </Stack>
-        </Paper>
-      </Box>
-
-      {isMobile ? (
-        <SwipeableDrawer
-          anchor="right"
-          open={sidebarOpen}
-          onOpen={() => setSidebarOpen(true)}
-          onClose={() => setSidebarOpen(false)}
-          PaperProps={{
-            sx: {
-              width: "min(100vw, 390px)",
-              bgcolor: "background.paper",
+        <Stack
+          direction={{ xs: "row", sm: "column" }}
+          spacing={1}
+          sx={{
+            position: "absolute",
+            right: { xs: 10, sm: 22 },
+            top: { xs: 10, sm: "50%" },
+            transform: { xs: "none", sm: "translateY(-50%)" },
+            zIndex: 12,
+            p: 0.6,
+            borderRadius: "8px",
+            bgcolor: "rgba(249,251,252,0.84)",
+            border: "1px solid rgba(117,133,139,0.28)",
+            boxShadow: "0 12px 28px rgba(31,45,48,0.1), inset 0 1px 0 rgba(255,255,255,0.85)",
+            backdropFilter: "blur(10px) saturate(130%)",
+            WebkitBackdropFilter: "blur(10px) saturate(130%)",
+            "& .MuiIconButton-root": {
+              width: { xs: 34, sm: 36 },
+              height: { xs: 34, sm: 36 },
+              color: "#263b40",
+              borderRadius: "8px",
+              backgroundColor: "rgba(255,255,255,0.74)",
+              border: "1px solid rgba(117,133,139,0.28)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.78)",
+              "&:hover": { bgcolor: "rgba(255,255,255,0.96)" },
             },
           }}
         >
-          {sidebar}
-        </SwipeableDrawer>
-      ) : desktopConfiguratorOpen ? (
-        <Paper
-          elevation={0}
-          square
+          <Tooltip title="Reset view" placement="left">
+            <IconButton size="small" onClick={handleResetView}>
+              <Refresh sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Fit model" placement="left">
+            <IconButton size="small" onClick={handleZoomToFit}>
+              <FitScreen sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Screenshot" placement="left">
+            <IconButton size="small" onClick={() => setShowScreenshotModal(true)}>
+              <CameraAlt sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Fullscreen" placement="left">
+            <IconButton size="small" onClick={handleToggleFullscreen}>
+              <ViewInAr sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+
+        <Box
           sx={{
-            width: SIDEBAR_WIDTH,
-            borderLeft: "1px solid",
-            borderColor: "divider",
-            bgcolor: "background.paper",
+            position: "absolute",
+            left: "50%",
+            bottom: { xs: "calc(env(safe-area-inset-bottom) + 8px)", sm: 24 },
+            transform: "translateX(-50%)",
+            zIndex: 14,
+            width: { xs: "calc(100vw - 16px)", sm: "auto" },
           }}
         >
-          {sidebar}
-        </Paper>
-      ) : null}
+          <SimpleCustomizerDock
+            chainConfig={chainConfig}
+            setChainConfig={setChainConfigFromDock}
+            selectedSurface={selectedSurface}
+            setSelectedSurface={setSelectedSurface}
+            selectedLinkIndex={selectedLinkIndex}
+            setSelectedLinkIndex={setSelectedLinkIndex}
+            onChainLengthChange={handleChainLengthChange}
+          />
+        </Box>
+      </Box>
     </Box>
   );
 }

@@ -6,20 +6,18 @@ import type { SurfaceId } from "./chain-config-types";
  * These can be tuned based on actual model geometry
  */
 const ZONE_THRESHOLDS = {
-    // Y threshold to distinguish top surfaces from side surfaces
-    topYThreshold: 0.05,
-    // X threshold for left/right detection (near center is ambiguous)
-    sideXThreshold: 0.01,
-    // Z threshold to split top into top1/top2
-    topZThreshold: 0,
+    // The current GLB's top plates sit around y=0.02 after scaling.
+    topYThreshold: 0.012,
+    // Positive Z is the first/top/front surface set, negative Z is the duplicate side.
+    surfaceZThreshold: 0,
 };
 
 /**
  * Detect which zone (side1, side2, top1, top2) was clicked based on local position
  * 
  * Logic:
- * - If y > threshold → Top surface (split by z: positive = top1, negative = top2)
- * - If y <= threshold → Side surface (split by x: negative = side1/left, positive = side2/right)
+ * - If y > threshold -> Top surface (split by z: positive = top1, negative = top2)
+ * - If y <= threshold -> Side surface (split by z: positive = side1, negative = side2)
  * 
  * @param localPoint - The click point in local coordinates of the link mesh
  * @returns The detected SurfaceId
@@ -28,19 +26,11 @@ export function detectZoneFromLocalPosition(localPoint: THREE.Vector3): SurfaceI
     // Check if we're on a top surface (y is above threshold)
     if (localPoint.y > ZONE_THRESHOLDS.topYThreshold) {
         // Split top into top1 (front/positive z) and top2 (back/negative z)
-        return localPoint.z > ZONE_THRESHOLDS.topZThreshold ? "top1" : "top2";
+        return localPoint.z > ZONE_THRESHOLDS.surfaceZThreshold ? "top1" : "top2";
     }
 
-    // Side surfaces - split by x axis
-    // Left side (negative x) = side1, Right side (positive x) = side2
-    if (localPoint.x < -ZONE_THRESHOLDS.sideXThreshold) {
-        return "side1";
-    } else if (localPoint.x > ZONE_THRESHOLDS.sideXThreshold) {
-        return "side2";
-    }
-
-    // Ambiguous center zone - default to top1
-    return "top1";
+    // Side surfaces mirror across Z in this asset.
+    return localPoint.z > ZONE_THRESHOLDS.surfaceZThreshold ? "side1" : "side2";
 }
 
 /**
@@ -81,20 +71,18 @@ export function detectZoneFromNormalAndPosition(
     // If Y component of normal is high, it's pointing UP -> Top Surface
     const isFacingUp = normal.y > 0.5;
 
-    // If X component is high, it's pointing SIDEWAYS -> Side Surface
-    const isFacingSide = Math.abs(normal.x) > 0.5;
+    // Side faces in this mesh mainly face toward +/-Z. Keep X as a fallback
+    // for compatible future link assets.
+    const isFacingSide = Math.abs(normal.z) > 0.45 || Math.abs(normal.x) > 0.6;
 
     // 2. Determine Zone
     if (isFacingUp) {
         // It's a Top face - split front/back by Z position
-        // Use a small Z threshold (0) to split Top 1 vs Top 2
-        return position.z > ZONE_THRESHOLDS.topZThreshold ? "top1" : "top2";
+        return position.z > ZONE_THRESHOLDS.surfaceZThreshold ? "top1" : "top2";
     }
 
     if (isFacingSide) {
-        // It's a Side face - split left/right by X position
-        // Negative X is Left (side1), Positive X is Right (side2)
-        return position.x < 0 ? "side1" : "side2";
+        return position.z > ZONE_THRESHOLDS.surfaceZThreshold ? "side1" : "side2";
     }
 
     // 3. Ambiguous/Curved cases (Corners)

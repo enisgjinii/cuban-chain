@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button,
   IconButton,
   Typography,
   Box,
@@ -17,10 +16,13 @@ import { Keyboard, Close } from "@mui/icons-material";
 interface KeyboardShortcutsProps {
   onSave?: () => void;
   onUndo?: () => void;
+  onRedo?: () => void;
   onRotateToggle?: () => void;
   onReplayAnimation?: () => void;
   onViewPreset?: (preset: number) => void;
   onCaptureImage?: () => void;
+  onToggleFullscreen?: () => void;
+  onToggleHideUI?: () => void;
 }
 
 const SHORTCUTS = [
@@ -33,7 +35,6 @@ const SHORTCUTS = [
   { key: "1–5", label: "View Presets", description: "Switch camera angle" },
   { key: "P", label: "Screenshot", description: "Capture screenshot" },
   { key: "F", label: "Fullscreen", description: "Toggle fullscreen mode" },
-  { key: "G", label: "Grid", description: "Toggle grid overlay" },
   { key: "H", label: "Hide UI", description: "Toggle UI visibility" },
   { key: "Esc", label: "Close", description: "Close dialogs/panels" },
 ];
@@ -41,43 +42,124 @@ const SHORTCUTS = [
 export function KeyboardShortcuts({
   onSave,
   onUndo,
+  onRedo,
   onRotateToggle,
   onReplayAnimation,
   onViewPreset,
   onCaptureImage,
+  onToggleFullscreen,
+  onToggleHideUI,
 }: KeyboardShortcutsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
+  // Always hold the latest callbacks without re-registering the listener
+  const cbRef = useRef({ onSave, onUndo, onRedo, onRotateToggle, onReplayAnimation, onViewPreset, onCaptureImage, onToggleFullscreen, onToggleHideUI });
+  useEffect(() => {
+    cbRef.current = { onSave, onUndo, onRedo, onRotateToggle, onReplayAnimation, onViewPreset, onCaptureImage, onToggleFullscreen, onToggleHideUI };
+  });
+
+  // Stable modal-open ref so the keydown handler can read it without re-registering
+  const isModalOpenRef = useRef(false);
+  useEffect(() => {
+    isModalOpenRef.current = isModalOpen;
+  }, [isModalOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement
       )
         return;
 
+      // Open shortcuts dialog
       if (event.key === "?" || (event.key === "/" && event.shiftKey)) {
         event.preventDefault();
         setIsModalOpen(true);
         return;
       }
 
+      // Close shortcuts dialog
       if (event.key === "Escape") {
-        setIsModalOpen(false);
+        if (isModalOpenRef.current) setIsModalOpen(false);
         return;
       }
-    },
-    []
-  );
 
-  useEffect(() => {
+      const cb = cbRef.current;
+
+      // Ctrl/Cmd + S — Save
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        cb.onSave?.();
+        return;
+      }
+
+      // Ctrl/Cmd + Z — Undo
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key === "z") {
+        event.preventDefault();
+        cb.onUndo?.();
+        return;
+      }
+
+      // Ctrl/Cmd + Y  or  Ctrl/Cmd + Shift + Z — Redo
+      if (
+        ((event.ctrlKey || event.metaKey) && event.key === "y") ||
+        ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === "z")
+      ) {
+        event.preventDefault();
+        cb.onRedo?.();
+        return;
+      }
+
+      // No more modifier-key shortcuts below this point
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      // R — Toggle auto-rotation
+      if (event.key === "r" || event.key === "R") {
+        cb.onRotateToggle?.();
+        return;
+      }
+
+      // Space — Replay entrance animation
+      if (event.key === " ") {
+        event.preventDefault();
+        cb.onReplayAnimation?.();
+        return;
+      }
+
+      // P — Capture screenshot
+      if (event.key === "p" || event.key === "P") {
+        cb.onCaptureImage?.();
+        return;
+      }
+
+      // F — Toggle fullscreen
+      if (event.key === "f" || event.key === "F") {
+        cb.onToggleFullscreen?.();
+        return;
+      }
+
+      // H — Toggle UI visibility
+      if (event.key === "h" || event.key === "H") {
+        cb.onToggleHideUI?.();
+        return;
+      }
+
+      // 1–5 — View presets
+      const num = Number.parseInt(event.key, 10);
+      if (num >= 1 && num <= 5) {
+        cb.onViewPreset?.(num - 1);
+        return;
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  }, []); // register once — reads latest values via refs
 
   return (
     <>
-      {/* Floating shortcut hint button */}
+      {/* Floating trigger button */}
       <Tooltip title="Keyboard shortcuts (?)" arrow>
         <IconButton
           onClick={() => setIsModalOpen(true)}
@@ -107,7 +189,7 @@ export function KeyboardShortcuts({
         onClose={() => setIsModalOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3, bgcolor: "background.paper" } }}
+        PaperProps={{ sx: { borderRadius: "6px", bgcolor: "background.paper" } }}
       >
         <DialogTitle
           sx={{
@@ -116,6 +198,7 @@ export function KeyboardShortcuts({
             justifyContent: "space-between",
             borderBottom: "1px solid",
             borderColor: "divider",
+            py: 1.5,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -138,8 +221,9 @@ export function KeyboardShortcuts({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  p: 1,
-                  borderRadius: 1.5,
+                  px: 1,
+                  py: 0.75,
+                  borderRadius: "4px",
                   "&:hover": { bgcolor: "action.hover" },
                 }}
               >
@@ -156,14 +240,15 @@ export function KeyboardShortcuts({
                   sx={{
                     px: 1,
                     py: 0.5,
-                    fontSize: "0.75rem",
+                    fontSize: "0.72rem",
                     fontFamily: "monospace",
                     bgcolor: "action.hover",
                     border: "1px solid",
                     borderColor: "divider",
-                    borderRadius: 1,
+                    borderRadius: "3px",
                     color: "text.secondary",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
                   }}
                 >
                   {shortcut.key}
@@ -179,7 +264,7 @@ export function KeyboardShortcuts({
             borderTop: "1px solid",
             borderColor: "divider",
             bgcolor: "action.hover",
-            py: 1.5,
+            py: 1.25,
           }}
         >
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
@@ -190,8 +275,9 @@ export function KeyboardShortcuts({
                 px: 0.5,
                 py: 0.25,
                 bgcolor: "action.selected",
-                borderRadius: 0.5,
+                borderRadius: "3px",
                 fontSize: "0.7rem",
+                fontFamily: "monospace",
               }}
             >
               Esc

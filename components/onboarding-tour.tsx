@@ -45,7 +45,7 @@ const TOUR_STEPS = [
     id: 3,
     title: "Customize Link Zones",
     description:
-      "Each link has 4 customizable zones. Add diamonds, moissanites, enamel, or engravings to any zone.",
+      "Each link has 4 customizable surfaces. Use empty metal, gemstones, enamel, or engravings on each one.",
     icon: <LinkIcon sx={{ fontSize: 32, color: "#3b82f6" }} />,
   },
   {
