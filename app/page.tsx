@@ -21,6 +21,9 @@ import {
 } from "@mui/material";
 import {
   CameraAlt,
+  ChevronLeft,
+  ChevronRight,
+  Download,
   FitScreen,
   Fullscreen,
   Refresh,
@@ -45,12 +48,14 @@ type EnvironmentPreset =
 
 // ── Shared glass surface style ──────────────────────────────────────────────
 const glass = {
-  bgcolor: "rgba(252,253,255,0.82)",
-  border: "1px solid rgba(255,255,255,0.78)",
-  backdropFilter: "blur(28px) saturate(180%) brightness(1.04)",
-  WebkitBackdropFilter: "blur(28px) saturate(180%) brightness(1.04)",
+  bgcolor: "rgba(250,253,253,0.95)",
+  backgroundImage:
+    "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,250,250,0.88) 48%, rgba(255,255,255,0.74))",
+  border: "1px solid rgba(255,255,255,0.92)",
+  backdropFilter: "blur(18px) saturate(155%) brightness(1.03)",
+  WebkitBackdropFilter: "blur(18px) saturate(155%) brightness(1.03)",
   boxShadow:
-    "0 0 0 0.5px rgba(255,255,255,0.55), 0 4px 16px rgba(31,45,48,0.10), 0 16px 40px rgba(31,45,48,0.08), inset 0 1.5px 0 rgba(255,255,255,0.98)",
+    "0 0 0 0.5px rgba(255,255,255,0.72), 0 5px 18px rgba(31,45,48,0.12), 0 18px 42px rgba(31,45,48,0.10), inset 0 1.5px 0 rgba(255,255,255,0.99), inset 0 -18px 30px rgba(210,226,226,0.20)",
 } as const;
 
 // ── Camera view presets ─────────────────────────────────────────────────────
@@ -128,6 +133,7 @@ export default function Home() {
   const [autoRotate, setAutoRotate] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isCapturingGIF, setIsCapturingGIF] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const [gifProgress, setGifProgress] = useState<"idle" | "capturing" | "encoding">("idle");
   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [snackbar, setSnackbar] = useState<{
@@ -362,6 +368,9 @@ export default function Home() {
   }, [isMobile]);
 
   // ── Compact sidebar button ──────────────────────────────────────────────
+  const sidebarExpanded = toolsExpanded && !isMobile;
+  const showDetailedTools = sidebarExpanded;
+
   const sidebarBtn = (
     label: string,
     icon: React.ReactNode,
@@ -369,16 +378,19 @@ export default function Home() {
     active = false,
     disabled = false,
   ) => (
-    <Tooltip title={label} placement="left" key={label}>
+    <Tooltip title={sidebarExpanded ? "" : label} placement="left" key={label}>
       <span>
         <IconButton
           size="small"
           disabled={disabled}
           onClick={onClick}
           sx={{
-            width: 32,
-            height: 32,
-            borderRadius: "10px",
+            width: sidebarExpanded ? 124 : 30,
+            height: 30,
+            borderRadius: "8px",
+            justifyContent: sidebarExpanded ? "flex-start" : "center",
+            gap: sidebarExpanded ? 1 : 0,
+            px: sidebarExpanded ? 1.1 : 0,
             bgcolor: active ? "rgba(20,112,105,0.12)" : "rgba(255,255,255,0.62)",
             color: active ? "#0a3530" : "#1a3035",
             border: active ? "1px solid rgba(20,112,105,0.30)" : "1px solid rgba(117,133,139,0.20)",
@@ -393,13 +405,50 @@ export default function Home() {
           }}
         >
           {icon}
+          {sidebarExpanded && (
+            <Typography
+              component="span"
+              sx={{
+                fontSize: 10,
+                fontWeight: 800,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                letterSpacing: 0,
+              }}
+            >
+              {label}
+            </Typography>
+          )}
         </IconButton>
       </span>
     </Tooltip>
   );
 
   const SD = () => (
-    <Divider sx={{ borderColor: "rgba(79,93,99,0.11)", my: "3px" }} />
+    <Divider flexItem sx={{ borderColor: "rgba(79,93,99,0.11)", my: "3px" }} />
+  );
+
+  const sidebarGroupLabel = (label: string) => (
+    sidebarExpanded ? (
+      <Typography
+        variant="caption"
+        sx={{
+          width: "100%",
+          px: 0.7,
+          pt: 0.2,
+          color: "rgba(10,53,48,0.54)",
+          fontSize: 9,
+          fontWeight: 900,
+          letterSpacing: 0,
+          lineHeight: 1.4,
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </Typography>
+    ) : null
   );
 
   return (
@@ -409,7 +458,8 @@ export default function Home() {
         height: "100dvh",
         width: "100vw",
         overflow: "hidden",
-        background: "linear-gradient(160deg, #f0f4ff 0%, #e8f4f3 45%, #f0ede8 100%)",
+        background:
+          "radial-gradient(circle at 18% 12%, rgba(255,255,255,0.74), rgba(255,255,255,0) 28%), linear-gradient(160deg, #eef4f7 0%, #e8f4f3 50%, #efeee9 100%)",
       }}
     >
       <ScreenshotModal
@@ -429,23 +479,23 @@ export default function Home() {
           severity={snackbar.severity}
           variant="filled"
           onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-          sx={{ borderRadius: "14px" }}
+          sx={{ borderRadius: "8px" }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
 
       <Box sx={{ height: "100%", position: "relative", overflow: "hidden" }}>
-        {/* Canvas — paddingBottom reserves space for the dock so the model is visually centered */}
+        {/* Canvas stays full-bleed; controls are overlays so there is no renderer/background seam. */}
         <Box
           className="canvas-wrapper"
-          sx={{ height: "100%", pb: { xs: "220px", sm: "270px" } }}
+          sx={{ position: "absolute", inset: 0 }}
         >
           <Canvas
             frameloop={autoRotate || isRecording ? "always" : "demand"}
             dpr={isMobile ? [0.8, 1.15] : [1, 1.35]}
             performance={{ min: 0.6 }}
-            gl={{ preserveDrawingBuffer: false, antialias: !isMobile, powerPreference: "high-performance" }}
+            gl={{ preserveDrawingBuffer: false, antialias: !isMobile, powerPreference: "high-performance", alpha: true }}
             camera={{
               position: isMobile ? [0.3, 0.48, 0.86] : [0.36, 0.64, 0.74],
               fov: isMobile ? 36 : 28,
@@ -497,12 +547,12 @@ export default function Home() {
             gap: 1,
             px: { xs: 1.4, sm: 1.6 },
             py: 0.9,
-            borderRadius: "18px",
+            borderRadius: "8px",
             color: "#1a2f33",
             ...glass,
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+          <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.1, letterSpacing: 0, whiteSpace: "nowrap" }}>
             Cuban Link
           </Typography>
           <Box sx={{ display: { xs: "none", sm: "block" }, width: "1px", alignSelf: "stretch", bgcolor: "rgba(79,93,99,0.18)" }} />
@@ -525,57 +575,73 @@ export default function Home() {
             transform: { xs: "none", sm: "translateY(-50%)" },
             zIndex: 12,
             p: "5px",
-            borderRadius: "18px",
+            borderRadius: "8px",
             display: "flex",
             flexDirection: { xs: "row", sm: "column" },
-            alignItems: "center",
+            alignItems: sidebarExpanded ? "stretch" : "center",
             gap: "3px",
+            width: { xs: "auto", sm: sidebarExpanded ? 136 : 42 },
+            transition: "width 0.18s ease, border-radius 0.18s ease",
             ...glass,
           }}
         >
+          {sidebarBtn(
+            sidebarExpanded ? "Collapse tools" : "Expand tools",
+            sidebarExpanded ? <ChevronRight sx={{ fontSize: 16 }} /> : <ChevronLeft sx={{ fontSize: 16 }} />,
+            () => setToolsExpanded((value) => !value),
+          )}
+          <SD />
           {/* Camera */}
+          {sidebarGroupLabel("Camera")}
           {sidebarBtn("Reset view", <Refresh sx={{ fontSize: 16 }} />, handleResetView)}
-          {sidebarBtn("Fit model in view", <FitScreen sx={{ fontSize: 16 }} />, handleZoomToFit)}
+          {sidebarBtn("Fit model", <FitScreen sx={{ fontSize: 16 }} />, handleZoomToFit)}
 
-          {/* View presets — hidden on mobile */}
-          <Box sx={{ display: { xs: "none", sm: "contents" } }}>
-            <SD />
-            {(Object.entries(CAMERA_PRESETS) as [CameraPreset, typeof CAMERA_PRESETS[CameraPreset]][]).map(
-              ([key, preset]) =>
-                sidebarBtn(
-                  `${preset.label} view`,
-                  <Typography sx={{ fontSize: 12, lineHeight: 1, fontWeight: 800 }}>{preset.icon}</Typography>,
-                  () => handleCameraPreset(key),
-                ),
-            )}
-          </Box>
+          {showDetailedTools && (
+            <>
+              <SD />
+              {sidebarGroupLabel("Views")}
+              {(Object.entries(CAMERA_PRESETS) as [CameraPreset, typeof CAMERA_PRESETS[CameraPreset]][]).map(
+                ([key, preset]) =>
+                  sidebarBtn(
+                    preset.label,
+                    <Typography sx={{ fontSize: 12, lineHeight: 1, fontWeight: 800 }}>{preset.icon}</Typography>,
+                    () => handleCameraPreset(key),
+                  ),
+              )}
+            </>
+          )}
 
           {/* Export */}
-          <SD />
-          {sidebarBtn("Export PNG", <Typography sx={{ fontSize: 9, fontWeight: 800 }}>PNG</Typography>, () => handleQuickExport("png"))}
-          {sidebarBtn("Export JPG", <Typography sx={{ fontSize: 9, fontWeight: 800 }}>JPG</Typography>, () => handleQuickExport("jpg"))}
-          {sidebarBtn("Export WebP", <Typography sx={{ fontSize: 9, fontWeight: 800 }}>WP</Typography>, () => handleQuickExport("webp"))}
-          {sidebarBtn(
-            isRecording ? "Stop video recording" : "Record 360° video",
-            isRecording
-              ? <Box sx={{ width: 9, height: 9, borderRadius: "2px", bgcolor: "#e53935" }} />
-              : <CameraAlt sx={{ fontSize: 15 }} />,
-            isRecording ? handleStopVideo : handleStartVideo,
-            isRecording,
-          )}
-          {sidebarBtn(
-            gifProgress !== "idle" ? `GIF ${gifProgress}…` : "Export animated GIF",
-            gifProgress !== "idle"
-              ? <CircularProgress size={12} thickness={5} sx={{ color: "#0a3530" }} />
-              : <Typography sx={{ fontSize: 9, fontWeight: 800 }}>GIF</Typography>,
-            handleStartGIF,
-            gifProgress !== "idle",
-            gifProgress !== "idle",
+          {showDetailedTools && (
+            <>
+              <SD />
+              {sidebarGroupLabel("Export")}
+              {sidebarBtn("PNG", <Download sx={{ fontSize: 15 }} />, () => handleQuickExport("png"))}
+              {sidebarBtn("JPG", <Download sx={{ fontSize: 15 }} />, () => handleQuickExport("jpg"))}
+              {sidebarBtn("WebP", <Download sx={{ fontSize: 15 }} />, () => handleQuickExport("webp"))}
+              {sidebarBtn(
+                isRecording ? "Stop video" : "Record video",
+                isRecording
+                  ? <Box sx={{ width: 9, height: 9, borderRadius: "2px", bgcolor: "#e53935" }} />
+                  : <CameraAlt sx={{ fontSize: 15 }} />,
+                isRecording ? handleStopVideo : handleStartVideo,
+                isRecording,
+              )}
+              {sidebarBtn(
+                gifProgress !== "idle" ? `GIF ${gifProgress}` : "GIF",
+                gifProgress !== "idle"
+                  ? <CircularProgress size={12} thickness={5} sx={{ color: "#0a3530" }} />
+                  : <Download sx={{ fontSize: 15 }} />,
+                handleStartGIF,
+                gifProgress !== "idle",
+                gifProgress !== "idle",
+              )}
+            </>
           )}
 
           <SD />
-          {sidebarBtn("Screenshot options", <CameraAlt sx={{ fontSize: 15 }} />, () => setShowScreenshotModal(true))}
-          {sidebarBtn("Toggle fullscreen", <Fullscreen sx={{ fontSize: 15 }} />, handleToggleFullscreen)}
+          {sidebarBtn("Screenshot", <CameraAlt sx={{ fontSize: 15 }} />, () => setShowScreenshotModal(true))}
+          {sidebarBtn("Fullscreen", <Fullscreen sx={{ fontSize: 15 }} />, handleToggleFullscreen)}
         </Box>
 
         {/* ── Customizer dock ──────────────────────────────────────── */}

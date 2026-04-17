@@ -9,10 +9,12 @@ import {
   Checkbox,
   Collapse,
   Divider,
+  FloatingIndicator,
   Group,
   ScrollArea,
   Slider,
   Stack,
+  Tabs,
   Text,
   Tooltip,
 } from "@mantine/core";
@@ -173,11 +175,29 @@ export function SimpleCustomizerDock({
   const [applyToPair, setApplyToPair] = useState(false);
   const [applyToAllLinks, setApplyToAllLinks] = useState(false);
   const [applyMaterialToAllLinks, setApplyMaterialToAllLinks] = useState(false);
+  const [tabsRootRef, setTabsRootRef] = useState<HTMLDivElement | null>(null);
+  const [tabControlsRefs, setTabControlsRefs] = useState<Record<string, HTMLButtonElement | null>>({});
 
   const linkCount = chainConfig.links.length;
   const activeSurfaceLabel = useMemo(
     () => SURFACES.find((surface) => surface.id === selectedSurface)?.label ?? "Surface",
     [selectedSurface]
+  );
+
+  const tabControlRefCallbacks = useMemo(
+    () =>
+      TABS.reduce(
+        (callbacks, tab) => {
+          callbacks[tab.id] = (node: HTMLButtonElement | null) => {
+            setTabControlsRefs((current) =>
+              current[tab.id] === node ? current : { ...current, [tab.id]: node }
+            );
+          };
+          return callbacks;
+        },
+        {} as Record<DockTab, (node: HTMLButtonElement | null) => void>
+      ),
+    []
   );
 
   useEffect(() => {
@@ -697,27 +717,38 @@ export function SimpleCustomizerDock({
           <InfoTip text="Your current editing target. Tap a link on the 3D model or use Chain › Select a link to change it." />
         </Group>
         <Divider className={classes.softDivider} my={6} />
-        <ScrollArea.Autosize mah="52dvh" type="auto" scrollbarSize={6} className={classes.contentScroll}>
+        <ScrollArea.Autosize mah="52dvh" type="hover" scrollbarSize={6} className={classes.contentScroll}>
           {/* key forces remount → CSS animation fires on every tab switch */}
           <Box key={activeTab} p={0} className={classes.tabContent}>{renderTabContent()}</Box>
         </ScrollArea.Autosize>
       </Box>
 
-      <Group gap={0} wrap="nowrap" className={classes.tabPill}>
-        {TABS.map((tab) => (
-          <Tooltip key={tab.id} label={tab.hint} withArrow openDelay={250} position="top" multiline w={220}>
-            <Button
-              fullWidth
-              size="xs"
-              variant="subtle"
-              className={`${classes.tabButton} ${activeTab === tab.id ? classes.tabButtonActive : ""}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </Button>
-          </Tooltip>
-        ))}
-      </Group>
+      <Tabs
+        variant="none"
+        value={activeTab}
+        onChange={(value) => value && setActiveTab(value as DockTab)}
+        className={classes.tabs}
+      >
+        <Tabs.List ref={setTabsRootRef} className={`${classes.tabPill} ${classes.tabsList}`}>
+          {TABS.map((tab) => (
+            <Tooltip key={tab.id} label={tab.hint} withArrow openDelay={250} position="top" multiline w={220}>
+              <Tabs.Tab
+                value={tab.id}
+                ref={tabControlRefCallbacks[tab.id]}
+                className={classes.floatingTab}
+              >
+                {tab.label}
+              </Tabs.Tab>
+            </Tooltip>
+          ))}
+
+          <FloatingIndicator
+            target={tabControlsRefs[activeTab] ?? null}
+            parent={tabsRootRef}
+            className={classes.floatingIndicator}
+          />
+        </Tabs.List>
+      </Tabs>
     </Stack>
   );
 }

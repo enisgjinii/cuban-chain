@@ -20,9 +20,11 @@ export const useThemeMode = () => useContext(ThemeContext);
 
 export default function MuiThemeRegistry({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>("dark");
+  const [mounted, setMounted] = useState(false);
 
   // Persist preference
   useEffect(() => {
+    setMounted(true);
     const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
     if (saved === "light" || saved === "dark") setMode(saved);
   }, []);
@@ -36,6 +38,10 @@ export default function MuiThemeRegistry({ children }: { children: React.ReactNo
   }, []);
 
   const theme = useMemo(() => (mode === "dark" ? darkTheme : lightTheme), [mode]);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <ThemeContext.Provider value={{ mode, toggleTheme }}>
