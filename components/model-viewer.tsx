@@ -34,6 +34,7 @@ interface ModelViewerProps {
   onZoneClick?: (linkIndex: number, surfaceId: SurfaceId) => void;
   selectedLinkIndex?: number | null;
   onDetectedLinkCount?: (count: number) => void;
+  onSceneReady?: () => void;
   /** When true, captures GIF_FRAME_COUNT frames then calls onGIFFramesCaptured */
   isCapturingGIF?: boolean;
   onGIFFramesCaptured?: (frames: ImageData[]) => void;
@@ -152,6 +153,7 @@ function ModelViewerComponent({
   onZoneClick,
   selectedLinkIndex = 0,
   onDetectedLinkCount,
+  onSceneReady,
   isCapturingGIF = false,
   onGIFFramesCaptured,
 }: ModelViewerProps) {
@@ -219,9 +221,10 @@ function ModelViewerComponent({
   useEffect(() => {
     if (sceneRef && mainScene) {
       sceneRef.current = mainScene;
+      onSceneReady?.();
     }
     invalidate();
-  }, [mainScene, sceneRef, invalidate]);
+  }, [mainScene, onSceneReady, sceneRef, invalidate]);
 
   // ─── Apply chainConfig to scene whenever it changes ───────────────────
   useEffect(() => {

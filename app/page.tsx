@@ -90,6 +90,29 @@ function SlideTransition(props: any) {
   return <Slide {...props} direction="up" />;
 }
 
+function getVisibleObjectBounds(object: THREE.Object3D): THREE.Box3 {
+  const bounds = new THREE.Box3();
+  const tempBounds = new THREE.Box3();
+
+  const visit = (node: THREE.Object3D, ancestorsVisible: boolean) => {
+    const visible = ancestorsVisible && node.visible;
+    if (!visible) return;
+
+    if ((node as THREE.Mesh).isMesh) {
+      tempBounds.setFromObject(node);
+      if (!tempBounds.isEmpty()) {
+        bounds.union(tempBounds);
+      }
+    }
+
+    node.children.forEach((child) => visit(child, visible));
+  };
+
+  object.updateWorldMatrix(true, true);
+  visit(object, true);
+  return bounds;
+}
+
 // ── Smooth camera animation ─────────────────────────────────────────────────
 function animateCameraTo(
   controls: any,
@@ -121,6 +144,7 @@ export default function Home() {
   const orbitControlsRef = useRef<any>(null);
   const dockContainerRef = useRef<HTMLDivElement>(null);
   const mouseMoveThrottleRef = useRef<number | null>(null);
+  const autoFitFrameRef = useRef<number | null>(null);
 
   const [modelUrls, setModelUrls] = useState<string[]>(DEFAULT_MODEL_URLS);
   const [detectedLinkCount, setDetectedLinkCount] = useState<number>(MAX_CHAIN_LINKS);
@@ -302,17 +326,50 @@ export default function Home() {
 
   const handleZoomToFit = useCallback(() => {
     if (!sceneRef.current || !orbitControlsRef.current) return;
-    const box = new THREE.Box3().setFromObject(sceneRef.current);
+    const box = getVisibleObjectBounds(sceneRef.current);
+    if (box.isEmpty()) return;
+
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const ctrl = orbitControlsRef.current;
     const cam = ctrl.object as THREE.PerspectiveCamera;
-    const fov = cam.fov * (Math.PI / 180);
-    const dist = Math.max(Math.abs(Math.max(size.x, size.y, size.z) / 2 / Math.tan(fov / 2)) * 1.8, 1.2);
-    cam.position.set(center.x, center.y + size.y * 0.35, center.z + dist);
+    const verticalFov = cam.fov * (Math.PI / 180);
+    const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * cam.aspect);
+    const fitHeightDistance = size.y / 2 / Math.tan(verticalFov / 2);
+    const fitWidthDistance = size.x / 2 / Math.tan(horizontalFov / 2);
+    const distance = Math.max(fitHeightDistance, fitWidthDistance, size.z * 1.15, 0.48) * 1.2;
+    const viewDirection = new THREE.Vector3(0.28, 0.34, 1).normalize();
+
+    cam.position.copy(center).addScaledVector(viewDirection, distance);
+    cam.near = Math.max(distance / 100, 0.001);
+    cam.far = Math.max(distance * 100, 10);
+    cam.updateProjectionMatrix();
     ctrl.target.copy(center);
     ctrl.update();
   }, []);
+
+  const scheduleZoomToFit = useCallback(() => {
+    if (autoFitFrameRef.current !== null) {
+      cancelAnimationFrame(autoFitFrameRef.current);
+    }
+
+    autoFitFrameRef.current = requestAnimationFrame(() => {
+      autoFitFrameRef.current = requestAnimationFrame(() => {
+        autoFitFrameRef.current = null;
+        handleZoomToFit();
+      });
+    });
+  }, [handleZoomToFit]);
+
+  useEffect(() => {
+    scheduleZoomToFit();
+    return () => {
+      if (autoFitFrameRef.current !== null) {
+        cancelAnimationFrame(autoFitFrameRef.current);
+        autoFitFrameRef.current = null;
+      }
+    };
+  }, [modelUrls.length, scheduleZoomToFit]);
 
   const handleDetectedLinkCount = useCallback((count: number) => {
     const n = Math.max(1, Math.min(count, MAX_CHAIN_LINKS));
@@ -514,6 +571,7 @@ export default function Home() {
                   onZoneClick={handleZoneClick}
                   selectedLinkIndex={selectedLinkIndex}
                   onDetectedLinkCount={handleDetectedLinkCount}
+                  onSceneReady={scheduleZoomToFit}
                   isCapturingGIF={isCapturingGIF}
                   onGIFFramesCaptured={handleGIFFramesCaptured}
                 />
