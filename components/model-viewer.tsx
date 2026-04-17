@@ -2,7 +2,7 @@
 
 import { useGLTF } from "@react-three/drei";
 import { useEffect, useRef, useMemo, useCallback, memo } from "react";
-import { useThree } from "@react-three/fiber";
+import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ChainConfig, SurfaceId } from "@/lib/chain-config-types";
 import {
@@ -34,10 +34,14 @@ interface ModelViewerProps {
   onZoneClick?: (linkIndex: number, surfaceId: SurfaceId) => void;
   selectedLinkIndex?: number | null;
   onDetectedLinkCount?: (count: number) => void;
+  /** When true, captures GIF_FRAME_COUNT frames then calls onGIFFramesCaptured */
+  isCapturingGIF?: boolean;
+  onGIFFramesCaptured?: (frames: ImageData[]) => void;
 }
 
 const ENTIRE_CHAIN_URL = "/models/EntireChain.glb";
 const LINK_OVERLAP_RATIO = 0.58;
+const GIF_FRAME_COUNT = 24; // ~2 s at ~12 fps
 
 function optimizeSceneForRuntime(scene: THREE.Object3D): void {
   scene.traverse((child) => {
@@ -148,6 +152,8 @@ function ModelViewerComponent({
   onZoneClick,
   selectedLinkIndex = 0,
   onDetectedLinkCount,
+  isCapturingGIF = false,
+  onGIFFramesCaptured,
 }: ModelViewerProps) {
   const gltf = useGLTF(ENTIRE_CHAIN_URL);
 
@@ -161,6 +167,10 @@ function ModelViewerComponent({
 
   // Previous selected link for highlight cleanup
   const prevSelectedRef = useRef<number | null>(null);
+
+  // GIF frame capture state
+  const gifFramesRef = useRef<ImageData[]>([]);
+  const gifFrameCountRef = useRef(0);
 
   // Use the real GLB chain once; chain length changes only toggle visibility.
   const mainScene = useMemo(() => {
@@ -426,6 +436,36 @@ function ModelViewerComponent({
     },
     [onZoneClick]
   );
+
+  // ─── GIF frame capture ────────────────────────────────────────────────
+  useEffect(() => {
+    if (isCapturingGIF) {
+      gifFramesRef.current = [];
+      gifFrameCountRef.current = 0;
+    }
+  }, [isCapturingGIF]);
+
+  useFrame(({ gl: frameGl, scene: frameScene, camera: frameCam }) => {
+    if (!isCapturingGIF || gifFrameCountRef.current >= GIF_FRAME_COUNT) return;
+
+    // Force a render so the canvas is populated (works even with preserveDrawingBuffer=false)
+    frameGl.render(frameScene, frameCam);
+
+    const canvas = frameGl.domElement;
+    const w = canvas.width;
+    const h = canvas.height;
+    const tmp = document.createElement("canvas");
+    tmp.width = w; tmp.height = h;
+    tmp.getContext("2d")!.drawImage(canvas, 0, 0);
+    gifFramesRef.current.push(tmp.getContext("2d")!.getImageData(0, 0, w, h));
+    gifFrameCountRef.current++;
+
+    if (gifFrameCountRef.current >= GIF_FRAME_COUNT) {
+      onGIFFramesCaptured?.(gifFramesRef.current.slice());
+      gifFramesRef.current = [];
+      gifFrameCountRef.current = 0;
+    }
+  });
 
   if (!mainScene) return null;
 

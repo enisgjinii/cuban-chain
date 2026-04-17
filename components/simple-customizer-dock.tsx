@@ -8,12 +8,27 @@ import {
   Button,
   Checkbox,
   Collapse,
+  Divider,
   Group,
+  ScrollArea,
   Slider,
   Stack,
   Text,
+  Tooltip,
 } from "@mantine/core";
-import { IconMinus, IconPlus } from "@tabler/icons-react";
+import {
+  IconArrowLeft,
+  IconArrowRight,
+  IconChevronRight,
+  IconCopy,
+  IconInfoCircle,
+  IconLink,
+  IconMinus,
+  IconPaint,
+  IconPlus,
+  IconRefresh,
+  IconSparkles,
+} from "@tabler/icons-react";
 import type {
   ChainConfig,
   GemstoneColors,
@@ -28,6 +43,7 @@ import {
   MATERIAL_OPTIONS,
 } from "@/lib/chain-config-types";
 import { MAX_CHAIN_LINKS } from "@/lib/chain-geometry";
+import { createDefaultLink } from "@/lib/chain-helpers";
 import { StoneColorPicker } from "@/components/stone-color-picker";
 import classes from "./simple-customizer-dock.module.css";
 
@@ -45,25 +61,25 @@ interface SimpleCustomizerDockProps {
   onChainLengthChange?: (length: number) => void;
 }
 
-const TABS: Array<{ id: DockTab; label: string }> = [
-  { id: "chain", label: "Chain" },
-  { id: "metal", label: "Metal" },
-  { id: "surface", label: "Surface" },
-  { id: "detail", label: "Detail" },
+const TABS: Array<{ id: DockTab; label: string; hint: string }> = [
+  { id: "chain", label: "Chain", hint: "How many links and which one you're editing" },
+  { id: "metal", label: "Metal", hint: "Pick the metal finish for the selected link" },
+  { id: "surface", label: "Surface", hint: "Choose which face of the link to customize" },
+  { id: "detail", label: "Detail", hint: "Add gemstones, enamel, or engraving to the face" },
 ];
 
-const SURFACES: Array<{ id: SurfaceId; label: string }> = [
-  { id: "top1", label: "Top 1" },
-  { id: "top2", label: "Top 2" },
-  { id: "side1", label: "Side 1" },
-  { id: "side2", label: "Side 2" },
+const SURFACES: Array<{ id: SurfaceId; label: string; hint: string }> = [
+  { id: "top1", label: "Top 1", hint: "Upper facet facing the front" },
+  { id: "top2", label: "Top 2", hint: "Upper facet facing the back" },
+  { id: "side1", label: "Side 1", hint: "Left side facet" },
+  { id: "side2", label: "Side 2", hint: "Right side facet" },
 ];
 
-const SURFACE_TYPES: Array<{ id: EditableSurfaceType; label: string }> = [
-  { id: "empty", label: "Empty" },
-  { id: "gemstones", label: "Gemstones" },
-  { id: "enamel", label: "Enamel" },
-  { id: "engraving", label: "Engraving" },
+const SURFACE_TYPES: Array<{ id: EditableSurfaceType; label: string; hint: string }> = [
+  { id: "empty", label: "Empty", hint: "Plain metal finish — no stones or paint" },
+  { id: "gemstones", label: "Gemstones", hint: "Inlay sparkling colored stones" },
+  { id: "enamel", label: "Enamel", hint: "Fill with a solid colored enamel paint" },
+  { id: "engraving", label: "Engraving", hint: "Etch a decorative pattern into the face" },
 ];
 
 function isTopSurface(surfaceId: SurfaceId): boolean {
@@ -91,6 +107,44 @@ function normalizeSurfaceType(type?: SurfaceType): EditableSurfaceType {
   }
 
   return "empty";
+}
+
+function InfoTip({ text }: { text: string }) {
+  return (
+    <Tooltip label={text} multiline w={240} withArrow position="top" offset={6} events={{ hover: true, focus: true, touch: true }}>
+      <ActionIcon
+        size="xs"
+        variant="subtle"
+        radius="xl"
+        aria-label="More info"
+        className={classes.infoButton}
+      >
+        <IconInfoCircle size={14} />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
+function SectionHeader({
+  title,
+  info,
+  rightSlot,
+}: {
+  title: string;
+  info: string;
+  rightSlot?: React.ReactNode;
+}) {
+  return (
+    <Group justify="space-between" align="center" gap={4} wrap="nowrap" className={classes.sectionHeader}>
+      <Group gap={4} wrap="nowrap">
+        <Text size="xs" fw={700} className={classes.sectionTitle}>
+          {title}
+        </Text>
+        <InfoTip text={info} />
+      </Group>
+      {rightSlot}
+    </Group>
+  );
 }
 
 export function SimpleCustomizerDock({
@@ -212,64 +266,174 @@ export function SimpleCustomizerDock({
     setChainConfig,
   ]);
 
+  const copyLinkToAll = useCallback(() => {
+    const source = chainConfig.links[selectedLinkIndex];
+    if (!source) return;
+    setChainConfig({
+      chainLength: chainConfig.chainLength,
+      links: chainConfig.links.map(() => ({
+        material: source.material,
+        surfaces: {
+          top1: { ...source.surfaces.top1 },
+          top2: { ...source.surfaces.top2 },
+          side1: { ...source.surfaces.side1 },
+          side2: { ...source.surfaces.side2 },
+        },
+      })),
+    });
+  }, [chainConfig, selectedLinkIndex, setChainConfig]);
+
+  const resetLink = useCallback(() => {
+    const fresh = createDefaultLink();
+    setChainConfig({
+      chainLength: chainConfig.chainLength,
+      links: chainConfig.links.map((link, index) =>
+        index === selectedLinkIndex ? fresh : link
+      ),
+    });
+  }, [chainConfig, selectedLinkIndex, setChainConfig]);
+
+  const resetAll = useCallback(() => {
+    setChainConfig({
+      chainLength: chainConfig.chainLength,
+      links: chainConfig.links.map(() => createDefaultLink()),
+    });
+  }, [chainConfig.chainLength, chainConfig.links, setChainConfig]);
+
+  const surfaceTypeLabel = useMemo(() => {
+    return SURFACE_TYPES.find((type) => type.id === surfaceType)?.label ?? "Empty";
+  }, [surfaceType]);
+
+  const renderBreadcrumb = () => (
+    <Group gap={4} wrap="nowrap" className={classes.breadcrumb} align="center">
+      <IconLink size={12} />
+      <Text size="xs" fw={700}>
+        Link {selectedLinkIndex + 1}
+      </Text>
+      <IconChevronRight size={12} style={{ opacity: 0.5 }} />
+      <Text size="xs" fw={700}>
+        {activeSurfaceLabel}
+      </Text>
+      <IconChevronRight size={12} style={{ opacity: 0.5 }} />
+      <Text size="xs" c="dimmed" fw={600}>
+        {surfaceTypeLabel}
+      </Text>
+    </Group>
+  );
+
   const renderTabContent = () => {
     if (activeTab === "chain") {
       return (
-        <Stack gap="xs" className={classes.chainControls}>
-          <Group align="center" gap="sm" wrap="nowrap">
-            <ActionIcon
-              aria-label="Remove link"
-              size="xs"
-              variant="subtle"
-              onClick={() => onChainLengthChange?.(linkCount - 1)}
-              disabled={linkCount <= 1}
-            >
-              <IconMinus size={18} />
-            </ActionIcon>
+        <Stack gap={10} className={classes.chainControls}>
+          <SectionHeader
+            title="Chain length"
+            info="Drag the slider or use ± to change how many links your chain has. Max 20."
+            rightSlot={
+              <Text size="xs" fw={800} className={classes.countBadge}>
+                {linkCount} / {MAX_CHAIN_LINKS}
+              </Text>
+            }
+          />
+          <Group align="center" gap="xs" wrap="nowrap">
+            <Tooltip label="Remove one link" withArrow>
+              <ActionIcon
+                aria-label="Remove link"
+                size="md"
+                variant="subtle"
+                className={classes.circleButton}
+                onClick={() => onChainLengthChange?.(linkCount - 1)}
+                disabled={linkCount <= 1}
+              >
+                <IconMinus size={16} />
+              </ActionIcon>
+            </Tooltip>
             <Slider
               value={linkCount}
               min={1}
               max={MAX_CHAIN_LINKS}
               step={1}
-              size="xs"
+              size="sm"
+              label={(value) => `${value} links`}
               onChange={(value) => onChainLengthChange?.(value)}
               style={{ flex: 1 }}
             />
-            <ActionIcon
-              aria-label="Add link"
-              size="xs"
-              variant="subtle"
-              onClick={() => onChainLengthChange?.(linkCount + 1)}
-              disabled={linkCount >= MAX_CHAIN_LINKS}
-            >
-              <IconPlus size={18} />
-            </ActionIcon>
-            <Text size="sm" fw={700} ta="right" w={58}>
-              {linkCount} links
-            </Text>
+            <Tooltip label="Add one link" withArrow>
+              <ActionIcon
+                aria-label="Add link"
+                size="md"
+                variant="subtle"
+                className={classes.circleButton}
+                onClick={() => onChainLengthChange?.(linkCount + 1)}
+                disabled={linkCount >= MAX_CHAIN_LINKS}
+              >
+                <IconPlus size={16} />
+              </ActionIcon>
+            </Tooltip>
           </Group>
-          <Group align="center" justify="center" gap="xs">
-            <Button
-              size="xs"
-              variant="subtle"
-              className={classes.softButton}
-              disabled={selectedLinkIndex === 0}
-              onClick={() => setSelectedLinkIndex(Math.max(0, selectedLinkIndex - 1))}
-            >
-              Previous
-            </Button>
-            <Text size="sm" fw={700} ta="center" miw={96}>
-              Link {selectedLinkIndex + 1} / {linkCount}
+
+          <Divider className={classes.softDivider} />
+
+          <SectionHeader
+            title="Select a link"
+            info="Navigate between links. You can also click directly on a link in the 3D view."
+          />
+          <Group align="center" gap="xs" justify="space-between" wrap="nowrap">
+            <Tooltip label="Previous link" withArrow>
+              <ActionIcon
+                size="md"
+                variant="subtle"
+                className={classes.circleButton}
+                disabled={selectedLinkIndex === 0}
+                onClick={() => setSelectedLinkIndex(Math.max(0, selectedLinkIndex - 1))}
+                aria-label="Previous link"
+              >
+                <IconArrowLeft size={16} />
+              </ActionIcon>
+            </Tooltip>
+            <Text size="sm" fw={800} ta="center" style={{ flex: 1 }}>
+              Link {selectedLinkIndex + 1}
+              <Text component="span" size="xs" c="dimmed" fw={600}>
+                {" "}
+                of {linkCount}
+              </Text>
             </Text>
-            <Button
-              size="xs"
-              variant="subtle"
-              className={classes.softButton}
-              disabled={selectedLinkIndex >= linkCount - 1}
-              onClick={() => setSelectedLinkIndex(Math.min(linkCount - 1, selectedLinkIndex + 1))}
-            >
-              Next
-            </Button>
+            <Tooltip label="Next link" withArrow>
+              <ActionIcon
+                size="md"
+                variant="subtle"
+                className={classes.circleButton}
+                disabled={selectedLinkIndex >= linkCount - 1}
+                onClick={() => setSelectedLinkIndex(Math.min(linkCount - 1, selectedLinkIndex + 1))}
+                aria-label="Next link"
+              >
+                <IconArrowRight size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+
+          <Group gap="xs" grow wrap="wrap">
+            <Tooltip label="Copy this link's look (metal + all faces) to every other link in the chain" multiline w={240} withArrow>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconCopy size={14} />}
+                className={classes.softButton}
+                onClick={copyLinkToAll}
+              >
+                Copy to all links
+              </Button>
+            </Tooltip>
+            <Tooltip label="Reset the chain to plain silver, no gemstones, no enamel, no engraving" multiline w={240} withArrow>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconRefresh size={14} />}
+                className={classes.softButton}
+                onClick={resetAll}
+              >
+                Reset chain
+              </Button>
+            </Tooltip>
           </Group>
         </Stack>
       );
@@ -277,158 +441,281 @@ export function SimpleCustomizerDock({
 
     if (activeTab === "metal") {
       return (
-        <Stack gap={6} align="center">
-          <Group gap="sm" justify="center">
+        <Stack gap={10} align="stretch">
+          <SectionHeader
+            title="Metal finish"
+            info="Pick the base metal for this link. Toggle 'All links' to recolor the whole chain at once."
+          />
+          <Group gap="sm" justify="center" wrap="wrap">
             {MATERIAL_OPTIONS.map((option) => (
-              <ActionIcon
-                key={option.value}
-                aria-label={option.name}
-                onClick={() => applyMaterial(option.value)}
-                className={`${classes.metalSwatch} ${material === option.value ? classes.metalSwatchActive : ""}`}
-              >
-                <span className={`${classes.metalDot} ${classes[option.value]}`} />
-              </ActionIcon>
+              <Tooltip key={option.value} label={option.name} withArrow position="top">
+                <ActionIcon
+                  aria-label={option.name}
+                  onClick={() => applyMaterial(option.value)}
+                  className={`${classes.metalSwatch} ${material === option.value ? classes.metalSwatchActive : ""}`}
+                >
+                  <span className={`${classes.metalDot} ${classes[option.value]}`} />
+                </ActionIcon>
+              </Tooltip>
             ))}
           </Group>
-          <Checkbox
-            size="xs"
-            checked={applyMaterialToAllLinks}
-            onChange={(event) => setApplyMaterialToAllLinks(event.target.checked)}
-            label="All links"
-          />
+          <Group justify="center" gap="sm">
+            <Checkbox
+              size="xs"
+              checked={applyMaterialToAllLinks}
+              onChange={(event) => setApplyMaterialToAllLinks(event.target.checked)}
+              label="Apply to all links"
+            />
+            <InfoTip text="When checked, choosing a metal will change every link in the chain. When unchecked, only the selected link changes." />
+          </Group>
+          <Tooltip label="Reset only the selected link back to plain silver" withArrow>
+            <Button
+              size="xs"
+              variant="subtle"
+              leftSection={<IconRefresh size={14} />}
+              className={classes.softButton}
+              onClick={resetLink}
+            >
+              Reset this link
+            </Button>
+          </Tooltip>
         </Stack>
       );
     }
 
     if (activeTab === "surface") {
       return (
-        <Stack gap="xs">
-          <Group gap="xs" justify="center">
+        <Stack gap={10}>
+          <SectionHeader
+            title="Choose a face"
+            info="Every link has 4 faces you can customize: two tops and two sides. Pick one, then head to Detail to style it."
+          />
+          <Group gap="xs" justify="center" wrap="wrap">
             {SURFACES.map((surface) => (
-              <Button
-                key={surface.id}
-                size="xs"
-                variant="outline"
-                className={selectedSurface === surface.id ? classes.softButtonActive : classes.softButton}
-                onClick={() => setSelectedSurface(surface.id)}
-              >
-                {surface.label}
-              </Button>
+              <Tooltip key={surface.id} label={surface.hint} multiline w={200} withArrow>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  className={selectedSurface === surface.id ? classes.softButtonActive : classes.softButton}
+                  onClick={() => setSelectedSurface(surface.id)}
+                >
+                  {surface.label}
+                </Button>
+              </Tooltip>
             ))}
           </Group>
-          <Group justify="center" gap="sm">
+
+          <Divider className={classes.softDivider} />
+
+          <SectionHeader
+            title="Scope"
+            info="Choose how widely the next change will apply. Defaults to only the selected face on the selected link."
+          />
+          <Stack gap={6} align="stretch">
+            <Group gap={6} wrap="nowrap">
+              <Checkbox
+                size="xs"
+                checked={applyToPair}
+                onChange={(event) => setApplyToPair(event.target.checked)}
+                label={isTopSurface(selectedSurface) ? "Both tops" : "Both sides"}
+              />
+              <InfoTip
+                text={
+                  isTopSurface(selectedSurface)
+                    ? "Apply the change to Top 1 AND Top 2 of this link at once."
+                    : "Apply the change to Side 1 AND Side 2 of this link at once."
+                }
+              />
+            </Group>
+            <Group gap={6} wrap="nowrap">
+              <Checkbox
+                size="xs"
+                checked={applyToAllLinks}
+                onChange={(event) => setApplyToAllLinks(event.target.checked)}
+                label="All links"
+              />
+              <InfoTip text="Apply the change to every link in the chain — useful for a uniform pattern." />
+            </Group>
+          </Stack>
+
+          <Tooltip label="Go to Detail to pick gemstones, enamel or engraving" withArrow>
+            <Button
+              size="sm"
+              variant="filled"
+              fullWidth
+              className={classes.softButtonActive}
+              rightSection={<IconChevronRight size={16} />}
+              onClick={() => setActiveTab("detail")}
+            >
+              Style this face
+            </Button>
+          </Tooltip>
+        </Stack>
+      );
+    }
+
+    return (
+      <Stack gap={10} className={classes.detailControls}>
+        <SectionHeader
+          title="Face style"
+          info="Pick what fills the selected face. Changes preview instantly but only save when you press Apply."
+        />
+        <Group gap="xs" justify="center" wrap="wrap">
+          {SURFACE_TYPES.map((type) => (
+            <Tooltip key={type.id} label={type.hint} multiline w={220} withArrow>
+              <Button
+                size="xs"
+                variant="outline"
+                leftSection={
+                  type.id === "gemstones" ? (
+                    <IconSparkles size={12} />
+                  ) : type.id === "enamel" ? (
+                    <IconPaint size={12} />
+                  ) : null
+                }
+                className={surfaceType === type.id ? classes.softButtonActive : classes.softButton}
+                onClick={() => setSurfaceType(type.id)}
+              >
+                {type.label}
+              </Button>
+            </Tooltip>
+          ))}
+        </Group>
+
+        <Collapse expanded={surfaceType === "gemstones"}>
+          <Stack gap={8}>
+            <SectionHeader
+              title="Gemstones"
+              info={
+                isTopSurface(selectedSurface)
+                  ? "Top faces hold 3 stones. Click a stone, then pick its color — or use 'Apply to all' to sync them."
+                  : "Side faces hold 2 stones. Click a stone, then pick its color — or use 'Apply to all' to sync them."
+              }
+            />
+            <StoneColorPicker
+              surfaceId={selectedSurface}
+              gemstoneColors={gemstoneColors}
+              onChange={(colors) => setGemstoneColors(normalizeGemstoneColors(selectedSurface, colors))}
+            />
+          </Stack>
+        </Collapse>
+
+        <Collapse expanded={surfaceType === "enamel"}>
+          <Stack gap={8}>
+            <SectionHeader
+              title="Enamel color"
+              info="A solid colored paint fill that sits flat in the facet."
+            />
+            <Box className={classes.enamelGrid}>
+              {ENAMEL_COLORS.map((option) => (
+                <Tooltip key={option.value} label={option.name} withArrow>
+                  <button
+                    type="button"
+                    aria-label={option.name}
+                    onClick={() => setEnamelColor(option.value)}
+                    className={`${classes.enamelSwatch} ${enamelColor === option.value ? classes.enamelSwatchActive : ""}`}
+                    style={{ background: option.value }}
+                  />
+                </Tooltip>
+              ))}
+            </Box>
+          </Stack>
+        </Collapse>
+
+        <Collapse expanded={surfaceType === "engraving"}>
+          <Stack gap={8}>
+            <SectionHeader
+              title="Engraving pattern"
+              info="A decorative pattern etched into the metal."
+            />
+            <Group gap="sm" justify="center" wrap="wrap">
+              {ENGRAVING_DESIGNS.map((option) => (
+                <Tooltip key={option.value} label={option.name} withArrow>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className={engravingPattern === option.value ? classes.softButtonActive : classes.softButton}
+                    onClick={() => setEngravingPattern(option.value)}
+                  >
+                    {option.name}
+                  </Button>
+                </Tooltip>
+              ))}
+            </Group>
+          </Stack>
+        </Collapse>
+
+        <Divider className={classes.softDivider} />
+
+        <Stack gap={6}>
+          <Group gap={6} wrap="nowrap">
             <Checkbox
               size="xs"
               checked={applyToPair}
               onChange={(event) => setApplyToPair(event.target.checked)}
               label={isTopSurface(selectedSurface) ? "Both tops" : "Both sides"}
             />
+            <InfoTip
+              text={
+                isTopSurface(selectedSurface)
+                  ? "Save to both top faces of this link."
+                  : "Save to both side faces of this link."
+              }
+            />
+          </Group>
+          <Group gap={6} wrap="nowrap">
             <Checkbox
               size="xs"
               checked={applyToAllLinks}
               onChange={(event) => setApplyToAllLinks(event.target.checked)}
               label="All links"
             />
-            <Button size="xs" variant="filled" className={classes.softButtonActive} onClick={applySurface}>
-              Apply
-            </Button>
+            <InfoTip text="Save this exact face styling to every link in the chain." />
           </Group>
         </Stack>
-      );
-    }
 
-    return (
-      <Stack gap="sm" className={classes.detailControls}>
-        <Group gap="xs" justify="center">
-          {SURFACE_TYPES.map((type) => (
-            <Button
-              key={type.id}
-              size="xs"
-              variant="outline"
-              className={surfaceType === type.id ? classes.softButtonActive : classes.softButton}
-              onClick={() => setSurfaceType(type.id)}
-            >
-              {type.label}
-            </Button>
-          ))}
-        </Group>
-        <Collapse expanded={surfaceType === "gemstones"}>
-          <StoneColorPicker
-            surfaceId={selectedSurface}
-            gemstoneColors={gemstoneColors}
-            onChange={(colors) => setGemstoneColors(normalizeGemstoneColors(selectedSurface, colors))}
-          />
-        </Collapse>
-        <Collapse expanded={surfaceType === "enamel"}>
-          <Group gap="sm" justify="center">
-            {ENAMEL_COLORS.map((option) => (
-              <Button
-                key={option.value}
-                size="xs"
-                variant="outline"
-                className={enamelColor === option.value ? classes.softButtonActive : classes.softButton}
-                onClick={() => setEnamelColor(option.value)}
-                leftSection={
-                  <Box
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: "50%",
-                      background: option.value,
-                      border: option.value === "#ffffff" ? "1px solid rgba(0,0,0,0.3)" : "1px solid transparent",
-                    }}
-                  />
-                }
-              >
-                {option.name}
-              </Button>
-            ))}
-          </Group>
-        </Collapse>
-        <Collapse expanded={surfaceType === "engraving"}>
-          <Group gap="sm" justify="center">
-            {ENGRAVING_DESIGNS.map((option) => (
-              <Button
-                key={option.value}
-                size="xs"
-                variant="outline"
-                className={engravingPattern === option.value ? classes.softButtonActive : classes.softButton}
-                onClick={() => setEngravingPattern(option.value)}
-              >
-                {option.name}
-              </Button>
-            ))}
-          </Group>
-        </Collapse>
-        <Button size="xs" variant="filled" className={classes.softButtonActive} onClick={applySurface}>
-          Apply to {activeSurfaceLabel}
-        </Button>
+        <Tooltip label={`Save these settings to ${activeSurfaceLabel}${applyToPair ? " and its pair" : ""}${applyToAllLinks ? ", on every link" : ""}`} multiline w={240} withArrow>
+          <Button
+            size="sm"
+            variant="filled"
+            fullWidth
+            className={classes.softButtonActive}
+            onClick={applySurface}
+          >
+            Apply to {activeSurfaceLabel}
+          </Button>
+        </Tooltip>
       </Stack>
     );
   };
 
   return (
-    <Stack
-      align="center"
-      gap="sm"
-      className={classes.root}
-    >
+    <Stack align="center" gap={8} className={classes.root}>
       <Box className={classes.controlPill}>
-        {renderTabContent()}
+        <Group justify="space-between" align="center" wrap="nowrap" className={classes.topBar}>
+          {renderBreadcrumb()}
+          <InfoTip text="Your current editing target. Tap a link on the 3D model or use Chain › Select a link to change it." />
+        </Group>
+        <Divider className={classes.softDivider} my={6} />
+        <ScrollArea.Autosize mah="52dvh" type="auto" scrollbarSize={6} className={classes.contentScroll}>
+          {/* key forces remount → CSS animation fires on every tab switch */}
+          <Box key={activeTab} p={0} className={classes.tabContent}>{renderTabContent()}</Box>
+        </ScrollArea.Autosize>
       </Box>
 
       <Group gap={0} wrap="nowrap" className={classes.tabPill}>
         {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            fullWidth
-            size="xs"
-            variant="subtle"
-            className={`${classes.tabButton} ${activeTab === tab.id ? classes.tabButtonActive : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
+          <Tooltip key={tab.id} label={tab.hint} withArrow openDelay={250} position="top" multiline w={220}>
+            <Button
+              fullWidth
+              size="xs"
+              variant="subtle"
+              className={`${classes.tabButton} ${activeTab === tab.id ? classes.tabButtonActive : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </Button>
+          </Tooltip>
         ))}
       </Group>
     </Stack>

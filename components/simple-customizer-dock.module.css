@@ -1,180 +1,375 @@
+/* ─── Root ─────────────────────────────────────────────────── */
 .root {
-  width: min(720px, calc(100vw - 24px));
-  max-width: calc(100vw - 24px);
-  color: #203035;
+  width: min(660px, calc(100vw - 12px));
+  max-width: calc(100vw - 12px);
+  color: #1a2f33;
+  animation: dockIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+@keyframes dockIn {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ─── Tab content animation ─────────────────────────────────── */
+.tabContent {
+  animation: tabIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes tabIn {
+  from { opacity: 0; transform: translateY(7px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ─── Glass surface — opaque enough to read, blurry enough to look glassy ── */
 .controlPill,
 .tabPill {
-  background: rgba(249, 251, 252, 0.88);
-  border: 1px solid rgba(117, 133, 139, 0.28);
+  /* ~82% white is the sweet spot: readable but glassy */
+  background: rgba(252, 253, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(28px) saturate(180%) brightness(1.04);
+  -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.04);
   box-shadow:
-    0 16px 34px rgba(31, 45, 48, 0.13),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(12px) saturate(132%);
-  -webkit-backdrop-filter: blur(12px) saturate(132%);
+    0 0 0 0.5px rgba(255, 255, 255, 0.55),
+    0 4px 16px rgba(31, 45, 48, 0.10),
+    0 16px 40px rgba(31, 45, 48, 0.08),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.98);
 }
 
+/* Specular sheen overlay — the "wet glass" top highlight */
+.controlPill::before,
+.tabPill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.04) 38%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Control pill ─────────────────────────────────────────── */
 .controlPill {
+  position: relative;
   width: 100%;
   max-width: 100%;
-  padding: 12px 18px;
-  border-radius: 8px;
+  padding: 12px 16px 14px;
+  border-radius: 26px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
+.contentScroll {
+  width: 100%;
+  min-height: 0;
+}
+
+/* ─── Top breadcrumb bar ───────────────────────────────────── */
+.topBar {
+  min-height: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.breadcrumb {
+  flex: 1;
+  min-width: 0;
+  color: #0a3530;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ─── Section labels ───────────────────────────────────────── */
+.sectionHeader {
+  min-height: 22px;
+  position: relative;
+  z-index: 1;
+}
+
+.sectionTitle {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px !important;
+  color: rgba(10, 53, 48, 0.62);
+}
+
+.countBadge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(20, 112, 105, 0.10);
+  color: #0a3530;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.softDivider {
+  border-color: rgba(79, 93, 99, 0.14);
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Info button ──────────────────────────────────────────── */
+.infoButton {
+  color: rgba(10, 53, 48, 0.42);
+  transition: color 0.2s, background 0.2s;
+}
+
+.infoButton:hover {
+  color: #0a3530;
+  background: rgba(20, 112, 105, 0.08);
+}
+
+/* ─── Circle icon buttons (±, prev/next) ───────────────────── */
+.circleButton {
+  color: #1a3035;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(117, 133, 139, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 1px 4px rgba(31, 45, 48, 0.07);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.circleButton:hover {
+  background: rgba(255, 255, 255, 0.94);
+  transform: scale(1.06);
+}
+
+.circleButton:active {
+  transform: scale(0.93);
+}
+
+/* ─── Tab pill ─────────────────────────────────────────────── */
 .tabPill {
-  width: min(100%, 420px);
+  position: relative;
+  width: min(100%, 400px);
   min-height: 52px;
   padding: 5px;
-  border-radius: 8px;
+  border-radius: 22px;
 }
 
 .tabButton {
   position: relative;
   flex: 1;
   height: 40px;
-  color: rgba(32, 48, 53, 0.74);
+  color: rgba(26, 48, 51, 0.62);
   border: 0;
-  border-radius: 8px;
+  border-radius: 16px;
   background: transparent;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.16s ease;
+  z-index: 1;
 }
 
 .tabButton:hover {
-  background: rgba(255, 255, 255, 0.54);
+  background: rgba(255, 255, 255, 0.58);
+  color: rgba(26, 48, 51, 0.88);
 }
 
 .tabButtonActive,
 .tabButtonActive:hover {
-  color: #0d3f3b;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(20, 112, 105, 0.32);
+  color: #0a3530;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(20, 112, 105, 0.22);
   box-shadow:
-    0 5px 14px rgba(20, 112, 105, 0.13),
-    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+    0 3px 12px rgba(20, 112, 105, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.99);
 }
 
 .tabButton:not(:last-child)::after {
   content: "";
   position: absolute;
   right: 0;
-  top: 20%;
+  top: 22%;
   width: 1px;
-  height: 60%;
-  background: rgba(76, 94, 100, 0.14);
+  height: 56%;
+  background: rgba(79, 93, 99, 0.14);
 }
 
+/* ─── Soft outline buttons ─────────────────────────────────── */
 .softButton {
   min-height: 34px;
-  padding: 0 16px;
-  color: #263b40;
-  border-color: rgba(117, 133, 139, 0.3);
-  border-radius: 8px;
+  padding: 0 14px;
+  color: #1a3035;
+  border-color: rgba(117, 133, 139, 0.26);
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 1px 3px rgba(31, 45, 48, 0.05);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .softButton:hover {
-  border-color: rgba(45, 45, 45, 0.2);
-  background: rgba(255, 255, 255, 0.84);
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(117, 133, 139, 0.34);
+  transform: translateY(-1px);
+}
+
+.softButton:active {
+  transform: scale(0.96);
 }
 
 .softButtonActive,
 .softButtonActive:hover {
-  color: #0d3f3b;
+  color: #0a3530;
   background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(20, 112, 105, 0.36);
+  border-color: rgba(20, 112, 105, 0.34);
   box-shadow:
-    0 5px 14px rgba(20, 112, 105, 0.13),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    0 0 0 2px rgba(20, 112, 105, 0.10),
+    0 3px 12px rgba(20, 112, 105, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.99);
 }
 
+/* ─── Metal swatches ───────────────────────────────────────── */
 .metalSwatch {
-  width: 38px;
-  height: 38px;
-  color: #203035;
-  border: 1px solid rgba(117, 133, 139, 0.34);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  width: 44px;
+  height: 44px;
+  color: #1a3035;
+  border: 1px solid rgba(117, 133, 139, 0.28);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 4px rgba(31, 45, 48, 0.07);
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .metalSwatch:hover {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.92);
+  transform: translateY(-2px) scale(1.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 5px 14px rgba(31, 45, 48, 0.13);
+}
+
+.metalSwatch:active {
+  transform: scale(0.93);
 }
 
 .metalSwatchActive,
 .metalSwatchActive:hover {
-  border-color: rgba(20, 112, 105, 0.62);
-  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(20, 112, 105, 0.52);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow:
     0 0 0 3px rgba(20, 112, 105, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 5px 14px rgba(20, 112, 105, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.99);
 }
 
 .metalDot {
-  width: 26px;
-  height: 26px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 50%;
   box-shadow:
-    inset 0 1px 3px rgba(255, 255, 255, 0.8),
-    inset 0 -4px 8px rgba(0, 0, 0, 0.16);
+    inset 0 2px 4px rgba(255, 255, 255, 0.88),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.14),
+    0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
-.silver {
-  background: radial-gradient(circle at 28% 26%, #ffffff, #c9ced1 48%, #6b7073 100%);
-}
+.silver  { background: radial-gradient(circle at 28% 26%, #ffffff, #c9ced1 48%, #6b7073 100%); }
+.grey    { background: radial-gradient(circle at 28% 26%, #f8fafc, #818b95 48%, #31363c 100%); }
+.black   { background: radial-gradient(circle at 28% 26%, #858585, #181818 56%, #050505 100%); }
+.white   { background: radial-gradient(circle at 28% 26%, #ffffff, #f4f4f2 56%, #cfcfc9 100%); }
+.gold    { background: radial-gradient(circle at 28% 26%, #fff2b2, #d3a63b 45%, #76581a 100%); }
 
-.grey {
-  background: radial-gradient(circle at 28% 26%, #f8fafc, #818b95 48%, #31363c 100%);
-}
-
-.black {
-  background: radial-gradient(circle at 28% 26%, #858585, #181818 56%, #050505 100%);
-}
-
-.white {
-  background: radial-gradient(circle at 28% 26%, #ffffff, #f4f4f2 56%, #cfcfc9 100%);
-}
-
-.gold {
-  background: radial-gradient(circle at 28% 26%, #fff2b2, #d3a63b 45%, #76581a 100%);
-}
-
-.chainControls {
-  width: 100%;
-}
-
+/* ─── Structural containers ────────────────────────────────── */
+.chainControls,
 .detailControls {
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
+/* ─── Enamel swatch grid ───────────────────────────────────── */
+.enamelGrid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 6px;
+}
+
+.enamelSwatch {
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 26px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1.5px 3px rgba(255, 255, 255, 0.55),
+    0 1px 4px rgba(0, 0, 0, 0.09);
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+  padding: 0;
+}
+
+.enamelSwatch:hover {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.enamelSwatch:active {
+  transform: scale(0.92);
+}
+
+.enamelSwatchActive {
+  box-shadow:
+    0 0 0 3px rgba(20, 112, 105, 0.50),
+    inset 0 1.5px 3px rgba(255, 255, 255, 0.55);
+}
+
+/* ─── Responsive: mobile ───────────────────────────────────── */
 @media (max-width: 600px) {
   .root {
-    width: calc(100vw - 16px);
-    max-width: calc(100vw - 16px);
+    width: calc(100vw - 10px);
+    max-width: calc(100vw - 10px);
   }
 
   .controlPill {
-    max-height: min(44dvh, 340px);
-    overflow-y: auto;
-    padding: 10px;
-    border-radius: 8px;
+    padding: 10px 12px 12px;
+    border-radius: 22px;
   }
 
   .tabPill {
-    width: min(100%, 360px);
-    min-height: 48px;
+    width: 100%;
+    min-height: 46px;
     padding: 4px;
-    border-radius: 8px;
+    border-radius: 18px;
   }
 
   .tabButton {
-    height: 38px;
-    padding: 0 8px;
+    height: 36px;
+    padding: 0 6px;
+    font-size: 12px;
+    border-radius: 13px;
   }
 
-  .chainControls,
-  .detailControls {
-    width: 100%;
+  .metalSwatch { width: 40px; height: 40px; border-radius: 12px; }
+  .metalDot { width: 24px; height: 24px; }
+
+  .enamelGrid { gap: 5px; }
+
+  .softButton {
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 10px;
   }
+
+  .circleButton { border-radius: 10px; }
+}
+
+/* ─── Very small phones (<380px) ───────────────────────────── */
+@media (max-width: 380px) {
+  .enamelGrid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .tabButton { padding: 0 4px; font-size: 11px; }
 }

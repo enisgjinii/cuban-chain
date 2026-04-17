@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Button, Group, Stack, Text } from "@mantine/core";
-import { IconSparkles } from "@tabler/icons-react";
+import { Box, Button, Group, Stack, Text, Tooltip } from "@mantine/core";
+import { IconCheck, IconPalette } from "@tabler/icons-react";
 import type { SurfaceId, GemstoneColors } from "@/lib/chain-config-types";
 
 interface StoneColorPickerProps {
@@ -44,120 +44,148 @@ export function StoneColorPicker({ surfaceId, gemstoneColors, onChange, disabled
     onChange({ stone1: color, stone2: color, ...(isTopSurface && { stone3: color }) });
   };
 
-  return (
-    <Stack gap="xs" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}>
-      <Group gap={6}>
-        <IconSparkles size={14} color="#2b2d30" />
-        <Text size="xs" fw={700}>Individual stone colors</Text>
-      </Group>
+  const currentColor = gemstoneColors[selectedStone] || "#ffffff";
 
-      <Group gap="xs" grow>
+  return (
+    <Stack gap={8} style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : "auto" }}>
+      <Group gap={6} grow>
         {Array.from({ length: stoneCount }).map((_, index) => {
           const stoneKey = `stone${index + 1}` as "stone1" | "stone2" | "stone3";
           const color = gemstoneColors[stoneKey] || "#ffffff";
           const isActive = selectedStone === stoneKey;
 
           return (
-            <Box
-              key={stoneKey}
-              onClick={() => setSelectedStone(stoneKey)}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                padding: 8,
-                borderRadius: 8,
-                border: `1px solid ${isActive ? "rgba(80,105,255,0.72)" : "rgba(45,45,45,0.12)"}`,
-                background: isActive ? "rgba(255,255,255,0.56)" : "rgba(255,255,255,0.18)",
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-            >
+            <Tooltip key={stoneKey} label={`Select stone ${index + 1} to change its color`} withArrow>
               <Box
+                onClick={() => setSelectedStone(stoneKey)}
+                role="button"
+                tabIndex={0}
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: color,
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  boxShadow: color === "#ffffff" ? "inset 0 0 0 1px #555" : "0 2px 6px rgba(0,0,0,0.3)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "8px 4px",
+                  borderRadius: 14,
+                  border: `1px solid ${isActive ? "rgba(20,112,105,0.52)" : "rgba(255,255,255,0.58)"}`,
+                  background: isActive ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.42)",
+                  boxShadow: isActive
+                    ? "0 0 0 3px rgba(20,112,105,0.14), inset 0 1px 0 rgba(255,255,255,0.95)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.75)",
+                  cursor: "pointer",
+                  transition: "all 0.2s cubic-bezier(0.34,1.56,0.64,1)",
                 }}
-              />
-              <Text size="xs" c="dimmed">
-                Stone {index + 1}
-              </Text>
-            </Box>
+              >
+                <Box
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: color,
+                    border: color === "#ffffff" ? "1px solid rgba(0,0,0,0.22)" : "1px solid rgba(255,255,255,0.35)",
+                    boxShadow: color === "#ffffff" ? "inset 0 0 0 1px rgba(0,0,0,0.08)" : "0 2px 4px rgba(0,0,0,0.25)",
+                  }}
+                />
+                <Text size="10px" c={isActive ? "#0d3f3b" : "dimmed"} fw={700}>
+                  Stone {index + 1}
+                </Text>
+              </Box>
+            </Tooltip>
           );
         })}
       </Group>
 
-      <Group justify="space-between">
-        <Text size="xs" c="dimmed">Color presets</Text>
-        <Button
-          size="xs"
-          variant="subtle"
-          onClick={() => handleApplyToAll(gemstoneColors[selectedStone] || "#ffffff")}
-        >
-          Apply to all
-        </Button>
+      <Group justify="space-between" align="center" gap={4}>
+        <Group gap={4} wrap="nowrap">
+          <IconPalette size={12} color="#47696b" />
+          <Text size="xs" fw={700} c="#0d3f3b">
+            Presets
+          </Text>
+        </Group>
+        <Tooltip label="Copy this stone's color to every stone on the face" withArrow>
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            leftSection={<IconCheck size={12} />}
+            onClick={() => handleApplyToAll(currentColor)}
+            styles={{ root: { color: "#0d3f3b" } }}
+          >
+            Apply to all
+          </Button>
+        </Tooltip>
       </Group>
 
-      <Box style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
-        {COLOR_PRESETS.map((preset) => (
-          <Box
-            key={preset.value}
-            className={`swatch-btn ${gemstoneColors[selectedStone] === preset.value ? "active" : ""}`}
-            onClick={() => handleColorChange(preset.value)}
-            style={{
-              width: "100%",
-              aspectRatio: "1",
-              borderRadius: 8,
-              background: preset.value,
-              border:
-                gemstoneColors[selectedStone] === preset.value
-                  ? "2px solid rgba(80,105,255,0.72)"
-                  : preset.value === "#ffffff"
-                    ? "1px solid rgba(0,0,0,0.35)"
-                    : "1px solid rgba(255,255,255,0.4)",
-              cursor: "pointer",
-            }}
-            title={preset.label}
-          />
-        ))}
+      <Box style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: 6 }}>
+        {COLOR_PRESETS.map((preset) => {
+          const isActive = currentColor.toLowerCase() === preset.value.toLowerCase();
+          return (
+            <Tooltip key={preset.value} label={preset.label} withArrow>
+              <button
+                type="button"
+                aria-label={preset.label}
+                onClick={() => handleColorChange(preset.value)}
+                style={{
+                  width: "100%",
+                  aspectRatio: "1",
+                  minHeight: 22,
+                  borderRadius: 10,
+                  padding: 0,
+                  background: preset.value,
+                  cursor: "pointer",
+                  border: isActive
+                    ? "2px solid rgba(20,112,105,0.7)"
+                    : preset.value === "#ffffff"
+                      ? "1px solid rgba(0,0,0,0.28)"
+                      : "1px solid rgba(255,255,255,0.35)",
+                  boxShadow: isActive
+                    ? "0 0 0 2px rgba(20,112,105,0.2)"
+                    : "0 1px 3px rgba(0,0,0,0.12)",
+                  transition: "transform 0.15s",
+                }}
+              />
+            </Tooltip>
+          );
+        })}
       </Box>
 
-      <Group gap="xs" wrap="nowrap">
-        <Box
-          component="input"
-          type="color"
-          value={gemstoneColors[selectedStone] || "#ffffff"}
-          onChange={(e: any) => handleColorChange(e.target.value)}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            border: "1px solid rgba(45,45,45,0.12)",
-            cursor: "pointer",
-            background: "none",
-          }}
-        />
+      <Group gap="xs" wrap="nowrap" align="center">
+        <Tooltip label="Open native color picker" withArrow>
+          <Box
+            component="input"
+            type="color"
+            value={currentColor}
+            onChange={(e: any) => handleColorChange(e.target.value)}
+            style={{
+              width: 38,
+              height: 34,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.72)",
+              cursor: "pointer",
+              background: "rgba(255,255,255,0.5)",
+              padding: 2,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
+            }}
+          />
+        </Tooltip>
         <Box
           component="input"
           type="text"
-          value={gemstoneColors[selectedStone] || "#ffffff"}
+          value={currentColor}
           onChange={(e: any) => handleColorChange(e.target.value)}
           placeholder="#ffffff"
+          maxLength={7}
           style={{
             flex: 1,
-            padding: "8px 10px",
-            fontSize: "0.8rem",
-            borderRadius: 8,
-            border: "1px solid rgba(45,45,45,0.12)",
-            background: "rgba(255,255,255,0.36)",
-            color: "#24272b",
+            padding: "7px 11px",
+            fontSize: "0.78rem",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.72)",
+            background: "rgba(255,255,255,0.52)",
+            color: "#1a2f33",
             textTransform: "uppercase",
             outline: "none",
+            fontVariantNumeric: "tabular-nums",
+            letterSpacing: "0.03em",
           }}
         />
       </Group>
