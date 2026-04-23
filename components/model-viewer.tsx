@@ -11,6 +11,8 @@ import {
   getSurfaceIdForMeshName,
   isDiamondMesh,
   isEnamelMesh,
+  isEngravingMesh,
+  isGemstoneSettingMesh,
   MAX_CHAIN_LINKS,
   toggleDiamondsVisibility,
   setLinkHighlight,
@@ -77,7 +79,11 @@ function annotateSceneMeshes(scene: THREE.Object3D): void {
       ? "gemstone"
       : isEnamelMesh(mesh.name)
         ? "enamel"
-        : "body";
+        : isEngravingMesh(mesh.name)
+          ? "engraving"
+          : isGemstoneSettingMesh(mesh.name)
+            ? "gemstone-setting"
+            : "body";
   });
 }
 

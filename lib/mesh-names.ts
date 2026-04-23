@@ -38,7 +38,7 @@ export function renameMeshesForPatternMatching(scene: THREE.Object3D): void {
     const semanticAncestorName = findSemanticAncestorName(child);
     if (semanticAncestorName && GENERIC_PRIMITIVE_PATTERN.test(originalName)) {
       child.userData.semanticSourceName = semanticAncestorName;
-      child.name = semanticAncestorName;
+      child.name = `${semanticAncestorName}_${originalName}`;
       return;
     }
 

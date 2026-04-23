@@ -112,7 +112,6 @@ export const MESH_SURFACE_PATTERNS: Record<SurfaceId | "diamond" | "enamel" | "b
     "diamond_top_",
     "diamond_side",
     "diamond_octagon",
-    "file2",
     "loc_diamond",
     "loc_diamonds",
     "gem",
@@ -372,8 +371,44 @@ export function isEnamelMesh(meshName: string): boolean {
   return matches(meshName, MESH_SURFACE_PATTERNS.enamel);
 }
 
+export function isEngravingMesh(meshName: string): boolean {
+  const { base } = normalizeMeshName(meshName);
+  return base.includes("engraving");
+}
+
+export function isGemstoneSettingMesh(meshName: string): boolean {
+  const { base } = normalizeMeshName(meshName);
+  return base.includes("top_diamond") || base.includes("cavity_diamond");
+}
+
+export function isEnamelBackingMesh(meshName: string): boolean {
+  const { base } = normalizeMeshName(meshName);
+  return base.includes("cuban_side_cavity") && !base.includes("diamond");
+}
+
+export function isFlatSurfaceMesh(meshName: string): boolean {
+  const { base } = normalizeMeshName(meshName);
+  return (
+    base.startsWith("top_flat") ||
+    base.startsWith("cuban_side_flat")
+  );
+}
+
+export function isDuplicateTopFlatSupportMesh(meshName: string): boolean {
+  const { base } = normalizeMeshName(meshName);
+  return base.startsWith("cuban_top_flat");
+}
+
 export function isBodyMesh(meshName: string): boolean {
-  if (isDiamondMesh(meshName) || isEnamelMesh(meshName)) {
+  if (
+    isDiamondMesh(meshName) ||
+    isEnamelMesh(meshName) ||
+    isEngravingMesh(meshName) ||
+    isGemstoneSettingMesh(meshName) ||
+    isFlatSurfaceMesh(meshName) ||
+    isEnamelBackingMesh(meshName) ||
+    isDuplicateTopFlatSupportMesh(meshName)
+  ) {
     return false;
   }
 
@@ -419,8 +454,15 @@ function assignMaterialIfChanged(
     return;
   }
 
+  const hadPreviousAppliedMaterial = typeof mesh.userData.appliedMaterialSignature === "string";
+  const previousMaterial = mesh.material;
   mesh.material = createMaterial();
   mesh.userData.appliedMaterialSignature = signature;
+
+  if (previousMaterial && hadPreviousAppliedMaterial) {
+    const materials = Array.isArray(previousMaterial) ? previousMaterial : [previousMaterial];
+    materials.forEach((material) => material.dispose());
+  }
 }
 
 // ============================================================================
@@ -448,6 +490,21 @@ export function applyLinkConfigToMesh(mesh: THREE.Mesh, linkConfig: LinkConfig, 
     return;
   }
 
+  if (isGemstoneSettingMesh(meshName)) {
+    const targetSurface = inferSurfaceFromName(meshName);
+    const config = targetSurface ? linkConfig.surfaces[targetSurface] : null;
+    const visible = config?.type === "gemstones" || config?.type === "moissanites";
+
+    setMeshVisibility(mesh, visible);
+    if (visible) {
+      assignMaterialIfChanged(mesh, `base:${linkConfig.material}`, () =>
+        createBaseMaterial(linkConfig.material)
+      );
+    }
+
+    return;
+  }
+
   if (isEnamelMesh(meshName)) {
     const targetSurface = getSurfaceForEnamel(meshName);
     const config = linkConfig.surfaces[targetSurface];
@@ -465,20 +522,51 @@ export function applyLinkConfigToMesh(mesh: THREE.Mesh, linkConfig: LinkConfig, 
     return;
   }
 
-  setMeshVisibility(mesh, true);
+  if (isEngravingMesh(meshName)) {
+    const targetSurface = inferSurfaceFromName(meshName);
+    const config = targetSurface ? linkConfig.surfaces[targetSurface] : null;
+    const visible = config?.type === "engraving";
 
-  // Apply engraving material if this body mesh belongs to a surface configured for engraving
-  const bodySurface = inferSurfaceFromName(meshName);
-  if (bodySurface !== null) {
-    const surfaceConfig = linkConfig.surfaces[bodySurface];
-    if (surfaceConfig.type === "engraving") {
-      const pattern = surfaceConfig.engravingDesign ?? "pattern1";
-      assignMaterialIfChanged(mesh, `engraving:${bodySurface}:${pattern}`, () =>
+    setMeshVisibility(mesh, visible);
+    if (visible) {
+      const pattern = config?.engravingDesign ?? "pattern1";
+      assignMaterialIfChanged(mesh, `engraving:${targetSurface}:${pattern}`, () =>
         createEngravingMaterial(pattern)
       );
-      return;
     }
+
+    return;
   }
+
+  if (isFlatSurfaceMesh(meshName) || isDuplicateTopFlatSupportMesh(meshName)) {
+    const targetSurface = inferSurfaceFromName(meshName);
+    const config = targetSurface ? linkConfig.surfaces[targetSurface] : null;
+
+    setMeshVisibility(mesh, config?.type === "empty");
+    if (mesh.visible) {
+      assignMaterialIfChanged(mesh, `base:${linkConfig.material}`, () =>
+        createBaseMaterial(linkConfig.material)
+      );
+    }
+
+    return;
+  }
+
+  if (isEnamelBackingMesh(meshName)) {
+    const targetSurface = inferSurfaceFromName(meshName);
+    const config = targetSurface ? linkConfig.surfaces[targetSurface] : null;
+
+    setMeshVisibility(mesh, config?.type === "enamel");
+    if (mesh.visible) {
+      assignMaterialIfChanged(mesh, `base:${linkConfig.material}`, () =>
+        createBaseMaterial(linkConfig.material)
+      );
+    }
+
+    return;
+  }
+
+  setMeshVisibility(mesh, true);
 
   assignMaterialIfChanged(mesh, `base:${linkConfig.material}`, () =>
     createBaseMaterial(linkConfig.material)
