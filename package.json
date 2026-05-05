@@ -1,7 +1,20 @@
 {
-  "name": "my-v0-project",
+  "name": "cuban-chain-customizer",
   "version": "0.1.0",
   "private": true,
+  "description": "Interactive 3D Cuban link chain customizer built with Next.js, React, Three.js, and React Three Fiber.",
+  "author": "Enis Gjini",
+  "keywords": [
+    "nextjs",
+    "react",
+    "threejs",
+    "react-three-fiber",
+    "3d-configurator",
+    "jewelry",
+    "product-customizer",
+    "webgl",
+    "vercel"
+  ],
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3004",
