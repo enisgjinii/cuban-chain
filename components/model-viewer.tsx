@@ -284,6 +284,29 @@ function ModelViewerComponent({
     invalidate();
   }, [chainSpacing, linkContainers, mainScene, urls.length, invalidate]);
 
+  const renderSceneForExport = useCallback(() => {
+    const highlightedContainer =
+      selectedLinkIndex !== null && selectedLinkIndex !== undefined
+        ? linkContainers.find(
+            (container) =>
+              container.visible && container.userData.linkIndex === selectedLinkIndex
+          )
+        : null;
+
+    if (highlightedContainer) {
+      setLinkHighlight(highlightedContainer, false);
+    }
+
+    try {
+      gl.render(threeScene, camera);
+    } finally {
+      if (highlightedContainer) {
+        setLinkHighlight(highlightedContainer, true);
+        invalidate();
+      }
+    }
+  }, [camera, gl, invalidate, linkContainers, selectedLinkIndex, threeScene]);
+
   // ─── Image capture event ──────────────────────────────────────────────
   useEffect(() => {
     const handleCaptureImage = (event: CustomEvent) => {
@@ -291,7 +314,7 @@ function ModelViewerComponent({
         const options = event.detail || {};
         const { backgroundColor, addWatermark, watermarkText, format } = options;
 
-        gl.render(threeScene, camera);
+        renderSceneForExport();
 
         const canvas = gl.domElement;
         const width = canvas.width;
@@ -345,7 +368,7 @@ function ModelViewerComponent({
       window.removeEventListener("captureImage", handleCaptureImage as EventListener);
       window.removeEventListener("toggleDiamonds", handleToggleDiamonds as EventListener);
     };
-  }, [mainScene, gl, threeScene, camera]);
+  }, [mainScene, gl, renderSceneForExport]);
 
   // ─── Recording ────────────────────────────────────────────────────────
   useEffect(() => {
