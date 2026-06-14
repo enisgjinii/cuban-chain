@@ -341,13 +341,8 @@ export function createEnamelMaterial(color: string): THREE.MeshStandardMaterial 
   });
 }
 
-export function createEngravingMaterial(pattern: "pattern1" | "pattern2"): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
-    color: pattern === "pattern1" ? 0x333333 : 0x222222,
-    metalness: 0.6,
-    roughness: 0.4,
-    side: THREE.DoubleSide,
-  });
+export function createEngravingMaterial(materialType: Material): THREE.MeshStandardMaterial {
+  return createBaseMaterial(materialType);
 }
 
 // ============================================================================
@@ -529,9 +524,8 @@ export function applyLinkConfigToMesh(mesh: THREE.Mesh, linkConfig: LinkConfig, 
 
     setMeshVisibility(mesh, visible);
     if (visible) {
-      const pattern = config?.engravingDesign ?? "pattern1";
-      assignMaterialIfChanged(mesh, `engraving:${targetSurface}:${pattern}`, () =>
-        createEngravingMaterial(pattern)
+      assignMaterialIfChanged(mesh, `engraving:${targetSurface}:${linkConfig.material}`, () =>
+        createEngravingMaterial(linkConfig.material)
       );
     }
 
@@ -573,7 +567,12 @@ export function applyLinkConfigToMesh(mesh: THREE.Mesh, linkConfig: LinkConfig, 
   );
 }
 
-export function applySurfaceConfigToMesh(mesh: THREE.Mesh, surfaceConfig: SurfaceConfig, surfaceId: SurfaceId): void {
+export function applySurfaceConfigToMesh(
+  mesh: THREE.Mesh,
+  surfaceConfig: SurfaceConfig,
+  surfaceId: SurfaceId,
+  materialType: Material = "silver"
+): void {
   const meshName = mesh.name;
   const belongsToSurface = isMeshForSurface(meshName, surfaceId);
 
@@ -620,9 +619,8 @@ export function applySurfaceConfigToMesh(mesh: THREE.Mesh, surfaceConfig: Surfac
         setMeshVisibility(mesh, false);
       }
       if (belongsToSurface && isBodyMesh(meshName)) {
-        const pattern = surfaceConfig.engravingDesign ?? "pattern1";
-        assignMaterialIfChanged(mesh, `engraving:${surfaceId}:${pattern}`, () =>
-          createEngravingMaterial(pattern)
+        assignMaterialIfChanged(mesh, `engraving:${surfaceId}:${materialType}`, () =>
+          createEngravingMaterial(materialType)
         );
       }
       return;

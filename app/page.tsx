@@ -26,7 +26,10 @@ import {
   Download,
   FitScreen,
   Fullscreen,
+  OpenWith,
   Refresh,
+  Visibility,
+  VisibilityOff,
 } from "@mui/icons-material";
 import { SimpleCustomizerDock } from "@/components/simple-customizer-dock";
 import { ModelViewer } from "@/components/model-viewer";
@@ -63,7 +66,7 @@ const CAMERA_PRESETS = {
   iso:    { pos: new THREE.Vector3(0.36, 0.64, 0.74), target: new THREE.Vector3(0, 0.03, 0), label: "Isometric",   icon: "◇" },
   front:  { pos: new THREE.Vector3(0,    0.12, 1.10), target: new THREE.Vector3(0, 0.05, 0), label: "Front",       icon: "↑" },
   top:    { pos: new THREE.Vector3(0,    1.50, 0.01), target: new THREE.Vector3(0, 0,    0), label: "Top",         icon: "⊙" },
-  bottom: { pos: new THREE.Vector3(0,   -1.40, 0.01), target: new THREE.Vector3(0, 0,    0), label: "Bottom",      icon: "⊕" },
+  back:   { pos: new THREE.Vector3(0,    0.12, -1.10), target: new THREE.Vector3(0, 0.05, 0), label: "Back",        icon: "↓" },
   left:   { pos: new THREE.Vector3(-1.20, 0.14, 0.1), target: new THREE.Vector3(0, 0.05, 0), label: "Left",        icon: "←" },
   right:  { pos: new THREE.Vector3( 1.20, 0.14, 0.1), target: new THREE.Vector3(0, 0.05, 0), label: "Right",       icon: "→" },
 } as const;
@@ -158,6 +161,8 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [isCapturingGIF, setIsCapturingGIF] = useState(false);
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [isDockVisible, setIsDockVisible] = useState(true);
+  const [panEnabled, setPanEnabled] = useState(true);
   const [gifProgress, setGifProgress] = useState<"idle" | "capturing" | "encoding">("idle");
   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
   const [snackbar, setSnackbar] = useState<{
@@ -580,7 +585,13 @@ export default function Home() {
                 ref={orbitControlsRef}
                 makeDefault
                 enableDamping={false}
-                enablePan={false}
+                enablePan={panEnabled}
+                screenSpacePanning
+                mouseButtons={{
+                  LEFT: THREE.MOUSE.ROTATE,
+                  MIDDLE: THREE.MOUSE.DOLLY,
+                  RIGHT: THREE.MOUSE.PAN,
+                }}
                 target={[0, 0.03, 0]}
                 minDistance={0.22}
                 maxDistance={1.7}
@@ -649,10 +660,23 @@ export default function Home() {
             () => setToolsExpanded((value) => !value),
           )}
           <SD />
+          {sidebarBtn(
+            isDockVisible ? "Hide panel" : "Show panel",
+            isDockVisible ? <VisibilityOff sx={{ fontSize: 16 }} /> : <Visibility sx={{ fontSize: 16 }} />,
+            () => setIsDockVisible((value) => !value),
+            !isDockVisible,
+          )}
+          <SD />
           {/* Camera */}
           {sidebarGroupLabel("Camera")}
           {sidebarBtn("Reset view", <Refresh sx={{ fontSize: 16 }} />, handleResetView)}
           {sidebarBtn("Fit model", <FitScreen sx={{ fontSize: 16 }} />, handleZoomToFit)}
+          {sidebarBtn(
+            panEnabled ? "Right-drag pan on" : "Right-drag pan off",
+            <OpenWith sx={{ fontSize: 16 }} />,
+            () => setPanEnabled((value) => !value),
+            panEnabled,
+          )}
 
           {showDetailedTools && (
             <>
@@ -703,28 +727,30 @@ export default function Home() {
         </Box>
 
         {/* ── Customizer dock ──────────────────────────────────────── */}
-        <Box
-          ref={dockContainerRef}
-          sx={{
-            position: "absolute",
-            left: "50%",
-            bottom: { xs: "calc(env(safe-area-inset-bottom) + 8px)", sm: 20 },
-            transform: "translateX(-50%)",
-            zIndex: 14,
-            width: { xs: "calc(100vw - 12px)", sm: "auto" },
-            willChange: "transform",
-          }}
-        >
-          <SimpleCustomizerDock
-            chainConfig={chainConfig}
-            setChainConfig={setChainConfigFromDock}
-            selectedSurface={selectedSurface}
-            setSelectedSurface={setSelectedSurface}
-            selectedLinkIndex={selectedLinkIndex}
-            setSelectedLinkIndex={setSelectedLinkIndex}
-            onChainLengthChange={handleChainLengthChange}
-          />
-        </Box>
+        {isDockVisible && (
+          <Box
+            ref={dockContainerRef}
+            sx={{
+              position: "absolute",
+              left: "50%",
+              bottom: { xs: "calc(env(safe-area-inset-bottom) + 8px)", sm: 20 },
+              transform: "translateX(-50%)",
+              zIndex: 14,
+              width: { xs: "calc(100vw - 12px)", sm: "auto" },
+              willChange: "transform",
+            }}
+          >
+            <SimpleCustomizerDock
+              chainConfig={chainConfig}
+              setChainConfig={setChainConfigFromDock}
+              selectedSurface={selectedSurface}
+              setSelectedSurface={setSelectedSurface}
+              selectedLinkIndex={selectedLinkIndex}
+              setSelectedLinkIndex={setSelectedLinkIndex}
+              onChainLengthChange={handleChainLengthChange}
+            />
+          </Box>
+        )}
       </Box>
     </Box>
   );

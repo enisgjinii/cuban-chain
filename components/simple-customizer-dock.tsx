@@ -16,6 +16,7 @@ import {
   Stack,
   Tabs,
   Text,
+  TextInput,
   Tooltip,
 } from "@mantine/core";
 import {
@@ -111,6 +112,10 @@ function normalizeSurfaceType(type?: SurfaceType): EditableSurfaceType {
   return "empty";
 }
 
+function isHexColor(value: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/u.test(value);
+}
+
 function InfoTip({ text }: { text: string }) {
   return (
     <Tooltip label={text} multiline w={240} withArrow position="top" offset={6} events={{ hover: true, focus: true, touch: true }}>
@@ -169,6 +174,7 @@ export function SimpleCustomizerDock({
     normalizeGemstoneColors(selectedSurface, currentSurface?.gemstoneColors)
   );
   const [enamelColor, setEnamelColor] = useState(currentSurface?.enamelColor ?? "#ffffff");
+  const [enamelColorInput, setEnamelColorInput] = useState(currentSurface?.enamelColor ?? "#ffffff");
   const [engravingPattern, setEngravingPattern] = useState<EngravingPattern>(
     currentSurface?.engravingDesign ?? "pattern1"
   );
@@ -209,9 +215,21 @@ export function SimpleCustomizerDock({
     setMaterial(selectedLink.material);
     setSurfaceType(normalizeSurfaceType(surface.type));
     setGemstoneColors(normalizeGemstoneColors(selectedSurface, surface.gemstoneColors));
-    setEnamelColor(surface.enamelColor ?? "#ffffff");
+    const nextEnamelColor = surface.enamelColor ?? "#ffffff";
+    setEnamelColor(nextEnamelColor);
+    setEnamelColorInput(nextEnamelColor);
     setEngravingPattern(surface.engravingDesign ?? "pattern1");
   }, [selectedLink, selectedLinkIndex, selectedSurface]);
+
+  const updateEnamelColor = useCallback((nextColor: string) => {
+    if (!isHexColor(nextColor)) {
+      return;
+    }
+
+    const normalizedColor = nextColor.toLowerCase();
+    setEnamelColor(normalizedColor);
+    setEnamelColorInput(normalizedColor);
+  }, []);
 
   const applyMaterial = useCallback(
     (nextMaterial: Material) => {
@@ -632,13 +650,43 @@ export function SimpleCustomizerDock({
                   <button
                     type="button"
                     aria-label={option.name}
-                    onClick={() => setEnamelColor(option.value)}
+                    onClick={() => updateEnamelColor(option.value)}
                     className={`${classes.enamelSwatch} ${enamelColor === option.value ? classes.enamelSwatchActive : ""}`}
                     style={{ background: option.value }}
                   />
                 </Tooltip>
               ))}
             </Box>
+            <Group gap={8} wrap="nowrap" align="flex-end">
+              <Tooltip label="Pick a custom enamel color" withArrow>
+                <input
+                  type="color"
+                  aria-label="Custom enamel color"
+                  value={isHexColor(enamelColor) ? enamelColor : "#ffffff"}
+                  onChange={(event) => updateEnamelColor(event.currentTarget.value)}
+                  className={classes.enamelColorInput}
+                />
+              </Tooltip>
+              <TextInput
+                size="xs"
+                label="Custom hex"
+                value={enamelColorInput}
+                onChange={(event) => {
+                  const nextValue = event.currentTarget.value.trim();
+                  setEnamelColorInput(nextValue);
+                  if (isHexColor(nextValue)) {
+                    setEnamelColor(nextValue.toLowerCase());
+                  }
+                }}
+                onBlur={() => setEnamelColorInput(enamelColor)}
+                error={isHexColor(enamelColorInput) ? null : "Use #RRGGBB"}
+                classNames={{
+                  root: classes.enamelHexRoot,
+                  input: classes.enamelHexInput,
+                  label: classes.enamelHexLabel,
+                }}
+              />
+            </Group>
           </Stack>
         </Collapse>
 
