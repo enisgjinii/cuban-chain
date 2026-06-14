@@ -272,14 +272,18 @@ function getSurfaceForDiamond(meshName: string): SurfaceId {
 }
 
 function getSurfaceForEnamel(meshName: string): SurfaceId {
+  const inferred = inferSurfaceFromName(meshName);
+  if (inferred) {
+    return inferred;
+  }
+
   for (const surfaceId of SURFACE_IDS) {
     if (matches(meshName, ENAMEL_MESH_PATTERNS[surfaceId])) {
       return surfaceId;
     }
   }
 
-  const inferred = inferSurfaceFromName(meshName);
-  return inferred ?? "top1";
+  return "top1";
 }
 
 export function getSurfaceIdForMeshName(meshName: string): SurfaceId | null {
@@ -331,8 +335,12 @@ export function createGemstoneMaterial(color: string): THREE.MeshPhysicalMateria
   });
 }
 
+function parseHexColor(color: string, fallback = 0xffffff): number {
+  return /^#[0-9a-fA-F]{6}$/u.test(color) ? Number.parseInt(color.slice(1), 16) : fallback;
+}
+
 export function createEnamelMaterial(color: string): THREE.MeshStandardMaterial {
-  const hexColor = Number.parseInt(color.replace("#", ""), 16);
+  const hexColor = parseHexColor(color);
   return new THREE.MeshStandardMaterial({
     color: hexColor,
     metalness: 0.1,
@@ -532,7 +540,22 @@ export function applyLinkConfigToMesh(mesh: THREE.Mesh, linkConfig: LinkConfig, 
     return;
   }
 
-  if (isFlatSurfaceMesh(meshName) || isDuplicateTopFlatSupportMesh(meshName)) {
+  if (isDuplicateTopFlatSupportMesh(meshName)) {
+    const targetSurface = inferSurfaceFromName(meshName);
+    const config = targetSurface ? linkConfig.surfaces[targetSurface] : null;
+    const visible = config?.type === "empty" || config?.type === "enamel";
+
+    setMeshVisibility(mesh, visible);
+    if (visible) {
+      assignMaterialIfChanged(mesh, `base:${linkConfig.material}`, () =>
+        createBaseMaterial(linkConfig.material)
+      );
+    }
+
+    return;
+  }
+
+  if (isFlatSurfaceMesh(meshName)) {
     const targetSurface = inferSurfaceFromName(meshName);
     const config = targetSurface ? linkConfig.surfaces[targetSurface] : null;
 
@@ -581,6 +604,12 @@ export function applySurfaceConfigToMesh(
       if ((isDiamondMesh(meshName) || isEnamelMesh(meshName)) && belongsToSurface) {
         setMeshVisibility(mesh, false);
       }
+      if (isDuplicateTopFlatSupportMesh(meshName) && belongsToSurface) {
+        setMeshVisibility(mesh, true);
+        assignMaterialIfChanged(mesh, `base:${materialType}`, () =>
+          createBaseMaterial(materialType)
+        );
+      }
       return;
     }
 
@@ -606,6 +635,12 @@ export function applySurfaceConfigToMesh(
         const color = surfaceConfig.enamelColor ?? "#ffffff";
         assignMaterialIfChanged(mesh, `enamel:${surfaceId}:${color}`, () =>
           createEnamelMaterial(color)
+        );
+      }
+      if (isDuplicateTopFlatSupportMesh(meshName) && belongsToSurface) {
+        setMeshVisibility(mesh, true);
+        assignMaterialIfChanged(mesh, `base:${materialType}`, () =>
+          createBaseMaterial(materialType)
         );
       }
       if (isDiamondMesh(meshName) && belongsToSurface) {
