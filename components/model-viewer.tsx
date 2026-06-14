@@ -43,7 +43,9 @@ interface ModelViewerProps {
 }
 
 const ENTIRE_CHAIN_URL = "/models/EntireChain.glb";
-const LINK_OVERLAP_RATIO = 0.58;
+const GENERATED_LINK_PITCH_RATIO = 0.54;
+const MIN_GENERATED_LINK_PITCH_RATIO = 0.45;
+const MIN_GENERATED_LINK_PITCH = 0.04;
 const GIF_FRAME_COUNT = 24; // ~2 s at ~12 fps
 
 function optimizeSceneForRuntime(scene: THREE.Object3D): void {
@@ -135,23 +137,26 @@ function layoutGeneratedLinkContainers(
 
   const templateBounds = new THREE.Box3().setFromObject(containers[0]);
   const templateSize = templateBounds.getSize(new THREE.Vector3());
-  const pitch = Math.max(templateSize.x * LINK_OVERLAP_RATIO + chainSpacing, templateSize.x * 0.45, 0.04);
-  const zOffset = Math.min(templateSize.z * 0.045, 0.008);
-  const yOffset = Math.min(templateSize.y * 0.06, 0.004);
+  const normalizedSpacing = Number.isFinite(chainSpacing) ? Math.max(chainSpacing, 0) : 0;
+  const pitch = Math.max(
+    templateSize.x * GENERATED_LINK_PITCH_RATIO + normalizedSpacing,
+    templateSize.x * MIN_GENERATED_LINK_PITCH_RATIO,
+    MIN_GENERATED_LINK_PITCH
+  );
   const centerOffset = ((visibleCount - 1) * pitch) / 2;
 
   containers.forEach((container, index) => {
     container.visible = index < visibleCount;
     container.position.x = index * pitch - centerOffset;
-    container.position.y = index % 2 === 0 ? 0 : yOffset;
-    container.position.z = index % 2 === 0 ? zOffset : -zOffset;
+    container.position.y = 0;
+    container.position.z = 0;
   });
 }
 
 function ModelViewerComponent({
   urls,
   chainConfig,
-  chainSpacing = 0.006,
+  chainSpacing = 0,
   autoRotate = false,
   isRecording = false,
   onRecordingComplete,
