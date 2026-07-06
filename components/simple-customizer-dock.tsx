@@ -24,6 +24,7 @@ import {
   IconArrowRight,
   IconChevronRight,
   IconCopy,
+  IconDownload,
   IconInfoCircle,
   IconLink,
   IconMinus,
@@ -31,6 +32,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSparkles,
+  IconUpload,
 } from "@tabler/icons-react";
 import type {
   ChainConfig,
@@ -62,6 +64,8 @@ interface SimpleCustomizerDockProps {
   selectedLinkIndex: number;
   setSelectedLinkIndex: (index: number) => void;
   onChainLengthChange?: (length: number) => void;
+  onSaveDesign?: () => void;
+  onLoadDesign?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const TABS: Array<{ id: DockTab; label: string; hint: string }> = [
@@ -162,6 +166,8 @@ export function SimpleCustomizerDock({
   selectedLinkIndex,
   setSelectedLinkIndex,
   onChainLengthChange,
+  onSaveDesign,
+  onLoadDesign,
 }: SimpleCustomizerDockProps) {
   const selectedLink = chainConfig.links[selectedLinkIndex];
   const currentSurface = selectedLink?.surfaces[selectedSurface];
@@ -365,7 +371,7 @@ export function SimpleCustomizerDock({
         <Stack gap={10} className={classes.chainControls}>
           <SectionHeader
             title="Chain length"
-            info="Drag the slider or use ± to change how many links your chain has. Max 20."
+            info="Drag the slider or use ± to change how many links your chain has. Max 25."
             rightSlot={
               <Text size="xs" fw={800} className={classes.countBadge}>
                 {linkCount} / {MAX_CHAIN_LINKS}
@@ -470,6 +476,40 @@ export function SimpleCustomizerDock({
                 onClick={resetAll}
               >
                 Reset chain
+              </Button>
+            </Tooltip>
+          </Group>
+
+          <Divider className={classes.softDivider} />
+
+          <SectionHeader
+            title="Save design"
+            info="Export your chain configuration as a JSON file, or load a previously saved design."
+          />
+          <Group gap="xs" grow wrap="wrap">
+            <Tooltip label="Download the current design as a .json file" withArrow>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconDownload size={14} />}
+                className={classes.softButton}
+                onClick={onSaveDesign}
+                disabled={!onSaveDesign}
+              >
+                Save to file
+              </Button>
+            </Tooltip>
+            <Tooltip label="Load a design from a .json file" withArrow>
+              <Button
+                size="xs"
+                variant="light"
+                component="label"
+                leftSection={<IconUpload size={14} />}
+                className={classes.softButton}
+                disabled={!onLoadDesign}
+              >
+                Load from file
+                <input type="file" accept=".json,application/json" hidden onChange={onLoadDesign} />
               </Button>
             </Tooltip>
           </Group>

@@ -37,7 +37,7 @@ export const COMPLETE_DIAMOND_LINK: string[] = [
 
 export const ADDITIONAL_LINK_MESH_GROUPS: string[][] = [["cuban_main", "cuban_main.001"]];
 
-export const MAX_CHAIN_LINKS = 20;
+export const MAX_CHAIN_LINKS = 25;
 
 export interface AdditionalLinkOffset {
   x: number;

@@ -4,7 +4,7 @@ import type React from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Stage } from "@react-three/drei";
 import * as THREE from "three";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -28,6 +28,8 @@ import {
   Fullscreen,
   OpenWith,
   Refresh,
+  SaveAlt,
+  UploadFile,
   Visibility,
   VisibilityOff,
 } from "@mui/icons-material";
@@ -37,6 +39,7 @@ import { ScreenshotModal, type ScreenshotOptions } from "@/components/screenshot
 import type { ChainConfig, LinkConfig, SurfaceConfig, SurfaceId } from "@/lib/chain-config-types";
 import { createDefaultConfig, createDefaultLink } from "@/lib/chain-helpers";
 import { MAX_CHAIN_LINKS } from "@/lib/chain-geometry";
+import { chainConfigFromDesign, downloadChainDesign, readChainDesignFile } from "@/lib/chain-design-file";
 import { encodeGif, resizeFrame, type GifFrame } from "@/lib/gif-encoder";
 
 const DEFAULT_CHAIN_LENGTH = 12;
@@ -175,6 +178,11 @@ export default function Home() {
     [],
   );
 
+  const cameraMaxDistance = useMemo(
+    () => Math.max(2.8, 0.14 * chainConfig.chainLength + 1.2),
+    [chainConfig.chainLength],
+  );
+
   // ── Chain length sync ───────────────────────────────────────────────────
   useEffect(() => {
     setChainConfig((prev) => {
@@ -298,9 +306,38 @@ export default function Home() {
   );
 
   // ── Camera handlers ─────────────────────────────────────────────────────
+  const handleSaveDesign = useCallback(() => {
+    downloadChainDesign(chainConfig);
+    showToast("Design saved to file", "success");
+  }, [chainConfig, showToast]);
+
+  const handleLoadDesign = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      try {
+        const design = await readChainDesignFile(file);
+        const nextConfig = chainConfigFromDesign(design);
+        const length = nextConfig.chainLength;
+
+        setModelUrls(Array(length).fill(DEFAULT_MODEL_URL));
+        setChainConfig(cloneChainConfig(nextConfig));
+        setSelectedLinkIndex(0);
+        setSelectedSurface("top1");
+        showToast(`Loaded design (${length} links)`, "success");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load design file";
+        showToast(message, "error");
+      }
+    },
+    [showToast],
+  );
+
   const handleChainLengthChange = useCallback(
     (length: number) => {
-      const capped = Math.max(1, Math.min(Math.round(length), detectedLinkCount));
+      const capped = Math.max(1, Math.min(Math.round(length), MAX_CHAIN_LINKS, detectedLinkCount));
       if (capped === modelUrls.length) return;
       const tpl =
         chainConfig.links[selectedLinkIndex] ??
@@ -524,6 +561,14 @@ export default function Home() {
           "radial-gradient(circle at 18% 12%, rgba(255,255,255,0.74), rgba(255,255,255,0) 28%), linear-gradient(160deg, #eef4f7 0%, #e8f4f3 50%, #efeee9 100%)",
       }}
     >
+      <input
+        id="chain-design-file-input"
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={handleLoadDesign}
+      />
+
       <ScreenshotModal
         isOpen={showScreenshotModal}
         onClose={() => setShowScreenshotModal(false)}
@@ -594,7 +639,7 @@ export default function Home() {
                 }}
                 target={[0, 0.03, 0]}
                 minDistance={0.22}
-                maxDistance={1.7}
+                maxDistance={cameraMaxDistance}
                 minPolarAngle={0.08}
                 maxPolarAngle={Math.PI / 2 - 0.08}
                 autoRotate={autoRotate}
@@ -697,6 +742,19 @@ export default function Home() {
           {showDetailedTools && (
             <>
               <SD />
+              {sidebarGroupLabel("Design")}
+              {sidebarBtn("Save design", <SaveAlt sx={{ fontSize: 15 }} />, handleSaveDesign)}
+              {sidebarBtn(
+                "Load design",
+                <UploadFile sx={{ fontSize: 15 }} />,
+                () => document.getElementById("chain-design-file-input")?.click(),
+              )}
+            </>
+          )}
+
+          {showDetailedTools && (
+            <>
+              <SD />
               {sidebarGroupLabel("Export")}
               {sidebarBtn("PNG", <Download sx={{ fontSize: 15 }} />, () => handleQuickExport("png"))}
               {sidebarBtn("JPG", <Download sx={{ fontSize: 15 }} />, () => handleQuickExport("jpg"))}
@@ -748,6 +806,8 @@ export default function Home() {
               selectedLinkIndex={selectedLinkIndex}
               setSelectedLinkIndex={setSelectedLinkIndex}
               onChainLengthChange={handleChainLengthChange}
+              onSaveDesign={handleSaveDesign}
+              onLoadDesign={handleLoadDesign}
             />
           </Box>
         )}
